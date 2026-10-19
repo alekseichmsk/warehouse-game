@@ -169,6 +169,11 @@ for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.252,.006,6,
 box(izolonRoll,-.45,0,0,.08,.28,.5,0x44505a); box(izolonRoll,.45,0,0,.08,.28,.5,0x44505a);
 box(izolonRoll,0,.06,-.32,1.0,.06,.12,0x44505a);
 const rollLabel=box(izolonRoll,0,.52,.18,.55,.16,.03,M.yellow);
+// v5.5 MANUAL UNROLL: yellow floor target the player must pull the sheet edge to (~1.4m strip)
+const pullTargetPos=new THREE.Vector2(rollPos.x-1.7,rollPos.y+0.3);
+const pullTarget=new THREE.Mesh(new THREE.TorusGeometry(.34,.035,10,32),new THREE.MeshBasicMaterial({color:0xffd400,transparent:true,opacity:.9}));
+pullTarget.rotation.x=Math.PI/2; pullTarget.position.set(pullTargetPos.x,.03,pullTargetPos.y); pullTarget.visible=false; scene.add(pullTarget);
+let pullLen=0; const PULL_NEED=1.25;
 // strip unrolled from roll (grows during unroll anim) + loose cut strip on floor
 const unrolled=box(scene,0,-1,0,.95,.018,1.4,0xfff7fb); unrolled.visible=false;
 const looseStrip=box(scene,0,-1,0,1.30,.02,.95,0xfff7fb); looseStrip.visible=false;
@@ -254,7 +259,7 @@ const stages=[
  ["3. Вывези поддон на жёлтую площадку","Рычаг в НЕЙТРАЛЬ — в ней насос отключён и можно везти. Управление — ЗАДНИМ колесом, как машина задом: толкаешь от себя, повернул дышло/заднее колесо влево — корма уходит влево, а нос вил при этом доворачивается ВПРАВО (и наоборот). На месте корпус с вилами не поворачивается.","Ехать"],
  ["4. Опусти поддон и отойди","Поставь рычаг в ОПУСКАНИЕ и нажми действие — пока держишь рычаг, клапан открыт и вилы плавно идут вниз пропорционально. Затем «Отпустить» и отойди.","Рычаг — опустить"],
  ["5. Подкати тележку — БАБИНОЙ вперёд","Подойди к ручке тележки сзади, нажми «Взять». Лицевая часть тележки — где бабина с лентой: кати её БАБИНОЙ к поддону, ручка остаётся у тебя сзади.","Ехать"],
- ["6. Изолон: отмотай от рулона, отрежь у рулона, положи на поддон","Большой рулон изолона стоит рядом с площадкой. 1) «Отмотай изолон от рулона» — рулон крутится, полоса тянется. 2) Возьми нож у рулона и «Отрежь полосу ножом у рулона». 3) «Положи полосу на поддон».","Отмотай изолон от рулона"],
+ ["6. Изолон: САМ отмотай от рулона, отрежь у рулона, положи на поддон","Изолон отматываешь вручную, не кнопкой: 1) Подойди к рулону и нажми «Взять край изолона». 2) ИДИ от рулона к жёлтой метке на полу и тяни — полоса вытягивается за тобой, рулон крутится и уменьшается, длина растёт с пройденным расстоянием (нужно ≥1.25 м, метка ≈1.4 м полосы). Не дотянул или ушёл не туда — отпусти край («Отпустить») и попробуй снова. 3) Возьми нож у рулона и отрежь полосу У РУЛОНА. 4) Положи полосу на поддон.","Взять край изолона"],
  ["7. Протяни ленту под поддоном","Подойди к тележке у поддона и нажми «Протянуть ленту»: передняя бабина раскрутится, лента уйдёт под поддон и вокруг него.","Протянуть ленту"],
  ["8. Затяни стреппером","Упаковщик VertexTools лежит в корзинке/лотке тележки H-83. Подойди к тележке, возьми его из лотка («Взять»), подойди к поддону и нажми «Затянуть».","Затянуть стреппером"],
 ];
@@ -279,14 +284,14 @@ function updateHUD(){
  $('stageHint').textContent=finished?`Время: ${elapsed.toFixed(1)} c • Очки: ${score}. Нажми «Ещё раз».`:stages[stage][1];
  $('score').textContent='⭐ '+score;
  $('leverPill').textContent='Рычаг: '+(leverPos==='lift'?'⬆ ПОДЪЁМ':leverPos==='lower'?'⬇ ОПУСКАНИЕ':'↔ НЕЙТРАЛЬ'); $('btnLever').textContent='Рычаг: '+(leverPos==='lift'?'⬆ ПОДЪЁМ':leverPos==='lower'?'⬇ ОПУСКАНИЕ':'↔ НЕЙТРАЛЬ');
- $('holdPill').textContent=holding==='jack'?'✊ Держишь ручку РОХЛИ (руль — заднее колесо)':holding==='cart'?'✊ Держишь тележку (бабина спереди)':holding==='knife'?'🔪 В руке нож':holding==='tool'?'🔧 В руках стреппер':'✋ Руки свободны';
+ $('holdPill').textContent=holding==='jack'?'✊ Держишь ручку РОХЛИ (руль — заднее колесо)':holding==='cart'?'✊ Держишь тележку (бабина спереди)':holding==='edge'?'✊ Держишь край ИЗОЛОНА — тяни к жёлтой метке':holding==='knife'?'🔪 В руке нож':holding==='tool'?'🔧 В руках стреппер':'✋ Руки свободны';
  [...dots.children].forEach((d,i)=>{d.className='dot'+(i<stage||finished?' on':i===stage?' cur':'')});
  const b=$('action');
  if(finished){b.disabled=false;b.textContent='🔄 Ещё раз';return}
  if(stage===1){b.disabled=holding!=='jack'||leverPos!=='lift';b.textContent=leverPos!=='lift'?'⬆ Сначала рычаг в ПОДЪЁМ':`💪 Качать ручку (${pumps}/3)`}
  else if(stage===3){b.disabled=!(holding==='jack'&&palletState==='onForks'&&leverPos==='lower');b.textContent=leverPos!=='lower'?'⬇ Сначала рычаг в ОПУСКАНИЕ':'⬇ Держать рычаг — опустить'}
  else if(stage===5){ const dRoll=playerPos.distanceTo(rollPos), dPal=playerPos.distanceTo(new THREE.Vector2(pallet.position.x,pallet.position.z));
-   if(sheetSub===0){b.disabled=holding!==null||!!anim||dRoll>2.6;b.textContent='🌀 Отмотай изолон от рулона'}
+   if(sheetSub===0){b.disabled=true;b.textContent=holding==='edge'?`📏 Тяни к жёлтой метке: ${pullLen.toFixed(2)} / ${PULL_NEED.toFixed(2)} м`:'✋ Возьми край изолона у рулона и тяни сам'}
    else if(sheetSub===1){b.disabled=holding!=='knife'||dRoll>2.8;b.textContent='✂️ Отрежь полосу ножом у рулона'}
    else {b.disabled=holding!==null||dPal>2.6;b.textContent='⬜ Положи полосу на поддон'} }
  else if(stage===6){b.disabled=!!anim;b.textContent='🧵 Протянуть ленту (бабина крутится!)'}
@@ -328,6 +333,7 @@ function nearestInteract(){
  const cands=[];
  const jp=gripWorld(jackGrip); if(playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))<1.8)cands.push({id:'jack',label:'✋ Взять ручку рохли',d:playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))});
  const cp=gripWorld(cartGrip); if(playerPos.distanceTo(new THREE.Vector2(cp.x,cp.z))<1.8)cands.push({id:'cart',label:'✋ Взять ручку тележки',d:playerPos.distanceTo(new THREE.Vector2(cp.x,cp.z))});
+ if(stage===5&&sheetSub===0&&playerPos.distanceTo(rollPos)<2.0)cands.push({id:'edge',label:'✋ Взять край изолона',d:playerPos.distanceTo(rollPos)});
  if(stage===5&&sheetSub===1&&knife.visible){const kp=knife.position; if(playerPos.distanceTo(new THREE.Vector2(kp.x,kp.z))<1.9)cands.push({id:'knife',label:'✋ Взять нож',d:playerPos.distanceTo(new THREE.Vector2(kp.x,kp.z))})}
  if(stage===7&&tool.visible!==false){const tp=tool.position; if(playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))<1.9)cands.push({id:'tool',label:'✋ Взять упаковщик из лотка тележки',d:playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))})}
  cands.sort((a,b)=>a.d-b.d); return cands[0]||null;
@@ -338,6 +344,7 @@ $('btnShowHud').onclick=()=>{document.getElementById('hud').style.display='';doc
 function doTake(){
  if(anim)return;
  if(holding){
+   if(holding==='edge'){holding=null; pullLen=0; unrolled.visible=false; rollSpin.rotation.x=0; rollSpin.scale.set(1,1,1); toast('🖐 Отпустил край изолона — полоса не засчитана, попробуй снова'); updateHUD(); return;}
    if(holding==='knife'){knife.visible=true; knife.position.set(playerPos.x+dirOf(playerYaw).x*.4,.22,playerPos.y+dirOf(playerYaw).y*.4)}
    if(holding==='tool'){tool.position.set(playerPos.x+dirOf(playerYaw).x*.4,.25,playerPos.y+dirOf(playerYaw).y*.4)}
    holding=null; toast('🖐 Отпустил'); updateHUD(); return;
@@ -345,7 +352,7 @@ function doTake(){
  const it=nearestInteract(); if(!it)return;
  holding=it.id; started=true;
  if(holding==='knife')knife.visible=false;
- toast(it.id==='jack'?'✊ Взялся за ручку рохли! Стик ◀▶ рулит задним колесом':it.id==='cart'?'✊ Взялся за тележку. Бабина — спереди, кати её к поддону':it.id==='knife'?'🔪 Нож в руке':'🔧 Стреппер в руках');
+ toast(it.id==='edge'?'✊ Держишь край изолона! Иди к жёлтой метке — тяни полосу от рулона':it.id==='jack'?'✊ Взялся за ручку рохли! Стик ◀▶ рулит задним колесом':it.id==='cart'?'✊ Взялся за тележку. Бабина — спереди, кати её к поддону':it.id==='knife'?'🔪 Нож в руке':'🔧 Стреппер в руках');
  updateHUD();
 }
 $('btnLever').onclick=()=>{leverPos=leverPos==='neutral'?'lift':leverPos==='lift'?'lower':'neutral'; leverAnim=1; toast(leverPos==='lift'?'⬆ Рычаг: ПОДЪЁМ — качай ручку':leverPos==='lower'?'⬇ Рычаг: ОПУСКАНИЕ — вилы пойдут вниз':'↔ Рычаг: НЕЙТРАЛЬ — можно везти'); updateHUD()};
@@ -357,16 +364,11 @@ function doAction(){
    const lift=.038*pumps; pallet.position.y=lift; jackForks.position.y=lift; Pump_Piston.position.y=pistonBaseY+lift*.5;
    if(pumps>=3){palletState='onForks';nextStage('✅ Поддон поднят на вилах!')} else updateHUD();}
  else if(stage===3&&holding==='jack'&&palletState==='onForks'&&leverPos==='lower'){leverAnim=1; const y0=pallet.position.y; anim={t:0,dur:1.2,mode:'lower',fn:k=>{pallet.position.y=y0*(1-k); jackForks.position.y=y0*(1-k); Pump_Piston.position.y=pistonBaseY+y0*(1-k)*.5;},done:()=>{palletState='placed';score+=50;leverPos='neutral';toast('⬇ Поддон опущен (клапан открыт рычагом). Отпусти ручку и отойди');updateHUD()}}}
- else if(stage===5&&sheetSub===0){ // UNROLL from big roll
-   anim={t:0,dur:2.2,mode:'unroll',fn:k=>{rollSpin.rotation.x+=0.22; unrolled.visible=true;
-     const rp=new THREE.Vector3(); izolonRoll.getWorldPosition(rp);
-     const dir=new THREE.Vector3(-Math.sin(izolonRoll.rotation.y),0,-Math.cos(izolonRoll.rotation.y));
-     const len=.3+1.35*k; unrolled.scale.z=len/1.4; unrolled.position.set(rp.x+dir.x*(0.28+len/2),.035,rp.z+dir.z*(0.28+len/2)); unrolled.rotation.y=izolonRoll.rotation.y;},
-     done:()=>{sheetSub=1; knife.visible=true; const rp=izolonRoll.position; knife.position.set(rp.x-.55,.30,rp.z+.55); knife.rotation.y=.6; toast('🌀 Полоса отмотана! Возьми нож у рулона'); updateHUD()}}; updateHUD()}
+ else if(stage===5&&sheetSub===0){ toast(holding==='edge'?'🚶 Тяни край к жёлтой метке на полу':'✋ Сначала возьми край изолона у рулона — отмотка только вручную'); }
  else if(stage===5&&sheetSub===1&&holding==='knife'){
    const rp=izolonRoll.position; const cutP=new THREE.Vector3(rp.x-.75,.30,rp.z+.15);
    anim={t:0,dur:1.5,mode:'cut',fn:k=>{cutHandPos=cutP.clone(); cutHandPos.x+=(k-.5)*.25; rollSpin.rotation.x+=0.01},
-     done:()=>{cutHandPos=null;holding=null;unrolled.visible=false; looseStrip.visible=true; looseStrip.position.set(rp.x-1.15,.04,rp.z+.25); looseStrip.rotation.y=izolonRoll.rotation.y+.15; knife.visible=true; knife.position.set(rp.x-.5,.22,rp.z+.6); sheetSub=2; toast('✂️ Полоса отрезана от рулона! Отнеси её на поддон'); updateHUD()}}}
+     done:()=>{cutHandPos=null;holding=null;rollSpin.scale.set(1,1,1);rollSpin.rotation.x=0;pullLen=0;unrolled.visible=false; looseStrip.visible=true; looseStrip.position.set(rp.x-1.15,.04,rp.z+.25); looseStrip.rotation.y=izolonRoll.rotation.y+.15; knife.visible=true; knife.position.set(rp.x-.5,.22,rp.z+.6); sheetSub=2; toast('✂️ Полоса отрезана от рулона! Отнеси её на поддон'); updateHUD()}}}
  else if(stage===5&&sheetSub===2){ const px=pallet.position.x,pz=pallet.position.z; looseStrip.visible=false;
    anim={t:0,dur:1.0,fn:k=>{sheet.visible=true; sheet.position.set(px,1.5-1.32*k,pz+.02); sheet.rotation.y=(1-k)*.4},done:()=>{sheet.position.y=.185; nextStage('⬜ Полоса изолона на поддоне! Теперь лента')}}}
  else if(stage===6){strapG.visible=true;positionStrap(0.02);
@@ -407,7 +409,27 @@ function updateSlotHighlight(){
   slotState=aim.ok?'ok':(dist<2.2?'bad':'idle');
   return aim;
 }
-function checkStages(){
+function updatePullStrip(){
+  const f=dirOf(playerYaw); const edge=new THREE.Vector2(playerPos.x+f.x*.45,playerPos.y+f.y*.45);
+  const toEdge=new THREE.Vector2().subVectors(edge,rollPos); const dist=toEdge.length();
+  pullLen=Math.max(0,dist-.28); // strip length = distance pulled from roll surface, grows with walked distance
+  const dir=dist>0.001?toEdge.clone().divideScalar(dist):new THREE.Vector2(1,0);
+  unrolled.visible=true; unrolled.scale.z=Math.max(.06,pullLen/1.4);
+  unrolled.position.set(rollPos.x+dir.x*(.28+pullLen/2),.035,rollPos.y+dir.y*(.28+pullLen/2));
+  unrolled.rotation.y=Math.atan2(toEdge.x,toEdge.y);
+  rollSpin.rotation.x=-pullLen/.25; // roll spins as sheet unwinds
+  const shrink=1-.10*Math.min(1,pullLen/1.7); rollSpin.scale.set(1,shrink,shrink); // roll visibly gets thinner
+}
+function checkPull(){
+  if(!(stage===5&&sheetSub===0&&holding==='edge'))return;
+  updatePullStrip();
+  if(playerPos.distanceTo(pullTargetPos)<.45&&pullLen>=PULL_NEED){
+    holding=null; sheetSub=1; knife.visible=true; const rp=izolonRoll.position;
+    knife.position.set(rp.x-.55,.30,rp.z+.55); knife.rotation.y=.6;
+    score+=30; toast(`✅ Отмотал вручную ${pullLen.toFixed(2)} м! Теперь отрежь у рулона ножом`); updateHUD();
+  }
+}
+function checkStages(){ checkPull();
  const fc=forkCenter(), pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
  if(stage===0){const aim=updateSlotHighlight();
    // entered: fork centre well inside pallet footprint and aligned
@@ -509,6 +531,9 @@ function updateHands(dt){
    poseL=gripPose(jackGrip,-.14); poseR=gripPose(jackGrip,.14); curlL=curlR=1.0;
  } else if(holding==='cart'){
    poseL=gripPose(cartGrip,-.11); poseR=gripPose(cartGrip,.11); curlL=curlR=.88;
+ } else if(holding==='edge'){
+   poseL=camPose(handL,-.25,-.28,-.5,-.5,.3);
+   poseR=camPose(handR,.22,-.34,-.46,-.65,-.2); curlR=.95; curlL=.25; // round right hand grips sheet edge
  } else if(holding==='knife'){
    poseL=camPose(handL,-.27,-.33,-.5,-.5,.3);
    poseR=camPose(handR,.26,-.28,-.48,-.6,-.25); curlR=.92;
@@ -546,6 +571,10 @@ if(demo==='grip'){
   playerPos.set(1.6,-7.7); playerYaw=-0.55; playerPitch=-.14; demoFreeze=true;
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; jack.updateMatrixWorld(true);
   // hands free visible low
+} else if(demo==='pull'){
+  stage=5; sheetSub=0; holding='edge'; started=true; demoFreeze=true;
+  playerPos.set(5.55,1.95); playerYaw=2.32; playerPitch=-.48; // looking back/down at roll: stretched strip visible on floor to the roll
+  updatePullStrip();
 } else if(demo==='cut'){
   pallet.position.set(zone.position.x,0,zone.position.z); palletState='placed';
   unrolled.visible=true; unrolled.position.set(rollPos.x-.85,.035,rollPos.y+.35); unrolled.rotation.y=izolonRoll.rotation.y;
@@ -599,6 +628,7 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  camera.rotation.set((holding==='jack'||holding==='cart')?playerPitch-.42:playerPitch,effYaw+Math.PI,0);
  updateHands(dt);
  zone.children[0].material.opacity=.28+.14*Math.sin(performance.now()*.004);
+ pullTarget.visible=(stage===5&&sheetSub===0); if(pullTarget.visible){pullTarget.material.opacity=.65+.3*Math.sin(performance.now()*.006); const sc=1+.08*Math.sin(performance.now()*.006); pullTarget.scale.set(sc,sc,sc);}
  const bt=performance.now()*.001; for(const b of bubbles){b.m.position.y+=Math.sin(bt*.7+b.ph)*.0006+b.sp*dt; b.m.position.x=b.x+Math.sin(bt*.5+b.ph)*.25; if(b.m.position.y>4.2)b.m.position.y=.5;}
  $('timer').textContent='⏱ '+elapsed.toFixed(1)+' c';
  // refresh take/action availability lightly
