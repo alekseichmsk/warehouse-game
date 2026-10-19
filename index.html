@@ -126,20 +126,23 @@ const jackGrip=new THREE.Group(); jackGrip.name='Handle_Grip'; jackGrip.position
 const loopMesh=new THREE.Mesh(new THREE.TorusGeometry(.085,.014,10,26),mat(M.black,.5)); loopMesh.rotation.x=.35; jackGrip.add(loopMesh);
 cyl(jackGrip,0,0,0,.028,.36,M.black,'x',14); // transverse grip bar inside loop - round hands grab here
 
-// ---------- Strap cart SMALL: FRONT (+Z) = bobbin dia 0.48, width 0.55 ----------
+// ---------- Strap dispenser H-83: 700x400x400mm, FRONT (+Z) = flat bobbin (outer buhta up to Ø590, width <=200, inner Ø200) ----------
 const cart=new THREE.Group(); scene.add(cart);
-box(cart,0,.62,-.16,.50,.25,.35,0x2979ff); box(cart,0,.38,-.16,.58,.50,.46,M.blue); // crate 500x350x250 on 600x500x1000 dispenser
-const bobbin=new THREE.Group(); bobbin.position.set(0,.52,.30); cart.add(bobbin);
-cyl(bobbin,0,0,0,.19,.36,0xd7dde2,'x',20); // bobbin Ø420
-cyl(bobbin,-.20,0,0,.21,.035,0x7e8a94,'x',20); cyl(bobbin,.20,0,0,.21,.035,0x7e8a94,'x',20);
-for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.195,.010,6,20),mat(0x8f9aa3));t.rotation.y=Math.PI/2;t.position.x=-.13+i*.09;bobbin.add(t)}
-const bobLabel=box(cart,0,.68,.10,.30,.10,.04,M.yellow);
-box(cart,0,.14,-.02,.45,.08,.75,M.dark);
-for(const [x,z] of[[-.24,-.32],[.24,-.32],[-.24,.28],[.24,.28]]) cyl(cart,x,.13,z,.13,.07,M.black,'x');
+box(cart,0,.42,-.18,.36,.12,.28,0x2979ff); // plastic tray-box for tool/clips above/behind bobbin (~360x280)
+box(cart,0,.30,-.20,.40,.34,.30,M.blue); // low frame/body 400 wide
+const bobbin=new THREE.Group(); bobbin.position.set(0,.27,.22); cart.add(bobbin);
+cyl(bobbin,0,0,0,.24,.18,0xd7dde2,'x',24); // FLAT disc buhta Ø480 x 180 wide (not a wide drum)
+cyl(bobbin,-.105,0,0,.25,.03,0x7e8a94,'x',24); cyl(bobbin,.105,0,0,.25,.03,0x7e8a94,'x',24);
+cyl(bobbin,0,0,0,.10,.20,0x8a949c,'x',18); // inner Ø200 hub
+for(let i=0;i<3;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.242,.008,6,24),mat(0x8f9aa3));t.rotation.y=Math.PI/2;t.position.x=-.06+i*.06;bobbin.add(t)}
+const bobLabel=box(cart,0,.50,.02,.26,.08,.03,M.yellow);
+box(cart,0,.08,-.02,.36,.06,.68,M.dark); // base 700 long x 400 wide
+for(const [x,z] of[[-.17,-.28],[.17,-.28]]) cyl(cart,x,.09,z,.09,.038,M.black,'x'); // rear wheels, 38mm wide
+for(const [x,z] of[[-.17,.30],[.17,.30]]) cyl(cart,x,.05,z,.05,.035,M.dark,'x'); // small front feet (stands vertical, moves tilted - visual only)
 // handle bar at BACK
-const cartGrip=new THREE.Group(); cartGrip.position.set(0,.78,-.52); cart.add(cartGrip);
-box(cart,-.18,.62,-.46,.06,.22,.06,M.black); box(cart,.18,.62,-.46,.06,.22,.06,M.black);
-cyl(cartGrip,0,0,0,.032,.48,M.black,'x',14);
+const cartGrip=new THREE.Group(); cartGrip.position.set(0,.72,-.48); cart.add(cartGrip);
+box(cart,-.16,.58,-.42,.05,.20,.05,M.black); box(cart,.16,.58,-.42,.05,.20,.05,M.black);
+cyl(cartGrip,0,0,0,.030,.36,M.black,'x',14);
 
 // izolon sheet, strip, knife, strapper, strap
 const sheet=box(scene,0,-1,0,1.35,.035,.95,M.white); sheet.material.transparent=true; sheet.material.opacity=.94; sheet.visible=false;
