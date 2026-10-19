@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад v5.1 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад v5.2 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.1 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.2 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -98,8 +98,8 @@ const jack=new THREE.Group(); jack.name='PalletJack'; scene.add(jack);
 // Silhouette from user drawing (1000mm total, body top 365mm, fork top ~60mm, handle 1150mm, ONE big steering wheel Ø190, twin small rollers).
 // Game scale keeps fork centres at +-0.19 so forks still enter pallet slots; visually forks are thin 80mm plates with rounded tips.
 const jackForks=new THREE.Group(); jackForks.name='Forks_Lift'; jack.add(jackForks);
-const Fork_Left=box(jackForks,-.19,.042,.55,.08,.035,1.00,M.teal); Fork_Left.name='Fork_Left';
-const Fork_Right=box(jackForks,.19,.042,.55,.08,.035,1.00,M.teal); Fork_Right.name='Fork_Right';
+const Fork_Left=box(jackForks,-.19,.038,.55,.075,.030,1.02,M.teal); Fork_Left.name='Fork_Left';
+const Fork_Right=box(jackForks,.19,.038,.55,.075,.030,1.02,M.teal); Fork_Right.name='Fork_Right';
 for(const x of[-.19,.19]){const tip=cyl(jackForks,x,.042,1.05,.04,.035,M.teal,'y',20); tip.name='ForkTip_Round';}
 const rollerSpinGroups=[];
 function makeRollers(x,name){
@@ -110,21 +110,25 @@ function makeRollers(x,name){
 const Roller_Left=makeRollers(-.19,'Roller_Left');
 const Roller_Right=makeRollers(.19,'Roller_Right');
 const Body_Hydraulic=new THREE.Group(); Body_Hydraulic.name='Body_Hydraulic'; jackForks.add(Body_Hydraulic);
-box(Body_Hydraulic,0,.17,.00,.32,.22,.34,M.teal);
-const slope=box(Body_Hydraulic,0,.23,.16,.28,.20,.16,M.teal); slope.rotation.x=.5; // sloped front wall, low elongated body (not a tall cube)
-box(Body_Hydraulic,0,.31,-.05,.16,.12,.14,M.teal);
-const Pump_Piston=cyl(jackForks,0,.38,-.05,.026,.09,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.38;
+// v5.2 silhouette: LOW elongated pump (top ~0.24) with long sloped nose down to forks, NOT a tall cube.
+// Main low body + sloped wedge nose (rotated thin box reads as wedge in profile) + small neck.
+box(Body_Hydraulic,0,.135,-.02,.26,.17,.44,M.teal);
+const slopeNose=box(Body_Hydraulic,0,.115,.245,.24,.15,.30,M.teal); slopeNose.rotation.x=.62; slopeNose.name='Body_SlopedNose';
+box(Body_Hydraulic,0,.255,-.10,.15,.09,.16,M.teal);
+for(const sx of[-.135,.135]) box(Body_Hydraulic,sx,.16,-.20,.025,.20,.10,M.dark); // steering bracket cheeks beside big wheel
+const Pump_Piston=cyl(jackForks,0,.335,-.10,.024,.085,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.335;
 const steerGroup=new THREE.Group(); steerGroup.name='Steering_Unit'; jack.add(steerGroup);
-const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.095,-.20); // protrudes behind pump body, visible in profile steerGroup.add(Steering_Wheel);
-const steerWheel=cyl(Steering_Wheel,0,0,0,.095,.05,0xff3b30,'x',30); steerWheel.name='Steering_Wheel_Mesh';
-const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.105,.011,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.set(0,.10,-.20); steerGroup.add(steerRing);
-const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.34,-.02); steerGroup.add(Handle_Column);
+const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.105,-.235); steerGroup.add(Steering_Wheel);
+const steerWheel=cyl(Steering_Wheel,0,0,0,.105,.052,0xff3b30,'x',30); steerWheel.name='Steering_Wheel_Mesh';
+cyl(Steering_Wheel,0,0,0,.030,.060,0xd7dde2,'x',16);
+const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.115,.009,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.set(0,.108,-.235); steerGroup.add(steerRing);
+const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.30,-.10); steerGroup.add(Handle_Column);
 const handlePivot=Handle_Column;
-const handleBar=box(Handle_Column,0,.34,-.26,.04,.72,.04,M.black); handleBar.name='Handle_Column_Mesh'; handleBar.rotation.x=.42; // thin long tiller rod
-const Release_Lever=box(Handle_Column,0,.62,-.46,.22,.04,.09,M.red); Release_Lever.name='Release_Lever';
-const jackGrip=new THREE.Group(); jackGrip.name='Handle_Grip'; jackGrip.position.set(0,.72,-.52); Handle_Column.add(jackGrip);
-const loopMesh=new THREE.Mesh(new THREE.TorusGeometry(.085,.014,10,26),mat(M.black,.5)); loopMesh.rotation.x=.35; jackGrip.add(loopMesh);
-cyl(jackGrip,0,0,0,.028,.36,M.black,'x',14); // transverse grip bar inside loop - round hands grab here
+const handleBar=box(Handle_Column,0,.36,-.20,.035,.78,.035,M.black); handleBar.name='Handle_Column_Mesh'; handleBar.rotation.x=-.38; // top leans BACK to grip (RotX+ would lean top toward forks, disconnecting loop)
+const Release_Lever=box(Handle_Column,0,.66,-.40,.20,.035,.08,M.red); Release_Lever.name='Release_Lever';
+const jackGrip=new THREE.Group(); jackGrip.name='Handle_Grip'; jackGrip.position.set(0,.73,-.36); Handle_Column.add(jackGrip);
+const loopMesh=new THREE.Mesh(new THREE.TorusGeometry(.075,.013,10,26),mat(M.black,.5)); loopMesh.rotation.x=.30; jackGrip.add(loopMesh);
+cyl(jackGrip,0,-.01,0,.026,.34,M.black,'x',14);
 
 // ---------- Strap dispenser H-83: 700x400x400mm, FRONT (+Z) = flat bobbin (outer buhta up to Ø590, width <=200, inner Ø200) ----------
 const cart=new THREE.Group(); scene.add(cart);
@@ -189,13 +193,13 @@ function makeFinger(len,wid){
 }
 function makeHand(side){ // ROUND: forearm cylinder (tapered) + sphere-ended, rounded palm, capsule fingers
   const g=new THREE.Group();
-  const palm=new THREE.Mesh(new RoundedBoxGeometry(.095,.032,.105,4,.015),mat(M.skin,.5)); palm.castShadow=true; g.add(palm);
+  const palm=new THREE.Mesh(new THREE.SphereGeometry(.052,18,14),mat(M.skin,.5)); palm.scale.set(1.0,.55,1.12); palm.castShadow=true; g.add(palm);
   const wrist=new THREE.Mesh(new THREE.SphereGeometry(.030,14,10),mat(M.skin,.5)); wrist.position.set(0,-.002,.055); g.add(wrist);
-  const forePivot=new THREE.Group(); forePivot.position.set(0,-.004,.045); forePivot.rotation.x=.30; g.add(forePivot);
-  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.027,.28,4,14),mat(M.skin2,.5)); fore.rotation.x=Math.PI/2; fore.position.z=.19; fore.castShadow=true; forePivot.add(fore);
+  const forePivot=new THREE.Group(); forePivot.position.set(0,-.004,.045); forePivot.rotation.x=.62; g.add(forePivot);
+  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.024,.58,4,14),mat(M.skin2,.5)); fore.rotation.x=Math.PI/2; fore.position.z=.34; fore.castShadow=true; forePivot.add(fore);
   const fingers=[];
-  for(let i=0;i<4;i++){const f=makeFinger([.040,.032,.026],.019); f.position.set(-.034+i*.023,-.002,-.050); g.add(f); fingers.push(f)}
-  const thumb=makeFinger([.034,.028,.022],.021); thumb.position.set(side*.048,-.006,-.012); thumb.rotation.y=-side*.85; thumb.rotation.z=side*.35; g.add(thumb); fingers.push(thumb);
+  for(let i=0;i<4;i++){const f=makeFinger([.034,.027,.021],.0165); f.position.set(-.034+i*.023,-.002,-.050); g.add(f); fingers.push(f)}
+  const thumb=makeFinger([.030,.024,.019],.018); thumb.position.set(side*.048,-.006,-.012); thumb.rotation.y=-side*1.05; thumb.rotation.z=side*.45; thumb.rotation.x=-.35; g.add(thumb); fingers.push(thumb);
   g.userData={fingers,side,thumb};
   scene.add(g); return g;
 }
@@ -205,7 +209,7 @@ function setCurl(hand,curl){
     const isThumb=fi===4;
     f.userData.joints.forEach((j,i)=>{
       // fingers wrap DOWN/around a horizontal bar; thumb wraps from opposite side (extra yaw handled in pose)
-      j.rotation.x=-(curl*(isThumb?1.05:(i===0?.85:i===1?1.05:1.15)));
+      j.rotation.x=-(curl*(isThumb?.95:(i===0?.75:i===1?.95:1.0)));
     });
     if(isThumb) f.rotation.x=curl*.9; // thumb tips in from below/opposite side of bar
   });
@@ -422,22 +426,31 @@ function updateWalk(dt,inp){
 }
 function updateJack(dt,inp){
  const prevPos=jackPos.clone(), prevAng=jackAng;
- // steering handle + rear wheel yaw freely (even standing) - but BODY does not follow yet
- if(Math.abs(inp.x)>.12) steer=THREE.MathUtils.clamp(steer-inp.x*2.0*dt,-1.05,1.05);
+ // Steering: inp.x (stick/keyboard left-right) directly turns the steering unit.
+ // Sign convention (verified headless v5.2): steer>0 = wheel looks LEFT of body
+ // (at jackAng=PI, dirOf(jackAng+steer).x<0 = operator's left), steer<0 = RIGHT.
+ // Stick LEFT (inp.x<0) must give steer>0, so steer -= inp.x (was correct for input,
+ // the bug was in BODY follow below, not here).
+ if(Math.abs(inp.x)>.12) steer=THREE.MathUtils.clamp(steer-inp.x*2.2*dt,-1.35,1.35); // +-~77 deg
  else steer=THREE.MathUtils.lerp(steer,0,1-Math.exp(-dt*1.4));
- const targetV=-inp.y*1.7;
+ const targetV=-inp.y*1.7; // stick up (inp.y<0) = push forward, forks-first
  jackVel=THREE.MathUtils.lerp(jackVel,targetV,1-Math.exp(-dt*6));
  const SPEED_EPS=0.08;
  if(Math.abs(jackVel)>SPEED_EPS){
    const wheelAng=jackAng+steer;
+   // Pivot (steering wheel) rolls exactly along wheel direction in world:
    jackPos.addScaledVector(dirOf(wheelAng),jackVel*dt);
-   // BODY (forks) yaw ONLY while moving: rate proportional to speed & angle error (trailing)
-   const err=angDiff(wheelAng,jackAng);
-   const maxYaw=Math.abs(jackVel)*dt*1.9; // rad cap tied to distance travelled
-   const want=err*(1-Math.exp(-dt*(0.7+Math.abs(jackVel)*1.3)));
-   jackAng+=THREE.MathUtils.clamp(want,-maxYaw,maxYaw);
-   Steering_Wheel.rotation.x+=jackVel*dt/.095; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028; // big steering wheel rolls, twin fork rollers follow
- } // else: jackAng FROZEN completely - cannot spin forks on the spot
+   // Body/forks yaw: v * sin(steer) / wheelbase.
+   // OLD (buggy): jackAng chased wheelAng via err*(1-exp(-dt*...)) capped by |v|*dt*1.9,
+   // i.e. body always rotated TOWARD wheel regardless of push/pull sign encoded only in cap;
+   // combined with pivot motion along wheelAng the fork TIP (jackPos + L*dirOf(jackAng))
+   // swung opposite to the wheel when pushing forks-first.
+   // NEW: signed rate - pushing (v>0) and pulling (v<0) turn the body in opposite
+   // senses, and at standstill (v=0) body is frozen. Left wheel + push => nose LEFT.
+   const WHEELBASE=0.95;
+   jackAng += (jackVel*Math.sin(steer)/WHEELBASE)*dt;
+   Steering_Wheel.rotation.x+=jackVel*dt/.105; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028;
+ } // else: jackAng FROZEN - cannot spin forks on the spot
  jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-4.8,8);
  // PALLET SLOT COLLISION (stage 0, pallet still on rack floor)
  if((stage===0||stage===1)&&palletState!=='onForks'){
@@ -449,7 +462,6 @@ function updateJack(dt,inp){
      jackPos.copy(prevPos); jackAng=prevAng; jackVel=0; slotShake=1;
      const now=performance.now(); if(now-lastSlotWarn>1800){lastSlotWarn=now; toast('🚫 Вилы должны попасть в пазы поддона — прямо, без перекоса, вилы опущены')}
    }
-   // solid pallet for jack body (origin/rear) too
    if(Math.abs(jackPos.x-pp.x)<.75&&Math.abs(jackPos.y-pp.y)<.55&&!insidePallet(tip)){jackPos.copy(prevPos)}
  }
  const handleAng=jackAng+Math.PI+steer;
@@ -490,7 +502,7 @@ function updateHands(dt){
  } else if(holding==='jack'){
    poseL=gripPose(jackGrip,-.14); poseR=gripPose(jackGrip,.14); curlL=curlR=1.0;
  } else if(holding==='cart'){
-   poseL=gripPose(cartGrip,-.13); poseR=gripPose(cartGrip,.13); curlL=curlR=1.0;
+   poseL=gripPose(cartGrip,-.11); poseR=gripPose(cartGrip,.11); curlL=curlR=.88;
  } else if(holding==='knife'){
    poseL=camPose(handL,-.27,-.33,-.5,-.5,.3);
    poseR=camPose(handR,.26,-.28,-.48,-.6,-.25); curlR=.92;
@@ -519,7 +531,7 @@ if(demo==='grip'){
   // pre-place hands exactly on grip
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng;
   jack.updateMatrixWorld(true);
-  const pl=gripPose(jackGrip,-.15),pr=gripPose(jackGrip,.15); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
+  const pl=gripPose(jackGrip,-.115),pr=gripPose(jackGrip,.115); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 } else if(demo==='slots'){
   // forks aimed straight at pallet slots, close, highlight green
   pallet.position.set(0,0,-5.2);
@@ -539,14 +551,14 @@ if(demo==='grip'){
   playerPos.set(5.45,5.85); playerYaw=-2.72; playerPitch=-.16; lookOffset=0; demoFreeze=true; // diagonal behind-side: hands on rear grip, small bobbin faces pallet ahead
   cart.position.set(cartPos.x,0,cartPos.y); cart.rotation.y=cartAng;
  cart.updateMatrixWorld(true);
-  const pl=gripPose(cartGrip,-.13),pr=gripPose(cartGrip,.18); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
+  const pl=gripPose(cartGrip,-.11),pr=gripPose(cartGrip,.11); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 }
 
 else if(demo==='jack'){
   jackPos.set(0,-3.2); jackAng=Math.PI; steer=.25; holding='jack'; started=true; stage=1; palletState='ready'; leverPos='lift';
-  playerPos.set(2.35,-2.95); playerYaw=-1.57; playerPitch=.12; demoFreeze=true; // side view: silhouette, big steering wheel, low forks
+  playerPos.set(1.55,-2.90); playerYaw=-1.57; playerPitch=-.48; demoFreeze=true; handL.visible=false; handR.visible=false; // side view: silhouette, big steering wheel, low forks (hands hidden only in this demo still)
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; steerGroup.rotation.y=steer; jack.updateMatrixWorld(true);
-  const pl=gripPose(jackGrip,-.14),pr=gripPose(jackGrip,.14); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
+  const pl=gripPose(jackGrip,-.115),pr=gripPose(jackGrip,.115); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 }
 // ---------- Main loop ----------
 const clock=new THREE.Clock();
@@ -556,7 +568,7 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  if(pumpT>0)pumpT=Math.max(0,pumpT-dt*2.2);
  handlePivot.rotation.x=pumpT>0?-Math.sin(pumpT*Math.PI)*.55:0;
  if(leverAnim>0)leverAnim=Math.max(0,leverAnim-dt*1.8);
- Release_Lever.position.y=.62-(leverPos==='lower'||leverAnim>0&&leverPos==='lower'? .018:leverPos==='lift'?-.006:0); Release_Lever.rotation.x=(leverPos==='lower'?-.18:leverPos==='lift'?.10:0);
+ Release_Lever.position.y=.66-(leverPos==='lower'||leverAnim>0&&leverPos==='lower'? .018:leverPos==='lift'?-.006:0); Release_Lever.rotation.x=(leverPos==='lower'?-.18:leverPos==='lift'?.10:0);
  if(anim){anim.t+=dt; const k=Math.min(1,anim.t/anim.dur); anim.fn(k); if(k>=1){const d=anim.done;anim=null;d&&d();updateHUD()}}
  else if(!demoFreeze){
    if(holding==='jack')updateJack(dt,inp);
