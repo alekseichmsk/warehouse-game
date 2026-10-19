@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v5.7 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v5.8 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.7 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.8 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -596,8 +596,31 @@ const supplyPallet=plainPallet(-8.5,0); supplyPallet.visible=false;
 const outputPallet=plainPallet(7.5,.5); const outputStack=new THREE.Group(); WG.add(outputStack);
 // goats / trestles (sawhorse_01/02): 1.1 x 0.5 x 0.8 frames
 const goats=new THREE.Group(); goats.name='Sawhorses'; goats.position.set(0,0,0); WG.add(goats);
-for(const gx of[-.65,.65]){const fr=new THREE.Group(); fr.position.x=gx; goats.add(fr);
-  wbox(fr,0,.78,0,.08,.07,1.1,M.dark); for(const [sx,sz] of [[-.18,-.45],[.18,-.45],[-.18,.45],[.18,.45]]){const leg=wbox(fr,sx,.38,sz,.06,.78,.06,0x7e8a94); leg.rotation.z=sx>0?-.18:.18;}}
+// v5.8: real metal trestle, built from top/bottom POINTS (no hand-tuned angles).
+// Beam 1.1m along local Z at top y=0.80; at each beam END an A-pair of legs from one
+// point under the beam spreading symmetrically ACROSS the beam (X) to 0.5m at floor y=0,
+// ~6deg splay outward along the beam; spreader bar between each pair at y=0.25.
+function strut(parent,a,b,rad,c){const d=new THREE.Vector3().subVectors(b,a),len=d.length();
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,len,12),mat(c,.5)); m.position.copy(a).add(b).multiplyScalar(.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()); m.castShadow=true; parent.add(m); return m;}
+function makeTrestle(name){
+  const g=new THREE.Group(); g.name=name;
+  const beam=wbox(g,0,.765,0,.08,.07,1.1,M.dark); beam.name=name+'_Beam'; // top surface y=0.80
+  const TOP_Y=.73, HALF_SPREAD=.25, SPLAY=.07; // ~6deg along beam
+  for(const zEnd of[-.5,.5]){
+    const top=new THREE.Vector3(0,TOP_Y,zEnd);
+    const zFoot=zEnd+Math.sign(zEnd)*SPLAY;
+    const fl=new THREE.Vector3(-HALF_SPREAD,0,zFoot), fr=new THREE.Vector3(HALF_SPREAD,0,zFoot);
+    strut(g,top,fl,.022,0x7e8a94).name=name+'_Leg'; strut(g,top,fr,.022,0x7e8a94).name=name+'_Leg';
+    // spreader at y=0.25: interpolate along legs
+    const k=.25/TOP_Y; const pl=fl.clone().lerp(top,k), pr=fr.clone().lerp(top,k);
+    strut(g,pl,pr,.014,M.dark).name=name+'_Spreader';
+    wbox(g,0,TOP_Y+.012,zEnd,.09,.04,.06,M.dark); // head bracket joining legs to beam
+    for(const f of[fl,fr]) cyl(g,f.x,.008,f.z,.035,.016,0x2b3442,'y',12); // feet on floor
+  }
+  return g;
+}
+for(const gx of[-.65,.65]){const t=makeTrestle(gx<0?'Trestle_Left':'Trestle_Right'); t.position.x=gx; goats.add(t);}
 // workbench + tools (each separate, named)
 const benchPos=new THREE.Vector2(3.5,-3.5);
 const bench=new THREE.Group(); bench.name='Workbench'; bench.position.set(benchPos.x,0,benchPos.y); WG.add(bench);
@@ -846,6 +869,8 @@ if(mode==='workshop'&&wdemo){
   demoFreeze=true; started=true;
   if(wdemo==='workshop'||wdemo==='w_overview'){ stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.x=-8.5; stacker.position.set(-10,0,0); setGate(gateA,.85); wLook(4.5,4.8,-8,-1,-.30); }
   if(wdemo==='w_stacker'){ stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.set(-9.5,0,0); stacker.position.set(-11,0,0); setGate(gateA,1); jackPos.set(3,6); wLook(-6.2,2.6,-11,0,-.25); }
+  if(wdemo==='w_trestle_side'){ wLook(0,2.6,0,0,-.22); }
+  if(wdemo==='w_trestle_end'){ wLook(-.65,-2.4,-.65,0,-.2); }
   if(wdemo==='w_shield'){ partShield(); wIndex=3; wLook(-2.6,2.2,0,0,-.35); }
   if(wdemo==='w_riveter'){ partShield(); insertRivets(); holdingW='riveter'; wIndex=5; wLook(-1.8,1.9,0,0,-.3); const f=dirOf(playerYaw); wTools.riveter.position.set(playerPos.x+f.x*.52,1.02,playerPos.y+f.y*.52); updateHose(); }
   if(wdemo==='w_insulation'){ partShield(); curPart.rotation.x=Math.PI; insulMesh=wbox(curPart,0,-.035,0,1.9,.018,.9,0x5f6d7a); holdingW='roller'; wIndex=8; wLook(-2.4,2.1,0,0,-.32); }
