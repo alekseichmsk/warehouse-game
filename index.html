@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v5.6 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v5.7 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.6 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.7 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -451,9 +451,11 @@ function updateWalk(dt,inp){
    if(move.length()>0){move.normalize(); playerPos.addScaledVector(move,2.3*dt*inp.length())}
  }
  playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-9.3,8.5); // v5.5 north entry side is playable
- // pallet is solid for walking player
- const pp2=new THREE.Vector2(pallet.position.x,pallet.position.z); const dpp=playerPos.distanceTo(pp2);
- if(dpp<.95&&dpp>0.001){playerPos.copy(pp2).addScaledVector(new THREE.Vector2().subVectors(playerPos,pp2).normalize(),.95)}
+ // v5.7: pallet is a LOW 0.14m step, NOT a solid trap. Old code pushed the player onto a
+ // fixed 0.95m circle around pallet centre; stepping onto/into that circle from a corner
+ // latched the player (push direction != entry direction, no way up or off).
+ // Now the player simply walks onto the pallet and off any side; camera height is
+ // unchanged (no vertical jerk), pallet carries no player collision at all.
 }
 function updateJack(dt,inp){
  const prevPos=jackPos.clone(), prevAng=jackAng;
@@ -467,16 +469,22 @@ function updateJack(dt,inp){
  jackVel=THREE.MathUtils.lerp(jackVel,targetV,1-Math.exp(-dt*6));
  const SPEED_EPS=0.08;
  if(Math.abs(jackVel)>SPEED_EPS){
-   const wheelAng=jackAng+steer;
-   // Pivot (steering wheel) rolls exactly along wheel direction in world:
-   jackPos.addScaledVector(dirOf(wheelAng),jackVel*dt);
-   // Body/forks yaw for REAR steering: -(v/L)*sin(steer), like reversing a car.
-   // Push forward (v>0, forks ahead) with rear wheel turned to operator's LEFT
-   // (steer>0): pivot/rear is carried LEFT, body yaws opposite, so fork nose
-   // swings to operator's RIGHT. Same-side nose follow (+v*sin/L) was the bug.
-   // At standstill this block is not entered: body frozen, only tiller/wheel turn.
-   const WHEELBASE=1.15;
+   // v5.7 HONEST NONHOLONOMIC REAR-WHEEL MODEL.
+   // WAS: jackPos (pump origin) itself was translated along dir(jackAng+steer) and
+   // only then yawed; the fork nose is ~1.12m ahead of jackPos and the yaw term
+   // -(v/1.15)*sin(steer) almost exactly cancelled the sideways part of that
+   // translation at the nose, while the whole body visually followed the wheel
+   // direction - user: "the front is dragged where the rear wheel goes".
+   // NOW: state is the REAR WHEEL point R (local z=-0.30 from pump origin) + theta.
+   //   R_dot = v * dir(theta+steer)         (wheel rolls where it is turned)
+   //   theta_dot = -(v/L)*sin(steer), L=1.30m (rear wheel z=-0.30 to fork rollers z=+1.00)
+   // Front rollers forbid lateral slip at the forks, hence the minus sign:
+   // push forward + wheel LEFT (steer>0) -> rear carried LEFT, nose yaws RIGHT.
+   const WHEELBASE=1.30, REAR_OFF=-0.30;
+   const rearBefore=new THREE.Vector2().copy(jackPos).addScaledVector(dirOf(jackAng),REAR_OFF);
+   const rearAfter=rearBefore.addScaledVector(dirOf(jackAng+steer),jackVel*dt);
    jackAng += -(jackVel*Math.sin(steer)/WHEELBASE)*dt;
+   jackPos.copy(rearAfter).addScaledVector(dirOf(jackAng),-REAR_OFF);
    Steering_Wheel.rotation.x+=jackVel*dt/.095; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028;
  } // else: jackAng FROZEN - cannot spin forks on the spot
  jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-9.3,8); // v5.5 jack operates north of pallet
@@ -490,7 +498,10 @@ function updateJack(dt,inp){
      jackPos.copy(prevPos); jackAng=prevAng; jackVel=0; slotShake=1;
      const now=performance.now(); if(now-lastSlotWarn>1800){lastSlotWarn=now; toast('🚫 Вилы должны попасть в пазы поддона — прямо, без перекоса, вилы опущены')}
    }
-   if(Math.abs(jackPos.x-pp.x)<.75&&Math.abs(jackPos.y-pp.y)<.55&&!insidePallet(tip)){jackPos.copy(prevPos)}
+   if(Math.abs(jackPos.x-pp.x)<.75&&Math.abs(jackPos.y-pp.y)<.55&&!insidePallet(tip)){
+     jackPos.copy(prevPos); // back to last free position (reversing out always works)
+     if(Math.abs(jackPos.x-pp.x)<.75&&Math.abs(jackPos.y-pp.y)<.55){jackPos.set(pp.x,pp.y-.56);} // prev also inside (spawn/teleport): soft-push out to the north entry side, never latch
+   }
  }
  const handleAng=jackAng+Math.PI+steer;
  playerPos.copy(jackPos).addScaledVector(dirOf(handleAng),1.5);
@@ -665,7 +676,7 @@ function supplyAnim(contentSetup){return (done)=>{ wAnim={t:0,dur:5,fn:k=>{
   },done:()=>{setGate(gateA,0); stacker.position.x=-14; done&&done();}}; if(contentSetup)contentSetup(); };}
 function stackOnSupply(kind){ // visual stack on supply pallet
   while(supplyPallet.children.length>17) supplyPallet.remove(supplyPallet.children[supplyPallet.children.length-1]);
-  if(kind==='shield'){for(let i=0;i<2;i++) wbox(supplyPallet,0,.22+i*.06,0,2.0,.045,.95,0xd9e1e8);}
+  if(kind==='shield'){for(let i=0;i<15;i++) wbox(supplyPallet,0,.20+i*.034,0,2.0,.028,.95,0xd9e1e8);} // batch of 15, stack shrinks as shields are taken
   else if(kind==='floor') wbox(supplyPallet,0,.24,0,1.35,.09,1.05,0x9aa7b4);
   else if(kind==='ceiling') wbox(supplyPallet,0,.24,0,1.35,.07,1.05,0xe8eef4);
   else if(kind==='plafond') wbox(supplyPallet,0,.24,0,1.15,.07,.4,0xf2f4ee);
@@ -675,7 +686,7 @@ function S(title,hint,target,action,run,opts={}){WSteps.push({title,hint,target,
 function addShieldCycle(first){
   if(first) S('Ворота А: штабелёр привозит щиты','Нажми действие: ворота А поднимутся сегментами, штабелёр завезёт поддон со щитами 1040×2160 (комплекты ЩМК) и уедет.',P_SUPPLY,'🚪 Открыть ворота А',(d)=>{stackOnSupply('shield'); supplyAnim()(d);});
   else S('Следующий щит на поддоне','Поддон со щитами уже у ворот А. Подойди к нему и возьми следующий щит.',P_SUPPLY,'👐 Взять следующий щит',d=>d());
-  S(first?'Забери поддон рохлей к козлам':'Поддон к козлам (если ещё не там)','Возьми рохлю за ручку (Взять), подойди с ней к поддону со щитами и нажми действие — поддон переедет к козлам.',P_SUPPLY,'🚜 Поддон к козлам',d=>{ wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+( -1.8+8.5)*k;},done:d}; },{needsJack:true});
+  S(first?'Забери поддон рохлей к козлам':'Поддон уже у козлов','Возьми рохлю за ручку (Взять), подойди с ней к поддону со щитами и нажми действие — поддон переедет к козлам. Для следующих щитов поддон уже там, действие просто подтвердит позицию.',P_SUPPLY,'🚜 Поддон к козлам',d=>{ if(supplyPallet.position.x>-3){d();return;} wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+( -1.8+8.5)*k;},done:d}; },{needsJack:true});
   S('Возьми щит и положи на козлы','Подойди к поддону у козел и нажми действие: щит 2.16×1.04 м ляжет на козлы лицевой стороной вверх.',new THREE.Vector2(-1.8,0),'👐 Щит на козлы',d=>{partShield(); // remove one from supply stack
       const ch=supplyPallet.children[supplyPallet.children.length-1]; if(ch&&supplyPallet.children.length>17)supplyPallet.remove(ch); d();});
   S('Вставь заклёпки по точкам','Подойди к козлам: жёлтые точки — места заклёпок. Нажимай действие, заклёпки встанут во все точки.',P_GOATS,'🔩 Вставить заклёпки',d=>{insertRivets(); d();});
@@ -687,7 +698,7 @@ function addShieldCycle(first){
   S('Подпиши щит маркером','Возьми маркер со стола (Взять), у козел нажми действие — на лицевой стороне появится подпись.',P_GOATS,'✍️ Подписать маркером',d=>{curPart.rotation.x=0; makeSign('ЩИТ '+(shieldDone+1)+' • ЩМК 1040×2160'); d();},{tool:'marker'});
   S('Готовый щит — на выходной поддон','Подойди к козлам и отправь готовый щит на пустой поддон у ворот Б.',P_GOATS,'📦 Щит на поддон',d=>{finishPart(); shieldDone++; d();});
 }
-addShieldCycle(true); addShieldCycle(false);
+for(let shield_i=0;shield_i<15;shield_i++) addShieldCycle(shield_i===0); // party of 15 shields via common cycle, not hand-written steps
 // FLOOR
 S('Штабелёр привозит пол кабины','Действие: ворота А, штабелёр привозит плиту пола 1400×1100×60.',P_SUPPLY,'🚪 Поставка пола',d=>{stackOnSupply('floor'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
 S('Пол рохлей к козлам','Возьми рохлю, подойди к поддону с полом и вези его к козлам действием.',P_SUPPLY,'🚜 Пол к козлам',d=>{wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+(-1.8+8.5)*k;},done:d};},{needsJack:true});
@@ -732,9 +743,9 @@ function enterW(){ updateHUDW(); }
 function advanceW(){ wIndex++; if(wIndex>=WSteps.length){wFinished=true;} updateHUDW(); }
 function updateHUDW(){
   const hudTitle=$('stageTitle'), hint=$('stageHint'); if(!hudTitle)return;
-  if(wFinished){hudTitle.textContent='🏭 Цех: смена выполнена!'; hint.textContent=`Все детали кабины собраны, обёрнуты и отправлены в ворота Б. Время: ${elapsed.toFixed(1)} c • Очки: ${score}. Щитов готово: ${shieldDone}/2.`; $('action').disabled=false; $('action').textContent='🔄 Ещё раз'; return;}
+  if(wFinished){hudTitle.textContent='🏭 Цех: смена выполнена!'; hint.textContent=`Все детали кабины собраны, обёрнуты и отправлены в ворота Б. Время: ${elapsed.toFixed(1)} c • Очки: ${score}. Щитов готово: ${shieldDone}/15.`; $('action').disabled=false; $('action').textContent='🔄 Ещё раз'; return;}
   const st=curW(); if(!st)return;
-  hudTitle.textContent=`🏭 Цех ${wIndex+1}/${WSteps.length}: ${st.title}` + (st.title.includes('щит')||st.title.includes('Щит')?` (щит ${Math.min(2,shieldDone+1)}/2)`:'');
+  hudTitle.textContent=`🏭 Цех ${wIndex+1}/${WSteps.length}: ${st.title}` + (st.title.includes('щит')||st.title.includes('Щит')?` (щит ${Math.min(15,shieldDone+1)}/15)`:'');
   hint.textContent=st.hint;
   $('score').textContent='⭐ '+score; $('holdPill').textContent=holdingW?('✊ В руке: '+holdingW):(holding==='jack'?'✊ Рохля':'✋ Руки свободны');
   $('leverPill').textContent='🏭 Режим: ЦЕХ';
@@ -848,7 +859,10 @@ if(mode==='workshop'&&wdemo){
 
 // ---------- Demo modes for screenshots ----------
 const demo=new URLSearchParams(location.search).get('demo');
-if(demo==='grip'){
+if(demo==='onpallet'){
+  // v5.7: player standing ON the pallet (low step), not frozen - test walks off it
+  pallet.position.set(0,0,-5.2); jackPos.set(3,1); playerPos.set(0,-5.2); playerYaw=0; playerPitch=-.85; started=true; stage=0; palletState='rack'; demoFreeze=false;
+} else if(demo==='grip'){
   jackPos.set(0,-5.85); jackAng=0; holding='jack'; started=true; stage=1; palletState='ready'; // v5.5 inserted from north, forks south
   playerPos.copy(jackPos).addScaledVector(dirOf(jackAng+Math.PI),1.5); playerYaw=jackAng; playerPitch=-.10;
   if(slotShake>0){slotShake=Math.max(0,slotShake-0.04)}
@@ -886,7 +900,7 @@ if(demo==='grip'){
 else if(demo==='turn'){
   // v5.5 rear-steer proof: pushing south, tiller/rear wheel LEFT (+40deg), nose already swung RIGHT (jackAng<0)
   jackPos.set(0,-3.4); jackAng=-0.38; steer=0.70; holding='jack'; started=true; stage=2; palletState='rack';
-  playerPos.set(-3.4,-3.40); playerYaw=1.57; playerPitch=-.18; demoFreeze=true; handL.visible=false; handR.visible=false; // side view: tiller/wheel left, fork nose right
+  playerPos.set(-4.7,-3.40); playerYaw=1.57; playerPitch=.05; demoFreeze=true; handL.visible=false; handR.visible=false; // side view: tiller/wheel left, fork nose right
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; steerGroup.rotation.y=steer; jack.updateMatrixWorld(true);
 } else if(demo==='jack'){
   jackPos.set(0,-6.3); jackAng=0; steer=.25; holding='jack'; started=true; stage=1; palletState='ready'; leverPos='lift'; // v5.5 forks south from north side
