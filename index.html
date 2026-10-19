@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад v5.3 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад v5.4 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.3 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.4 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -104,9 +104,12 @@ for(const x of[-.19,.19]){const tip=cyl(jackForks,x,.04,1.12,.04,.045,M.teal,'y'
 const rollerSpinGroups=[];
 function makeRollers(x,name){
   const g=new THREE.Group(); g.name=name; jackForks.add(g);
-  for(const z of[.95,1.04]){const axle=new THREE.Group(); axle.position.set(x,.028,z); const m=cyl(axle,0,0,0,.028,.055,M.dark,'x',18); m.name=name+'_Roller'; g.add(axle); rollerSpinGroups.push(axle);}
+  // v5.4: roller top inside fork (fork .0175..0625, roller 0..056), bottom on ground; steel axle wider than fork
+  for(const z of[.95,1.04]){const axle=new THREE.Group(); axle.position.set(x,.028,z); const m=cyl(axle,0,0,0,.028,.055,M.dark,'x',18); m.name=name+'_Roller'; cyl(axle,0,0,0,.011,.095,0xd7dde2,'x',12); g.add(axle); rollerSpinGroups.push(axle);}
   return g;
 }
+// v5.4 JOINERY: fork root upstands overlap forks (top) and pump block (face/bottom) - forks exit block, no gap
+for(const x of[-.19,.19]) box(jackForks,x,.095,-.02,.08,.15,.20,M.teal);
 const Roller_Left=makeRollers(-.19,'Roller_Left');
 const Roller_Right=makeRollers(.19,'Roller_Right');
 const Body_Hydraulic=new THREE.Group(); Body_Hydraulic.name='Body_Hydraulic'; jackForks.add(Body_Hydraulic);
@@ -115,12 +118,15 @@ const Body_Hydraulic=new THREE.Group(); Body_Hydraulic.name='Body_Hydraulic'; ja
 box(Body_Hydraulic,0,.225,-.12,.24,.23,.32,M.teal);
 box(Body_Hydraulic,0,.355,-.16,.15,.05,.18,M.teal);
 box(Body_Hydraulic,0,.045,.08,.18,.04,.22,M.teal); // short flat chassis link, horizontal
-for(const sx of[-.135,.135]) box(Body_Hydraulic,sx,.17,-.28,.025,.18,.09,M.dark); // steering bracket cheeks beside big wheel
-const Pump_Piston=cyl(jackForks,0,.41,-.16,.024,.07,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.41;
+box(Body_Hydraulic,0,.09,-.02,.20,.10,.26,M.teal); // v5.4 rocker beam: overlaps block bottom (.11) and fork roots/link - fills side gap
+cyl(Body_Hydraulic,0,.365,-.16,.036,.17,0xd7dde2,'x',16); // tiller pivot housing on block top
+const Pump_Piston=cyl(jackForks,0,.395,-.16,.024,.12,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.395;
 const steerGroup=new THREE.Group(); steerGroup.name='Steering_Unit'; jack.add(steerGroup);
 const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.095,-.30); steerGroup.add(Steering_Wheel);
 const steerWheel=cyl(Steering_Wheel,0,0,0,.095,.052,0xff3b30,'x',30); steerWheel.name='Steering_Wheel_Mesh';
 cyl(Steering_Wheel,0,0,0,.030,.060,0xd7dde2,'x',16);
+cyl(Steering_Wheel,0,0,0,.014,.105,0xd7dde2,'x',12); // axle through wheel into cheeks
+for(const sx of[-.04,.04]) box(steerGroup,sx,.185,-.30,.018,.25,.11,M.dark); // v5.4 fork cheeks: top inside block bottom, down to axle (y .06..31)
 const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.115,.009,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.set(0,.098,-.30); steerGroup.add(steerRing);
 const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.35,-.16); steerGroup.add(Handle_Column);
 const handlePivot=Handle_Column;
