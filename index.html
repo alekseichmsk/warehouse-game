@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад v5.5 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v5.6 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.5 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.6 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -534,6 +534,8 @@ function updateHands(dt){
  } else if(holding==='edge'){
    poseL=camPose(handL,-.25,-.28,-.5,-.5,.3);
    poseR=camPose(handR,.22,-.34,-.46,-.65,-.2); curlR=.95; curlL=.25; // round right hand grips sheet edge
+ } else if(typeof holdingW!=='undefined'&&holdingW){
+   poseL=camPose(handL,-.17,-.31,-.52,-.6,.2); poseR=camPose(handR,.17,-.31,-.52,-.6,-.2); curlL=curlR=.92; // workshop tool in both round hands
  } else if(holding==='knife'){
    poseL=camPose(handL,-.27,-.33,-.5,-.5,.3);
    poseR=camPose(handR,.26,-.28,-.48,-.6,-.25); curlR=.92;
@@ -550,6 +552,298 @@ function updateHands(dt){
  moveHand(handL,poseL,dt,curlL); moveHand(handR,poseR,dt,curlR);
  // free strapper rests on cart until stage7 placement overrides handled in actions; keep on cart top when stage<7 and not holding
  if(holding!=='tool'&&!(anim&&anim.mode==='tighten')&&stage<7){const cq=cart.quaternion; const off=new THREE.Vector3(-.05,.56,-.18).applyQuaternion(cq); tool.position.copy(cart.position).add(off); tool.rotation.y=cartAng}
+}
+
+// ================= WORKSHOP MODE "ЦЕХ" (v5.6) =================
+// Dimensions (metres, typical ЩМК cabin kits): shield 1040x2160 steel, cabin width 925-1600, height 2100-2250;
+// here shield panel 2.16 x 1.04 lying flat, floor/ceiling 1.40x1.10, plafond 1.20x0.40.
+const WQ=new URLSearchParams(location.search);
+let mode=(WQ.get('mode')==='workshop'||(WQ.get('demo')||'').startsWith('w'))?'workshop':'warehouse';
+let holdingW=null, wIndex=0, wAnim=null, wFinished=false, wGateA=0, wGateB=0, shieldDone=0;
+const WG=new THREE.Group(); WG.name='Workshop'; scene.add(WG);
+function wbox(parent,x,y,z,w,h,d,c,r){return box(parent,x,y,z,w,h,d,c,r)}
+// room 24x16: walls + 2 sectional gates (A west, B east)
+for(const [x,z,w,d] of [[0,-8,24,.25],[0,8,24,.25],[-12,0,.25,16],[12,0,.25,16]]) wbox(WG,x,1.5,z,w,3,d,0xbfe3ff);
+function makeGate(name,x,rotY){
+  const g=new THREE.Group(); g.name=name; g.position.set(x,0,0); g.rotation.y=rotY; WG.add(g);
+  const secs=[];
+  for(let i=0;i<5;i++){const p=wbox(g,0,.3+i*.52,0,.18,.5,3.2,i%2?0x8ed8ff:0x6ec6f5); secs.push(p);}
+  wbox(g,0,2.85,.0,.3,.25,3.6,M.dark);
+  const label=wbox(g,0,1.6,.16,.5,.5,.05,M.yellow); return {g,secs};
+}
+const gateA=makeGate('Gate_A',-11.8,Math.PI/2), gateB=makeGate('Gate_B',11.8,-Math.PI/2);
+function setGate(gate,open){gate.secs.forEach((p,i)=>{p.position.y=open>0.85?2.55+i*.09:.3+i*.52*(1-open*.15); p.position.y=THREE.MathUtils.lerp(.3+i*.52,2.55+i*.09,open);});}
+// reach stacker (stacker_truck): low base+forks, mast, operator stand
+const stacker=new THREE.Group(); stacker.name='StackerTruck'; WG.add(stacker);
+wbox(stacker,0,.25,0,1.5,.35,.9,0xffb020); wbox(stacker,-.55,.85,0,.18,1.5,.8,0x44505a); wbox(stacker,-.55,1.65,0,.5,.08,.8,0x44505a);
+for(const sx of[-.25,.25]){wbox(stacker,.75,.06,sx,.9,.08,.12,0xd7dde2);} // forks
+wbox(stacker,-.35,.65,.0,.35,.5,.7,0x2979ff); // operator stand/cabin
+const stackerHome=new THREE.Vector2(-14,0); stacker.position.set(stackerHome.x,0,stackerHome.y);
+// supply pallet + completed output pallet
+function plainPallet(x,z){const g=makePallet(); g.position.set(x,0,z); WG.add(g); return g;}
+const supplyPallet=plainPallet(-8.5,0); supplyPallet.visible=false;
+const outputPallet=plainPallet(7.5,.5); const outputStack=new THREE.Group(); WG.add(outputStack);
+// goats / trestles (sawhorse_01/02): 1.1 x 0.5 x 0.8 frames
+const goats=new THREE.Group(); goats.name='Sawhorses'; goats.position.set(0,0,0); WG.add(goats);
+for(const gx of[-.65,.65]){const fr=new THREE.Group(); fr.position.x=gx; goats.add(fr);
+  wbox(fr,0,.78,0,.08,.07,1.1,M.dark); for(const [sx,sz] of [[-.18,-.45],[.18,-.45],[-.18,.45],[.18,.45]]){const leg=wbox(fr,sx,.38,sz,.06,.78,.06,0x7e8a94); leg.rotation.z=sx>0?-.18:.18;}}
+// workbench + tools (each separate, named)
+const benchPos=new THREE.Vector2(3.5,-3.5);
+const bench=new THREE.Group(); bench.name='Workbench'; bench.position.set(benchPos.x,0,benchPos.y); WG.add(bench);
+wbox(bench,0,.88,0,2.2,.08,1.0,0x8d6b48); for(const [sx,sz] of [[-1,-.4],[1,-.4],[-1,.4],[1,.4]]) wbox(bench,sx,.44,sz,.08,.88,.08,M.dark);
+function toolHome(x,z){return new THREE.Vector3(benchPos.x+x,.98,benchPos.y+z)}
+const wTools={};
+function regTool(id,grp,x,z){grp.position.copy(toolHome(x,z)); grp.name=id; scene.add(grp); grp.userData.home=grp.position.clone(); wTools[id]=grp; return grp;}
+{const h=new THREE.Group(); cyl(h,0,0,0,.025,.34,0x8d6b48,'z',10); wbox(h,0,.05,.22,.09,.09,.16,0xd7dde2); regTool('hammer',h,-.8,-.2);}
+{const r=new THREE.Group(); wbox(r,0,0,0,.10,.16,.38,M.teal); wbox(r,0,.02,.24,.05,.07,.14,0x333a3f); wbox(r,0,-.09,.05,.09,.10,.22,0x2b3442); regTool('riveter',r,-.35,.15);}
+{const p=new THREE.Group(); wbox(p,0,0,0,.04,.05,.28,0xff8c42); wbox(p,0,0,.16,.07,.04,.10,0xd7dde2); regTool('pliers',p,.05,-.2);}
+{const r=new THREE.Group(); cyl(r,0,.02,0,.11,.05,0xd7dde2,'y',16); wbox(r,-.09,.10,0,.05,.18,.05,M.dark); wbox(r,.09,.10,0,.05,.18,.05,M.dark); regTool('roller',r,.42,.18);}
+{const m=new THREE.Group(); cyl(m,0,0,0,.018,.24,0xff3d71,'z',10); wbox(m,0,0,.14,.03,.03,.05,0x222222); regTool('marker',m,.72,-.15);}
+{const s=new THREE.Group(); cyl(s,0,0,0,.02,.22,0xffd400,'z',10); wbox(s,0,0,.13,.015,.015,.07,0xd7dde2); regTool('screwdriver',s,.9,.15);}
+// rivet box, sticker, insulation pack on/near bench
+wbox(bench,.95,.96,.3,.28,.10,.22,0x2979ff); wbox(bench,-.95,.94,-.3,.3,.06,.24,M.yellow);
+const insulPack=new THREE.Group(); insulPack.position.set(2.2,0,-2.6); scene.add(insulPack);
+for(let i=0;i<4;i++) wbox(insulPack,0,.06+i*.045,0,.95,.04,.65,0x9aa7b4);
+const compressor=new THREE.Group(); compressor.position.set(5.2,0,-4.4); scene.add(compressor);
+wbox(compressor,0,.45,0,.8,.9,.6,0xff6b35); cyl(compressor,0,.98,0,.18,.25,M.dark,'y',14);
+// air hose: 10 cylinder segments riveter -> compressor
+const hoseSegs=[]; for(let i=0;i<10;i++){const s=cyl(scene,0,-5,0,.018,1,0x222222,'y',8); hoseSegs.push(s);}
+function updateHose(){
+  const a=new THREE.Vector3(); (holdingW==='riveter'?wTools.riveter.position.clone():wTools.riveter.position.clone()).copy(a);
+  const rp=holdingW==='riveter'?wTools.riveter.position:wTools.riveter.userData.home;
+  const b=new THREE.Vector3(5.2,1.0,-4.4); const pts=[];
+  for(let i=0;i<=10;i++){const k=i/10; const p=rp.clone().lerp(b,k); p.y+=Math.sin(k*Math.PI)*.55*(holdingW==='riveter'?1:.35); pts.push(p);}
+  for(let i=0;i<10;i++){const p=pts[i],q=pts[i+1],mid=p.clone().add(q).multiplyScalar(.5),d=q.clone().sub(p),len=d.length();
+    hoseSegs[i].position.copy(mid); hoseSegs[i].scale.set(1,len,1); hoseSegs[i].quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());}
+}
+// shelf/rack with cabin extras
+const shelfPos=new THREE.Vector2(-3,-6.6);
+const shelf=new THREE.Group(); shelf.position.set(shelfPos.x,0,shelfPos.y); WG.add(shelf);
+for(const sx of[-1.4,1.4]) wbox(shelf,sx,1.1,0,.14,2.2,.6,M.blue);
+for(const y of[.55,1.25,1.95]) wbox(shelf,0,y,0,3,.09,.65,M.orange);
+function diamondTex(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#cfd8e2';x.fillRect(0,0,128,128);x.strokeStyle='#8fa0b3';x.lineWidth=5;for(let i=-2;i<6;i++){x.beginPath();x.moveTo(i*32,0);x.lineTo(i*32+128,128);x.stroke();x.beginPath();x.moveTo(i*32+128,0);x.lineTo(i*32,128);x.stroke();}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,2);return t;}
+const riffleSheet=new THREE.Group(); riffleSheet.position.set(-3.9,.62,-6.55); riffleSheet.rotation.x=-.15; scene.add(riffleSheet);
+{const m=new THREE.Mesh(new THREE.BoxGeometry(1.35,.025,1.05),new THREE.MeshPhysicalMaterial({map:diamondTex(),roughness:.35,clearcoat:.6})); m.castShadow=true; riffleSheet.add(m); riffleSheet.userData.home=riffleSheet.position.clone();}
+const monogalSheet=new THREE.Group(); monogalSheet.position.set(-2.2,.62,-6.55); scene.add(monogalSheet);
+{const m=new THREE.Mesh(new THREE.BoxGeometry(1.15,.015,.38),new THREE.MeshPhysicalMaterial({color:0xeaf7ff,transparent:true,opacity:.45,roughness:.1,clearcoat:1})); monogalSheet.add(m);
+ const film=new THREE.Mesh(new THREE.BoxGeometry(1.16,.006,.39),new THREE.MeshBasicMaterial({color:0x9be15d,transparent:true,opacity:.5})); film.name='FilmBothSides'; monogalSheet.add(film); monogalSheet.userData.home=monogalSheet.position.clone(); monogalSheet.userData.film=film;}
+const coverUnit=new THREE.Group(); coverUnit.position.set(-1.0,1.3,-6.55); scene.add(coverUnit);
+wbox(coverUnit,0,0,0,.55,.16,.3,0xf2f4ee); for(let i=0;i<3;i++) cyl(coverUnit,-.15+i*.15,-.1,.08,.012,.2,0xff3d71,'z',6);
+coverUnit.userData.home=coverUnit.position.clone();
+const wRollPos=new THREE.Vector2(6.2,3.2);
+const wRoll=new THREE.Group(); wRoll.position.set(wRollPos.x,0,wRollPos.y); wRoll.rotation.y=.4; scene.add(wRoll);
+const wRollSpin=new THREE.Group(); wRollSpin.position.y=.28; wRoll.add(wRollSpin); cyl(wRollSpin,0,0,0,.25,1.0,0xffffff,'x',22);
+wbox(wRoll,-.45,0,0,.08,.28,.5,0x44505a); wbox(wRoll,.45,0,0,.08,.28,.5,0x44505a);
+const wStrip=box(scene,0,-5,0,.95,.018,1.4,0xfff7fb); wStrip.visible=false;
+const wPullTarget=new THREE.Vector2(7.5,1.6); let wPullLen=0;
+// current cabin part on goats
+let curPart=null, rivetPts=[], insulMesh=null, riffleOnPart=null, monogalOnPart=null, ledMesh=null, signMesh=null;
+function clearPart(){if(curPart){scene.remove(curPart);curPart=null;} rivetPts=[]; insulMesh=riffleOnPart=monogalOnPart=ledMesh=signMesh=null;}
+function basePart(w,h,d,c,name){clearPart(); curPart=new THREE.Group(); curPart.name=name; curPart.position.set(0,.86,0); scene.add(curPart);
+  const m=wbox(curPart,0,0,0,w,h,d,c); m.name=name+'_Body'; return curPart;}
+function addRivets(list,color=0xffd400){const g=new THREE.Group(); g.name='RivetPoints'; curPart.add(g); rivetPts=[];
+  for(const [x,z] of list){const p=cyl(g,x,.045,z,.026,.022,color,'y',12); p.userData.state='aim'; rivetPts.push(p);} return g;}
+function rivetPattern(n,perimeter){const pts=[]; if(perimeter){for(let i=0;i<5;i++){pts.push([-0.62+i*.31,-.48]);pts.push([-0.62+i*.31,.48]);} pts.push([-.62,0]);pts.push([.62,0]); for(const [x,z] of [[-.62,-.48],[.62,-.48],[-.62,.48],[.62,.48]]) pts.push([x,z]);}
+  else for(let i=0;i<n;i++) pts.push([-.95+i*(1.9/Math.max(1,n-1)), i%2?-.42:.42]); return pts;}
+function insertRivets(){rivetPts.forEach(p=>{p.userData.state='in'; p.scale.y=2.2; p.material=mat(0xd7dde2,.3);});}
+function rivetAll(){rivetPts.forEach(p=>{p.userData.state='done'; p.scale.y=.55; p.material=mat(0x3a4452,.35);});}
+function makeSign(text,side){const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,512,128);x.fillStyle='#26324a';x.font='bold 58px sans-serif';x.fillText(text,22,82);
+  const t=new THREE.CanvasTexture(c); const m=new THREE.Mesh(new THREE.PlaneGeometry(.7,.17),new THREE.MeshBasicMaterial({map:t}));
+  if(side){m.position.set(0,-.01,.56); } else {m.rotation.x=-Math.PI/2; m.position.set(0,.045,.0);} m.name='MarkerSign'; curPart.add(m); signMesh=m;}
+function partShield(){basePart(2.16,.04,1.04,0xd9e1e8,'CabinShield_1040x2160'); for(const sz of[-.5,.5]) wbox(curPart,0,.015,sz,2.16,.07,.04,0xb9c6d2); addRivets(rivetPattern(6));}
+function partFloor(){basePart(1.4,.06,1.1,0x9aa7b4,'CabinFloor_1400x1100'); addRivets(rivetPattern(6));}
+function partCeiling(){basePart(1.4,.05,1.1,0xe8eef4,'CabinCeiling_1400x1100'); wbox(curPart,0,.02,-.52,1.4,.06,.05,0xb9c6d2); wbox(curPart,0,.02,.52,1.4,.06,.05,0xb9c6d2); addRivets(rivetPattern(0,true),0xff9f1a);}
+function partPlafond(){basePart(1.2,.05,.42,0xf2f4ee,'Plafond_1200x400'); wbox(curPart,0,.032,0,.95,.012,.28,0x333a3f); addRivets([[-.55,-.17],[.55,-.17],[-.55,.17],[.55,.17]],0xa78bfa);}
+function finishPart(label){ if(!curPart)return; const p=wbox(outputStack,7.5,.22+outputStack.children.length*.07,.5,curPart.name.includes('Shield')?2.0:1.35,.05,curPart.name.includes('Shield')?1.0:1.0,0xd9e1e8); p.rotation.y=.08; clearPart(); }
+const P_GOATS=new THREE.Vector2(0,0), P_SUPPLY=new THREE.Vector2(-8.5,0), P_BENCH=benchPos, P_SHELF=shelfPos, P_OUT=new THREE.Vector2(7.5,.5);
+function supplyAnim(contentSetup){return (done)=>{ wAnim={t:0,dur:5,fn:k=>{
+    setGate(gateA, k<.18?k/.18: k>.82?(1-k)/.18:1);
+    supplyPallet.visible=true;
+    if(k<.35){stacker.position.x=-14+ ( -8.9+14)*(k/.35); supplyPallet.position.x=stacker.position.x+1.6;}
+    else if(k<.55){stacker.position.x=-8.9; supplyPallet.position.x=-8.5;}
+    else {stacker.position.x=-8.9+(-14+8.9)*((k-.55)/.45); supplyPallet.position.x=-8.5;}
+  },done:()=>{setGate(gateA,0); stacker.position.x=-14; done&&done();}}; if(contentSetup)contentSetup(); };}
+function stackOnSupply(kind){ // visual stack on supply pallet
+  while(supplyPallet.children.length>17) supplyPallet.remove(supplyPallet.children[supplyPallet.children.length-1]);
+  if(kind==='shield'){for(let i=0;i<2;i++) wbox(supplyPallet,0,.22+i*.06,0,2.0,.045,.95,0xd9e1e8);}
+  else if(kind==='floor') wbox(supplyPallet,0,.24,0,1.35,.09,1.05,0x9aa7b4);
+  else if(kind==='ceiling') wbox(supplyPallet,0,.24,0,1.35,.07,1.05,0xe8eef4);
+  else if(kind==='plafond') wbox(supplyPallet,0,.24,0,1.15,.07,.4,0xf2f4ee);
+}
+const WSteps=[];
+function S(title,hint,target,action,run,opts={}){WSteps.push({title,hint,target,action,run,...opts});}
+function addShieldCycle(first){
+  if(first) S('Ворота А: штабелёр привозит щиты','Нажми действие: ворота А поднимутся сегментами, штабелёр завезёт поддон со щитами 1040×2160 (комплекты ЩМК) и уедет.',P_SUPPLY,'🚪 Открыть ворота А',(d)=>{stackOnSupply('shield'); supplyAnim()(d);});
+  else S('Следующий щит на поддоне','Поддон со щитами уже у ворот А. Подойди к нему и возьми следующий щит.',P_SUPPLY,'👐 Взять следующий щит',d=>d());
+  S(first?'Забери поддон рохлей к козлам':'Поддон к козлам (если ещё не там)','Возьми рохлю за ручку (Взять), подойди с ней к поддону со щитами и нажми действие — поддон переедет к козлам.',P_SUPPLY,'🚜 Поддон к козлам',d=>{ wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+( -1.8+8.5)*k;},done:d}; },{needsJack:true});
+  S('Возьми щит и положи на козлы','Подойди к поддону у козел и нажми действие: щит 2.16×1.04 м ляжет на козлы лицевой стороной вверх.',new THREE.Vector2(-1.8,0),'👐 Щит на козлы',d=>{partShield(); // remove one from supply stack
+      const ch=supplyPallet.children[supplyPallet.children.length-1]; if(ch&&supplyPallet.children.length>17)supplyPallet.remove(ch); d();});
+  S('Вставь заклёпки по точкам','Подойди к козлам: жёлтые точки — места заклёпок. Нажимай действие, заклёпки встанут во все точки.',P_GOATS,'🔩 Вставить заклёпки',d=>{insertRivets(); d();});
+  S('Возьми пневмозаклёпочник со стола','Стол справа: подойди и нажми «Взять» — возьмёшь вытяжной пневмозаклёпочник, чёрный шланг тянется к компрессору.',P_BENCH,'✋ Взять заклёпочник',d=>d(),{tool:'riveter',takeOnly:true});
+  S('Проклепай все точки','С заклёпочником в руке подойди к козлам и нажми действие: точки станут плоскими тёмными (пневмо).',P_GOATS,'💨 Проклепать',d=>{rivetAll(); d();},{tool:'riveter'});
+  S('Переверни щит','Подойди к козлам и переверни щит нелицевой (обратной) стороной вверх.',P_GOATS,'🔄 Перевернуть щит',d=>{curPart.rotation.x=Math.PI; d();});
+  S('Возьми шумоизоляцию из пачки','Пачка шумки у стола на полу. Подойди к ней и нажми действие — лист ляжет на нелицевую сторону щита.',new THREE.Vector2(2.2,-2.6),'🧻 Взять шумку',d=>{insulMesh=wbox(curPart,0,-.035,0,1.9,.018,.9,0xb8c4cf); insulMesh.name='SoundInsulation'; d();});
+  S('Возьми ролик и прокатай шумку','Возьми ролик со стола (Взять у стола), затем у козел нажми действие — прокатай по шумке, она прижмётся и потемнеет.',P_GOATS,'🎡 Прокатать роликом',d=>{if(insulMesh){insulMesh.material=mat(0x5f6d7a,.6);} d();},{tool:'roller'});
+  S('Подпиши щит маркером','Возьми маркер со стола (Взять), у козел нажми действие — на лицевой стороне появится подпись.',P_GOATS,'✍️ Подписать маркером',d=>{curPart.rotation.x=0; makeSign('ЩИТ '+(shieldDone+1)+' • ЩМК 1040×2160'); d();},{tool:'marker'});
+  S('Готовый щит — на выходной поддон','Подойди к козлам и отправь готовый щит на пустой поддон у ворот Б.',P_GOATS,'📦 Щит на поддон',d=>{finishPart(); shieldDone++; d();});
+}
+addShieldCycle(true); addShieldCycle(false);
+// FLOOR
+S('Штабелёр привозит пол кабины','Действие: ворота А, штабелёр привозит плиту пола 1400×1100×60.',P_SUPPLY,'🚪 Поставка пола',d=>{stackOnSupply('floor'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
+S('Пол рохлей к козлам','Возьми рохлю, подойди к поддону с полом и вези его к козлам действием.',P_SUPPLY,'🚜 Пол к козлам',d=>{wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+(-1.8+8.5)*k;},done:d};},{needsJack:true});
+S('Положи пол на козлы','Подойди к поддону и положи плиту пола на козлы.',new THREE.Vector2(-1.8,0),'👐 Пол на козлы',d=>{partFloor(); d();});
+S('Вставь заклёпки (пол)','Жёлтые точки по полу — вставь заклёпки действием у козел.',P_GOATS,'🔩 Вставить заклёпки',d=>{insertRivets(); d();});
+S('Проклепай пол','Нужен пневмозаклёпочник со стола (Взять у стола), затем действие у козел.',P_GOATS,'💨 Проклепать пол',d=>{rivetAll(); d();},{tool:'riveter'});
+S('Возьми лист рифлёнки со стеллажа','Стеллаж у стены: лист алюминия с ромб-текстурой. Подойди и возьми его действием.',P_SHELF,'✋ Взять рифлёнку',d=>{riffleSheet.visible=false; d();});
+S('Положи рифлёнку на пол','У козел положи рифлёнку сверху на плиту пола.',P_GOATS,'👐 Рифлёнку на пол',d=>{const m=new THREE.Mesh(new THREE.BoxGeometry(1.35,.025,1.05),new THREE.MeshPhysicalMaterial({map:diamondTex(),roughness:.35,clearcoat:.6})); m.position.y=.045; curPart.add(m); riffleOnPart=m; if(rivetPts.length===0)addRivets(rivetPattern(6)); else rivetPts.forEach(p=>{p.userData.state='aim';p.scale.y=1;p.material=mat(0xffd400,.4);}); d();});
+S('Вставь заклёпки (рифлёнка)','Вставь заклёпки в точки на рифлёнке.',P_GOATS,'🔩 Вставить заклёпки',d=>{insertRivets(); d();});
+S('Проклепай рифлёнку','Пневмозаклёпочником со стола проклепай точки рифлёнки.',P_GOATS,'💨 Проклепать рифлёнку',d=>{rivetAll(); d();},{tool:'riveter'});
+S('Подпиши пол маркером СБОКУ','Маркер со стола, подпись — на боковой грани пола. Шумка полу НЕ нужна.',P_GOATS,'✍️ Подписать сбоку',d=>{makeSign('ПОЛ КАБИНЫ 1400×1100',true); d();},{tool:'marker'});
+S('Пол — на выходной поддон','Отправь готовый пол на выходной поддон. Повторяю: без шумоизоляции.',P_GOATS,'📦 Пол на поддон',d=>{finishPart(); d();});
+// CEILING
+S('Штабелёр привозит потолок','Ворота А: штабелёр привозит панель потолка 1400×1100 с бортиком.',P_SUPPLY,'🚪 Поставка потолка',d=>{stackOnSupply('ceiling'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
+S('Потолок к козлам и на козлы','Рохлей поддон к козлам (Взять рохлю), затем действием положи потолок на козлы.',P_SUPPLY,'🚜 Потолок на козлы',d=>{supplyPallet.position.x=-1.8; partCeiling(); d();},{needsJack:true});
+S('Вставь клёпки ПО КРУГУ + углы','Оранжевые точки: по периметру и отдельно по 2 в каждом углу с лицевой стороны. Вставь все действием.',P_GOATS,'🔩 Вставить по кругу',d=>{insertRivets(); d();});
+S('Проклепай потолок по кругу','Пневмозаклёпочником проклепай все точки по кругу и углам.',P_GOATS,'💨 Проклепать по кругу',d=>{rivetAll(); d();},{tool:'riveter'});
+S('Подпиши потолок','Маркером со стола подпиши потолок.',P_GOATS,'✍️ Подписать потолок',d=>{makeSign('ПОТОЛОК 1400×1100'); d();},{tool:'marker'});
+S('Потолок — на поддон','Готовый потолок на выходной поддон.',P_GOATS,'📦 Потолок на поддон',d=>{finishPart(); d();});
+// PLAFOND
+S('Штабелёр привозит плафон','Ворота А: привозят плафон 1200×400 — раму с проёмом под свет.',P_SUPPLY,'🚪 Поставка плафона',d=>{stackOnSupply('plafond'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
+S('Плафон на козлы','Рохлей поддон к козлам, плафон — на козлы действием.',P_SUPPLY,'🚜 Плафон на козлы',d=>{supplyPallet.position.x=-1.8; partPlafond(); d();},{needsJack:true});
+S('Возьми лист моногаля со стеллажа','Светлый полупрозрачный лист «моногаль» на стеллаже. Возьми его.',P_SHELF,'✋ Взять моногаль',d=>{d();},{takeSheet:'monogal'});
+S('Сними плёнку — сторона 1','Моногаль в руках: сними защитную плёнку с первой стороны.',P_GOATS,'🎞 Снять плёнку (1)',d=>{if(monogalSheet.userData.film)monogalSheet.userData.film.scale.x=.45; d();});
+S('Сними плёнку — сторона 2','Сними плёнку со второй стороны — лист станет чистым прозрачным.',P_GOATS,'🎞 Снять плёнку (2)',d=>{monogalSheet.visible=false; d();});
+S('Положи моногаль внутрь плафона','Положи моногаль с внутренней части плафона — она закроет проём света.',P_GOATS,'👐 Моногаль в плафон',d=>{monogalOnPart=new THREE.Mesh(new THREE.BoxGeometry(1.1,.012,.34),new THREE.MeshPhysicalMaterial({color:0xeaf7ff,transparent:true,opacity:.5,clearcoat:1})); monogalOnPart.position.y=.038; curPart.add(monogalOnPart); d();});
+S('Кожух с проводами + светодиоды','Возьми со стеллажа кожух плафона с проводами и положи внутрь: за моногалем загорится светодиодная полоса.',P_SHELF,'💡 Кожух и LED внутрь',d=>{coverUnit.visible=false; const led=new THREE.Mesh(new THREE.BoxGeometry(.95,.012,.12),new THREE.MeshBasicMaterial({color:0xfff6a0})); led.position.y=.048; curPart.add(led); ledMesh=led; d();});
+S('Прикрути по углам','Инструмент со стола (заклёпочник/отвёртка): прикрути винты по 4 углам плафона.',P_GOATS,'🔧 Прикрутить углы',d=>{rivetAll(); d();},{tool:'riveter'});
+S('Поставь 2 петли по краю','Поставь две петли по длинному краю плафона действием у козел.',P_GOATS,'🔗 Петли ×2',d=>{for(const hx of[-.35,.35]) wbox(curPart,hx,.03,.22,.14,.025,.05,0xd7dde2); d();});
+S('Подпиши плафон маркером','Маркер со стола — подпись на плафоне.',P_GOATS,'✍️ Подписать плафон',d=>{makeSign('ПЛАФОН 1200×400'); d();},{tool:'marker'});
+S('Приклей наклейку','Возьми наклейку на столе (жёлтая) действием у стола, затем приклей на плафон у козел.',P_GOATS,'🏷 Приклеить наклейку',d=>{const st=wbox(curPart,.42,.04,-.1,.16,.006,.1,M.yellow); st.rotation.x=-Math.PI/2; d();});
+S('Плафон — на поддон','Готовый плафон на выходной поддон к остальным деталям.',P_GOATS,'📦 Плафон на поддон',d=>{finishPart(); d();});
+// FINAL
+S('Отмотай изолон ВРУЧНУЮ','Рулон изолона в цехе у выходного поддона. Возьми край (Взять у рулона), иди к выходному поддону и тяни: нужно ≥1.0 м. Отпустишь рано — не засчитается.',wRollPos,'✋ Взять край изолона',d=>d(),{pull:true});
+S('Оберни готовый поддон изолоном','Подойди к выходному поддону: стопка деталей накроется белым изолоном.',P_OUT,'🤍 Обернуть поддон',d=>{const cover=wbox(outputStack,7.5,.55,.5,2.2,.75,1.25,0xffffff); cover.name='IzolonWrap'; d();});
+S('Отправка в ворота Б','Финал: действие — ворота Б поднимаются, штабелёр увозит обёрнутый поддон, ворота закрываются.',P_OUT,'🚪 Отправить в ворота Б',d=>{ wAnim={t:0,dur:5,fn:k=>{ setGate(gateB,k<.18?k/.18:k>.82?(1-k)/.18:1);
+    if(k>.25&&k<.8){const q=(k-.25)/.55; outputStack.position.x=7.5+(13-7.5)*q-7.5; outputStack.children.forEach(c=>{}); outputStack.position.x=(13-7.5)*q; }
+    if(k>=.8) outputStack.visible=false;
+  },done:()=>{setGate(gateB,0); wFinished=true; d();}}; });
+function curW(){return WSteps[wIndex];}
+function enterW(){ updateHUDW(); }
+function advanceW(){ wIndex++; if(wIndex>=WSteps.length){wFinished=true;} updateHUDW(); }
+function updateHUDW(){
+  const hudTitle=$('stageTitle'), hint=$('stageHint'); if(!hudTitle)return;
+  if(wFinished){hudTitle.textContent='🏭 Цех: смена выполнена!'; hint.textContent=`Все детали кабины собраны, обёрнуты и отправлены в ворота Б. Время: ${elapsed.toFixed(1)} c • Очки: ${score}. Щитов готово: ${shieldDone}/2.`; $('action').disabled=false; $('action').textContent='🔄 Ещё раз'; return;}
+  const st=curW(); if(!st)return;
+  hudTitle.textContent=`🏭 Цех ${wIndex+1}/${WSteps.length}: ${st.title}` + (st.title.includes('щит')||st.title.includes('Щит')?` (щит ${Math.min(2,shieldDone+1)}/2)`:'');
+  hint.textContent=st.hint;
+  $('score').textContent='⭐ '+score; $('holdPill').textContent=holdingW?('✊ В руке: '+holdingW):(holding==='jack'?'✊ Рохля':'✋ Руки свободны');
+  $('leverPill').textContent='🏭 Режим: ЦЕХ';
+  const b=$('action'); const near=!st.target||playerPos.distanceTo(st.target)<2.4;
+  let ok=near&&!wAnim; if(st.tool&&holdingW!==st.tool)ok=false; if(st.takeSheet&&holdingW!=='sheetW')ok=false; if(st.needsJack&&holding!=='jack')ok=false; if(st.pull&&holdingW!=='edgeW')ok=false;
+  b.disabled=!ok; b.textContent=st.pull&&holdingW==='edgeW'?`📏 Тяни к поддону: ${wPullLen.toFixed(2)} / 1.00 м`:(!near?'📍 Подойди ближе': st.tool&&holdingW!==st.tool?'🔧 Сначала возьми инструмент со стола': st.needsJack&&holding!=='jack'?'🚜 Сначала возьми рохлю': st.action);
+  const tb=$('btnTake');
+  if(holdingW){tb.textContent='🖐 Положить инструмент'; tb.disabled=false;}
+  else if(holding){tb.textContent='🖐 Отпустить'; tb.disabled=false;}
+  else {tb.textContent=nearWInteractLabel(); tb.disabled=!nearWInteract();}
+  [...dots.children].forEach((dd,i)=>{dd.className='dot'+(i<wIndex?' on':i===wIndex?' cur':'');});
+}
+function nearWInteract(){
+  if(mode!=='workshop'||holdingW||wAnim||wFinished)return null;
+  const st=curW();
+  if(holding) return null;
+  const jp=gripWorld(jackGrip); if(playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))<1.9) return {id:'jack',label:'✋ Взять рохлю'};
+  if(st&&st.pull&&playerPos.distanceTo(wRollPos)<2.0) return {id:'edgeW',label:'✋ Взять край изолона'};
+  if(playerPos.distanceTo(P_BENCH)<2.1){
+    if(st&&st.tool) return {id:st.tool,label:'✋ Взять: '+st.tool};
+    return {id:'riveter',label:'✋ Взять инструмент со стола'};
+  }
+  if(st&&st.takeSheet&&playerPos.distanceTo(P_SHELF)<2.2) return {id:'sheetW',label:'✋ Взять моногаль'};
+  return null;
+}
+function nearWInteractLabel(){const it=nearWInteract(); return it?it.label:'✋ Взять (подойди ближе)';}
+function doTakeW(){
+  if(wAnim)return;
+  if(holdingW==='edgeW'){holdingW=null; wStrip.visible=false; wPullLen=0; toast('🖐 Отпустил край изолона — не засчитано'); updateHUDW(); return;}
+  if(holdingW){const t=wTools[holdingW]; if(t)t.position.copy(t.userData.home); holdingW=null; updateHUDW(); return;}
+  if(holding){holding=null; updateHUDW(); return;}
+  const it=nearWInteract(); if(!it)return;
+  if(it.id==='jack'){holding='jack'; started=true;}
+  else if(it.id==='edgeW'){holdingW='edgeW'; started=true; toast('✊ Держишь край изолона — иди к выходному поддону');}
+  else if(it.id==='sheetW'){holdingW='sheetW'; monogalSheet.position.set(playerPos.x,1.0,playerPos.y);}
+  else {holdingW=it.id;}
+  updateHUDW();
+}
+function doActionW(){
+  if(wFinished){location.href='?mode=workshop'; return;}
+  if(wAnim)return; const st=curW(); if(!st)return;
+  if(st.pull){ // completion checked in updateWorkshopPull, action only hints
+    if(holdingW==='edgeW'&&wPullLen>=1.0&&playerPos.distanceTo(P_OUT)<1.6){holdingW=null; wStrip.visible=false; score+=50; advanceW();}
+    else toast('📏 Тяни край изолона к выходному поддону (нужно ≥1.0 м)');
+    return;
+  }
+  if(st.takeOnly){advanceW(); return;}
+  started=true; score+=20;
+  st.run(()=>{advanceW();});
+  updateHUDW();
+}
+function updateWorkshopPull(){
+  if(holdingW!=='edgeW')return;
+  // auto-count when pulled to output pallet with enough length (checked after position update below)
+  const f=dirOf(playerYaw); const edge=new THREE.Vector2(playerPos.x+f.x*.45,playerPos.y+f.y*.45);
+  const to=new THREE.Vector2().subVectors(edge,wRollPos); const dist=to.length(); wPullLen=Math.max(0,dist-.3);
+  const dir=dist>.001?to.clone().divideScalar(dist):new THREE.Vector2(1,0);
+  wStrip.visible=true; wStrip.scale.z=Math.max(.06,wPullLen/1.4);
+  wStrip.position.set(wRollPos.x+dir.x*(.3+wPullLen/2),.035,wRollPos.y+dir.y*(.3+wPullLen/2)); wStrip.rotation.y=Math.atan2(to.x,to.y);
+  wRollSpin.rotation.x=-wPullLen/.25;
+  if(curW()&&curW().pull&&wPullLen>=1.0&&playerPos.distanceTo(P_OUT)<1.6){holdingW=null; wStrip.visible=false; score+=50; toast(`✅ Изолон отмотан вручную: ${wPullLen.toFixed(2)} м`); advanceW();}
+}
+function updateWorkshop(dt){
+  if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
+  updateWorkshopPull();
+  // held tool/sheet follows hands (in front of player)
+  const f=dirOf(playerYaw);
+  for(const id in wTools){const t=wTools[id]; if(holdingW===id){t.position.set(playerPos.x+f.x*.52,1.02,playerPos.y+f.y*.52); t.rotation.y=playerYaw;}}
+  if(holdingW==='sheetW'){monogalSheet.position.set(playerPos.x+f.x*.5,1.0,playerPos.y+f.y*.5); monogalSheet.rotation.y=playerYaw;}
+  updateHose();
+  stacker.position.z=stacker.position.y||0;
+}
+function setWorkshopMode(){
+  for(const o of [rack,pallet,zone,cart,izolonRoll,knife,tool]) o.visible=false;
+  pallet.position.set(0,99,-20); stage=4; palletState='placed'; // disable warehouse slot logic
+  jackPos.set(-7.5,2.6); jackAng=0; playerPos.set(-9,3.6); playerYaw=.6; playerPitch=-.12;
+  cartPos.set(-20,-20);
+  dots.innerHTML=''; WSteps.forEach(()=>{const d=document.createElement('div');d.className='dot';dots.appendChild(d);});
+  $('btnLever').style.display='none';
+  $('btnTake').onclick=doTakeW; $('action').onclick=doActionW;
+  updateHUDW();
+}
+if(mode==='workshop'){ WG.visible=true; setWorkshopMode(); }
+else { WG.visible=false; stacker.visible=false; supplyPallet.visible=false; outputPallet.visible=false; goats.visible=false; bench.visible=false; insulPack.visible=false; compressor.visible=false; riffleSheet.visible=false; monogalSheet.visible=false; coverUnit.visible=false; wRoll.visible=false; for(const id in wTools)wTools[id].visible=false; hoseSegs.forEach(s=>s.visible=false);}
+// mode chooser overlay
+{const ov=document.createElement('div'); ov.id='modeChooser';
+ ov.style.cssText='position:fixed;inset:auto 10px 64px 10px;z-index:9;display:flex;gap:10px;justify-content:center;pointer-events:none';
+ ov.innerHTML='<button id="mWh" style="min-width:150px">📦 Склад</button><button id="mWs" style="min-width:150px;background:linear-gradient(135deg,#6ee7ff,#2979ff);box-shadow:0 7px 0 #1663d9">🏭 Цех</button>';
+ document.body.appendChild(ov);
+ ov.querySelector('#mWh').onclick=()=>{ov.style.display='none'; if(mode!=='warehouse')location.href='?mode=warehouse';};
+ ov.querySelector('#mWs').onclick=()=>{location.href='?mode=workshop';};
+ if(WQ.get('mode')||WQ.get('demo')) ov.style.display='none';
+}
+// workshop demos
+const wdemo=WQ.get('demo')||'';
+function wLook(x,z,tx,tz,pitch=-.3){playerPos.set(x,z); playerYaw=Math.atan2(tx-x,tz-z); playerPitch=pitch; demoFreeze=true;}
+if(mode==='workshop'&&wdemo){
+  demoFreeze=true; started=true;
+  if(wdemo==='workshop'||wdemo==='w_overview'){ stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.x=-8.5; stacker.position.set(-10,0,0); setGate(gateA,.85); wLook(4.5,4.8,-8,-1,-.30); }
+  if(wdemo==='w_stacker'){ stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.set(-9.5,0,0); stacker.position.set(-11,0,0); setGate(gateA,1); jackPos.set(3,6); wLook(-6.2,2.6,-11,0,-.25); }
+  if(wdemo==='w_shield'){ partShield(); wIndex=3; wLook(-2.6,2.2,0,0,-.35); }
+  if(wdemo==='w_riveter'){ partShield(); insertRivets(); holdingW='riveter'; wIndex=5; wLook(-1.8,1.9,0,0,-.3); const f=dirOf(playerYaw); wTools.riveter.position.set(playerPos.x+f.x*.52,1.02,playerPos.y+f.y*.52); updateHose(); }
+  if(wdemo==='w_insulation'){ partShield(); curPart.rotation.x=Math.PI; insulMesh=wbox(curPart,0,-.035,0,1.9,.018,.9,0x5f6d7a); holdingW='roller'; wIndex=8; wLook(-2.4,2.1,0,0,-.32); }
+  if(wdemo==='w_floor'){ partFloor(); const m=new THREE.Mesh(new THREE.BoxGeometry(1.35,.025,1.05),new THREE.MeshPhysicalMaterial({map:diamondTex(),roughness:.35,clearcoat:.6})); m.position.y=.045; curPart.add(m); insertRivets(); wIndex=28; wLook(-2.4,2.2,0,0,-.35); }
+  if(wdemo==='w_ceiling'){ partCeiling(); wIndex=35; wLook(-2.6,2.4,0,0,-.38); }
+  if(wdemo==='w_plafond'){ partPlafond(); monogalOnPart=new THREE.Mesh(new THREE.BoxGeometry(1.1,.012,.34),new THREE.MeshPhysicalMaterial({color:0xeaf7ff,transparent:true,opacity:.5,clearcoat:1})); monogalOnPart.position.y=.038; curPart.add(monogalOnPart);
+    ledMesh=new THREE.Mesh(new THREE.BoxGeometry(.95,.012,.12),new THREE.MeshBasicMaterial({color:0xfff6a0})); ledMesh.position.y=.048; curPart.add(ledMesh); wIndex=45; wLook(-2.2,1.8,0,0,-.32); }
+  if(wdemo==='w_final'){ for(let i=0;i<4;i++) wbox(outputStack,7.5,.22+i*.07,.5,1.8,.05,1.0,0xd9e1e8); wbox(outputStack,7.5,.6,.5,2.2,.75,1.25,0xffffff); setGate(gateB,.9); stacker.position.set(10,0,0); wIndex=WSteps.length-1; wLook(3.8,4.2,10.5,0,-.25); }
+  updateHUDW();
 }
 
 // ---------- Demo modes for screenshots ----------
@@ -610,18 +904,22 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  if(leverAnim>0)leverAnim=Math.max(0,leverAnim-dt*1.8);
  Release_Lever.position.y=.66-(leverPos==='lower'||leverAnim>0&&leverPos==='lower'? .018:leverPos==='lift'?-.006:0); Release_Lever.rotation.x=(leverPos==='lower'?-.18:leverPos==='lift'?.10:0);
  if(anim){anim.t+=dt; const k=Math.min(1,anim.t/anim.dur); anim.fn(k); if(k>=1){const d=anim.done;anim=null;d&&d();updateHUD()}}
- else if(!demoFreeze){
+ else if(mode==='workshop'&&!demoFreeze){
+   if(holding==='jack')updateJack(dt,inp); else updateWalk(dt,inp);
+   updateWorkshop(dt);
+ } else if(!demoFreeze){
    if(holding==='jack')updateJack(dt,inp);
    else if(holding==='cart')updateCart(dt,inp);
    else updateWalk(dt,inp);
    checkStages();
  }
  // sync models
+ if(mode==='workshop'&&(demoFreeze)) updateWorkshop(0);
  jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng;
  steerGroup.rotation.y=steer;
  steerRing.material.color.setHex(Math.abs(steer)>.12?0xffe600:0x9be15d);
  cart.position.set(cartPos.x,0,cartPos.y); cart.rotation.y=cartAng;
- if(stage<=1)updateSlotHighlight();
+ if(mode==='warehouse'&&stage<=1)updateSlotHighlight();
  // camera = eyes
  const effYaw=(holding==='jack'||holding==='cart')?playerYaw+lookOffset:playerYaw;
  camera.position.set(playerPos.x,1.62,playerPos.y);
@@ -632,7 +930,7 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  const bt=performance.now()*.001; for(const b of bubbles){b.m.position.y+=Math.sin(bt*.7+b.ph)*.0006+b.sp*dt; b.m.position.x=b.x+Math.sin(bt*.5+b.ph)*.25; if(b.m.position.y>4.2)b.m.position.y=.5;}
  $('timer').textContent='⏱ '+elapsed.toFixed(1)+' c';
  // refresh take/action availability lightly
- if(!anim)updateHUD();
+ if(!anim){ if(mode==='workshop')updateHUDW(); else updateHUD(); }
  renderer.render(scene,camera);
 }
 updateHUD(); loop();
