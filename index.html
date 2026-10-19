@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v5.8 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v5.9 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,9 +34,9 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.8 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.9 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
-<div id="cross">+</div>
+<div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(52% + 18px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
 <div id="btns"><button id="btnTake">✋ Взять</button><button id="btnLever" style="background:linear-gradient(135deg,#a78bfa,#6d28d9);box-shadow:0 7px 0 #5b21b6">Рычаг: НЕЙТРАЛЬ</button><button id="action">Действие</button></div>
 <div id="toast"></div><div id="help">Телефон: левый стик — ходьба/толкать, свайп справа — обзор • ПК: WASD — движение, мышь (зажать справа) — обзор, E — взять/отпустить, Space — действие</div>
@@ -574,16 +574,26 @@ let holdingW=null, wIndex=0, wAnim=null, wFinished=false, wGateA=0, wGateB=0, sh
 const WG=new THREE.Group(); WG.name='Workshop'; scene.add(WG);
 function wbox(parent,x,y,z,w,h,d,c,r){return box(parent,x,y,z,w,h,d,c,r)}
 // room 24x16: walls + 2 sectional gates (A west, B east)
-for(const [x,z,w,d] of [[0,-8,24,.25],[0,8,24,.25],[-12,0,.25,16],[12,0,.25,16]]) wbox(WG,x,1.5,z,w,3,d,0xbfe3ff);
-function makeGate(name,x,rotY){
-  const g=new THREE.Group(); g.name=name; g.position.set(x,0,0); g.rotation.y=rotY; WG.add(g);
-  const secs=[];
-  for(let i=0;i<5;i++){const p=wbox(g,0,.3+i*.52,0,.18,.5,3.2,i%2?0x8ed8ff:0x6ec6f5); secs.push(p);}
-  wbox(g,0,2.85,.0,.3,.25,3.6,M.dark);
-  const label=wbox(g,0,1.6,.16,.5,.5,.05,M.yellow); return {g,secs};
+for(const [x,z,w,d] of [[0,-8,24,.25],[0,8,24,.25]]) wbox(WG,x,1.5,z,w,3,d,0xbfe3ff);
+// v5.9: gate walls (x=+-12) have a REAL opening 3.6m wide x 2.9m high at z=0; walls 6m high so sections lift up ALONG the wall
+const GATE_W=3.6, GATE_H=2.9, GWALL_H=6;
+for(const gx of[-12,12]){
+  for(const sz of[-1,1]){const len=8-GATE_W/2; wbox(WG,gx,GWALL_H/2,sz*(GATE_W/2+len/2),.25,GWALL_H,len,0xbfe3ff);} // wall left/right of opening
+  wbox(WG,gx,(GATE_H+GWALL_H)/2,0,.25,GWALL_H-GATE_H,GATE_W,0xbfe3ff); // wall above opening (sections slide up in front of it)
 }
-const gateA=makeGate('Gate_A',-11.8,Math.PI/2), gateB=makeGate('Gate_B',11.8,-Math.PI/2);
-function setGate(gate,open){gate.secs.forEach((p,i)=>{p.position.y=open>0.85?2.55+i*.09:.3+i*.52*(1-open*.15); p.position.y=THREE.MathUtils.lerp(.3+i*.52,2.55+i*.09,open);});}
+// v5.9 sectional gate IN THE WALL PLANE: panels span the opening along Z (3.5m), thin along X,
+// vertical guide rails at both opening edges run from floor to 5.9m; opening = panels slide straight up along the wall.
+function makeGate(name,x,inward){
+  const g=new THREE.Group(); g.name=name; g.position.set(x+inward*.17,0,0); WG.add(g);
+  const secs=[]; const SEC_H=.56;
+  for(let i=0;i<5;i++){const p=wbox(g,0,.30+i*SEC_H,0,.07,SEC_H-.03,GATE_W-.1,i%2?0x8ed8ff:0x6ec6f5); p.name=name+'_Section'+(i+1); p.userData.y0=.30+i*SEC_H; secs.push(p);
+    for(const zz of[-1.2,0,1.2]) wbox(p,inward*.04,0,zz,.01,.04,.5,0xffffff);} // stiffener ribs on inner face
+  for(const sz of[-1,1]){const rail=wbox(g,0,GWALL_H/2-.05,sz*(GATE_W/2+.03),.12,GWALL_H-.1,.08,M.dark); rail.name=name+'_GuideRail';}
+  const sign=wbox(secs[2],inward*.045,0,0,.01,.32,.9,M.yellow); sign.name=name+'_Sign';
+  return {g,secs};
+}
+const gateA=makeGate('Gate_A',-12,1), gateB=makeGate('Gate_B',12,-1);
+function setGate(gate,open){gate.secs.forEach(p=>{p.position.y=p.userData.y0+open*(GATE_H-0.05);});} // up along the wall, opening fully clear at open=1
 // reach stacker (stacker_truck): low base+forks, mast, operator stand
 const stacker=new THREE.Group(); stacker.name='StackerTruck'; WG.add(stacker);
 wbox(stacker,0,.25,0,1.5,.35,.9,0xffb020); wbox(stacker,-.55,.85,0,.18,1.5,.8,0x44505a); wbox(stacker,-.55,1.65,0,.5,.08,.8,0x44505a);
@@ -629,22 +639,62 @@ function toolHome(x,z){return new THREE.Vector3(benchPos.x+x,.98,benchPos.y+z)}
 const wTools={};
 function regTool(id,grp,x,z){grp.position.copy(toolHome(x,z)); grp.name=id; scene.add(grp); grp.userData.home=grp.position.clone(); wTools[id]=grp; return grp;}
 {const h=new THREE.Group(); cyl(h,0,0,0,.025,.34,0x8d6b48,'z',10); wbox(h,0,.05,.22,.09,.09,.16,0xd7dde2); regTool('hammer',h,-.8,-.2);}
-{const r=new THREE.Group(); wbox(r,0,0,0,.10,.16,.38,M.teal); wbox(r,0,.02,.24,.05,.07,.14,0x333a3f); wbox(r,0,-.09,.05,.09,.10,.22,0x2b3442); regTool('riveter',r,-.35,.15);}
+// v5.9 riveter after RIVETMAX RX-800 (rivetmax.ru/zaklepochniki/cn1119): height 280, width 290 mm, 1.88 kg.
+// Red pistol grip + red pneumatic base cylinder with black bottom ring, grey/black barrel on top,
+// long black nosepiece with threaded mandrel in front, black trigger, rear grey cylinder/collector, air fitting on base side.
+{const r=new THREE.Group(); const RED=0xe0242b, GREY=0x5a6068, BLK=0x22262b;
+ cyl(r,0,.018,0,.058,.036,BLK,'y',22);              // black ring at bottom
+ cyl(r,0,.085,0,.06,.10,RED,'y',22);                // red air cylinder base
+ const grip=wbox(r,0,.18,.0,.05,.12,.06,RED); grip.rotation.x=-.12; // pistol grip, slight rake
+ wbox(r,0,.235,.02,.06,.04,.08,RED);                // grip-to-head yoke
+ cyl(r,0,.255,.03,.034,.16,GREY,'z',20);            // main barrel
+ cyl(r,0,.255,-.08,.032,.07,BLK,'z',20);            // black collar
+ cyl(r,0,.255,-.13,.03,.07,GREY,'z',20);            // rear collector/cylinder (back)
+ cyl(r,0,.255,.15,.02,.09,BLK,'z',16);              // black nosepiece
+ cyl(r,0,.255,.205,.006,.025,0xd7dde2,'z',10);      // threaded mandrel tip
+ const trg=wbox(r,0,.20,.055,.018,.05,.02,BLK); trg.rotation.x=.25; trg.name='Trigger'; // trigger
+ cyl(r,.066,.07,0,.009,.04,0xd7dde2,'x',10); cyl(r,.09,.07,0,.012,.012,0xb9c6d2,'x',10); // air fitting on base side
+ r.userData.fitting=new THREE.Vector3(.095,.07,0);
+ regTool('riveter',r,-.35,.15); r.position.y=.925; r.userData.home=r.position.clone();}
 {const p=new THREE.Group(); wbox(p,0,0,0,.04,.05,.28,0xff8c42); wbox(p,0,0,.16,.07,.04,.10,0xd7dde2); regTool('pliers',p,.05,-.2);}
-{const r=new THREE.Group(); cyl(r,0,.02,0,.11,.05,0xd7dde2,'y',16); wbox(r,-.09,.10,0,.05,.18,.05,M.dark); wbox(r,.09,.10,0,.05,.18,.05,M.dark); regTool('roller',r,.42,.18);}
+// v5.9 hand roller after user photo: straight steel round handle d25 L150 with a ring groove near top
+// and a slightly thinner neck, U-bracket of steel strip on the handle end, roller axle PERPENDICULAR
+// to the handle (T-shape), beige silicone roller d40 x 80 wide, axle screws at both ends.
+{const r=new THREE.Group(); const ST=0xb9c2cc;
+ const spin=new THREE.Group(); spin.name='Roller_Spin'; r.add(spin);
+ cyl(spin,0,0,0,.02,.08,0xe8dcb8,'x',22);                         // silicone roller d40 w80, axis X
+ cyl(r,0,0,0,.004,.098,0xd7dde2,'x',8); for(const sx of[-.05,.05]) cyl(r,sx,0,0,.006,.006,0x8a949c,'x',8); // axle + screws
+ for(const sx of[-.046,.046]) wbox(r,sx,.016,0,.004,.044,.014,ST);  // bracket cheeks
+ wbox(r,0,.036,0,.096,.004,.014,ST);                                // bracket bridge strip
+ cyl(r,0,.05,0,.009,.028,ST,'y',14);                                 // neck (thinner)
+ cyl(r,0,.07,0,.0125,.014,ST,'y',16);                                // collar above groove
+ cyl(r,0,.08,0,.0105,.006,0x8a949c,'y',16);                          // ring groove
+ cyl(r,0,.155,0,.0125,.145,ST,'y',16);                               // handle d25 L~150
+ r.userData.spin=spin;
+ regTool('roller',r,.42,.18); r.rotation.x=-Math.PI/2; r.position.y=.945; r.userData.home=r.position.clone();}
 {const m=new THREE.Group(); cyl(m,0,0,0,.018,.24,0xff3d71,'z',10); wbox(m,0,0,.14,.03,.03,.05,0x222222); regTool('marker',m,.72,-.15);}
 {const s=new THREE.Group(); cyl(s,0,0,0,.02,.22,0xffd400,'z',10); wbox(s,0,0,.13,.015,.015,.07,0xd7dde2); regTool('screwdriver',s,.9,.15);}
 // rivet box, sticker, insulation pack on/near bench
 wbox(bench,.95,.96,.3,.28,.10,.22,0x2979ff); wbox(bench,-.95,.94,-.3,.3,.06,.24,M.yellow);
-const insulPack=new THREE.Group(); insulPack.position.set(2.2,0,-2.6); scene.add(insulPack);
-for(let i=0;i<4;i++) wbox(insulPack,0,.06+i*.045,0,.95,.04,.65,0x9aa7b4);
+// v5.9 vibration damping Fantom Batoplast Premium 1.5: self-adhesive butyl rubber + 100um aluminium foil,
+// sheet 600x600x1.5mm. Foil face = embossed silver, back/edges = black butyl. Pallet with a stack near work area.
+function foilTex(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#c8cfd6';x.fillRect(0,0,128,128);
+  for(let i=0;i<16;i++)for(let j=0;j<16;j++){x.fillStyle=(i+j)%2?'#dfe5ea':'#b3bcc5';x.beginPath();x.arc(i*8+4,j*8+4,2.2,0,7);x.fill();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);return t;}
+const FOIL_TEX=foilTex();
+const foilMat=new THREE.MeshPhysicalMaterial({map:FOIL_TEX,metalness:.85,roughness:.35,clearcoat:.3}), butylMat=new THREE.MeshPhysicalMaterial({color:0x1b1d20,roughness:.8});
+function batoSheet(w,d){const m=new THREE.Mesh(new THREE.BoxGeometry(w,.004,d),[butylMat,butylMat,foilMat,butylMat,butylMat,butylMat]); m.castShadow=true; return m;}
+const insulPack=makePallet(); insulPack.name='Batoplast_Pallet'; insulPack.position.set(2.2,0,-1.9); insulPack.scale.set(.6,1,.75); scene.add(insulPack);
+const batoStack=new THREE.Group(); batoStack.position.set(2.2,.165,-1.9); scene.add(batoStack);
+for(let i=0;i<30;i++){const sh=batoSheet(.6,.6); sh.position.set(i%2?.31:-.31,Math.floor(i/2)*.0045,0); batoStack.add(sh);}
+{const lbl=wbox(batoStack,0,.08,.31,.5,.06,.005,M.yellow);}
 const compressor=new THREE.Group(); compressor.position.set(5.2,0,-4.4); scene.add(compressor);
 wbox(compressor,0,.45,0,.8,.9,.6,0xff6b35); cyl(compressor,0,.98,0,.18,.25,M.dark,'y',14);
 // air hose: 10 cylinder segments riveter -> compressor
 const hoseSegs=[]; for(let i=0;i<10;i++){const s=cyl(scene,0,-5,0,.018,1,0x222222,'y',8); hoseSegs.push(s);}
 function updateHose(){
   const a=new THREE.Vector3(); (holdingW==='riveter'?wTools.riveter.position.clone():wTools.riveter.position.clone()).copy(a);
-  const rp=holdingW==='riveter'?wTools.riveter.position:wTools.riveter.userData.home;
+  const rp=wTools.riveter.localToWorld(wTools.riveter.userData.fitting.clone());
   const b=new THREE.Vector3(5.2,1.0,-4.4); const pts=[];
   for(let i=0;i<=10;i++){const k=i/10; const p=rp.clone().lerp(b,k); p.y+=Math.sin(k*Math.PI)*.55*(holdingW==='riveter'?1:.35); pts.push(p);}
   for(let i=0;i<10;i++){const p=pts[i],q=pts[i+1],mid=p.clone().add(q).multiplyScalar(.5),d=q.clone().sub(p),len=d.length();
@@ -684,48 +734,114 @@ function rivetAll(){rivetPts.forEach(p=>{p.userData.state='done'; p.scale.y=.55;
 function makeSign(text,side){const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,512,128);x.fillStyle='#26324a';x.font='bold 58px sans-serif';x.fillText(text,22,82);
   const t=new THREE.CanvasTexture(c); const m=new THREE.Mesh(new THREE.PlaneGeometry(.7,.17),new THREE.MeshBasicMaterial({map:t}));
   if(side){m.position.set(0,-.01,.56); } else {m.rotation.x=-Math.PI/2; m.position.set(0,.045,.0);} m.name='MarkerSign'; curPart.add(m); signMesh=m;}
-function partShield(){basePart(2.16,.04,1.04,0xd9e1e8,'CabinShield_1040x2160'); for(const sz of[-.5,.5]) wbox(curPart,0,.015,sz,2.16,.07,.04,0xb9c6d2); addRivets(rivetPattern(6));}
+// v5.9 SHIELD = long narrow bent profile, ExtrudeGeometry of the user's section:
+// length 2100, overall width 320, flat shelf 283 (shelf width / axis distance), sides ~45-50 high,
+// left short upstand = rivet side, right Z-bend: up, inclined back, then outward. Galvanised 1.5mm (drawn 3mm to stay visible).
+const SHIELD_L=2.10, SHIELD_W=.32, SHELF_W=.283;
+function shieldProfileShape(){
+  const T=.003, X0=-SHIELD_W/2, X1=X0+SHELF_W; // -0.160 .. 0.123
+  const path=[[X0,.045],[X0,0],[X1,0],[X1-.015,.042],[SHIELD_W/2,.048]];
+  const nrm=[]; // per-vertex inward offset (left of path direction)
+  const segN=[]; for(let i=0;i<path.length-1;i++){const dx=path[i+1][0]-path[i][0],dy=path[i+1][1]-path[i][1],l=Math.hypot(dx,dy); segN.push([-dy/l,dx/l]);}
+  for(let i=0;i<path.length;i++){const a=segN[Math.max(0,i-1)],b=segN[Math.min(segN.length-1,i)]; let nx=a[0]+b[0],ny=a[1]+b[1]; const l=Math.hypot(nx,ny)||1; nrm.push([nx/l,ny/l]);}
+  const sh=new THREE.Shape(); sh.moveTo(path[0][0],path[0][1]); for(let i=1;i<path.length;i++) sh.lineTo(path[i][0],path[i][1]);
+  for(let i=path.length-1;i>=0;i--) sh.lineTo(path[i][0]+nrm[i][0]*T,path[i][1]+nrm[i][1]*T);
+  sh.closePath(); return sh;
+}
+const shieldGeo=(()=>{const g=new THREE.ExtrudeGeometry(shieldProfileShape(),{depth:SHIELD_L,bevelEnabled:false}); g.translate(0,0,-SHIELD_L/2); return g;})();
+const shieldMat=new THREE.MeshPhysicalMaterial({color:0xc9d2da,metalness:.75,roughness:.32,clearcoat:.4,side:THREE.DoubleSide});
+function makeShieldMesh(){const m=new THREE.Mesh(shieldGeo,shieldMat); m.castShadow=true; m.receiveShadow=true; m.rotation.y=Math.PI/2; return m;} // length -> X, profile x -> -Z
+function partShield(){clearPart(); curPart=new THREE.Group(); curPart.name='CabinShield_Profile_2100x320'; curPart.position.set(0,.80,0); scene.add(curPart);
+  const m=makeShieldMesh(); m.name='Shield_Profile'; curPart.add(m);
+  // 7 rivets in a row along the LEFT upstand (yellow side in user's sketch); upstand x=-0.16 -> curPart z=+0.16
+  const g=new THREE.Group(); g.name='RivetPoints'; curPart.add(g); rivetPts=[];
+  for(let i=0;i<7;i++){const p=cyl(g,-.93+i*(1.86/6),.026,.163,.008,.008,0xffd400,'z',12); p.userData.state='aim'; rivetPts.push(p);} }
 function partFloor(){basePart(1.4,.06,1.1,0x9aa7b4,'CabinFloor_1400x1100'); addRivets(rivetPattern(6));}
 function partCeiling(){basePart(1.4,.05,1.1,0xe8eef4,'CabinCeiling_1400x1100'); wbox(curPart,0,.02,-.52,1.4,.06,.05,0xb9c6d2); wbox(curPart,0,.02,.52,1.4,.06,.05,0xb9c6d2); addRivets(rivetPattern(0,true),0xff9f1a);}
 function partPlafond(){basePart(1.2,.05,.42,0xf2f4ee,'Plafond_1200x400'); wbox(curPart,0,.032,0,.95,.012,.28,0x333a3f); addRivets([[-.55,-.17],[.55,-.17],[-.55,.17],[.55,.17]],0xa78bfa);}
-function finishPart(label){ if(!curPart)return; const p=wbox(outputStack,7.5,.22+outputStack.children.length*.07,.5,curPart.name.includes('Shield')?2.0:1.35,.05,curPart.name.includes('Shield')?1.0:1.0,0xd9e1e8); p.rotation.y=.08; clearPart(); }
+let outShields=0, outOthers=0;
+function finishPart(label){ if(!curPart)return;
+  if(curPart.name.includes('Shield')){const col=outShields%3,row=Math.floor(outShields/3); const m=makeShieldMesh(); m.position.set(7.5,.15+row*.052,.5+(col-1)*.34); outputStack.add(m); outShields++;}
+  else {const p=wbox(outputStack,7.5,.15+Math.ceil(outShields/3)*.052+.03+outOthers*.07,.5,1.35,.05,1.0,0xd9e1e8); outOthers++;}
+  clearPart(); }
 const P_GOATS=new THREE.Vector2(0,0), P_SUPPLY=new THREE.Vector2(-8.5,0), P_BENCH=benchPos, P_SHELF=shelfPos, P_OUT=new THREE.Vector2(7.5,.5);
 function supplyAnim(contentSetup){return (done)=>{ wAnim={t:0,dur:5,fn:k=>{
     setGate(gateA, k<.18?k/.18: k>.82?(1-k)/.18:1);
-    supplyPallet.visible=true;
+    supplyPallet.visible=true; supplyCarried=false; supplyPallet.position.y=0; supplyPallet.position.z=0; supplyPallet.rotation.y=0;
     if(k<.35){stacker.position.x=-14+ ( -8.9+14)*(k/.35); supplyPallet.position.x=stacker.position.x+1.6;}
     else if(k<.55){stacker.position.x=-8.9; supplyPallet.position.x=-8.5;}
     else {stacker.position.x=-8.9+(-14+8.9)*((k-.55)/.45); supplyPallet.position.x=-8.5;}
   },done:()=>{setGate(gateA,0); stacker.position.x=-14; done&&done();}}; if(contentSetup)contentSetup(); };}
 function stackOnSupply(kind){ // visual stack on supply pallet
   while(supplyPallet.children.length>17) supplyPallet.remove(supplyPallet.children[supplyPallet.children.length-1]);
-  if(kind==='shield'){for(let i=0;i<15;i++) wbox(supplyPallet,0,.20+i*.034,0,2.0,.028,.95,0xd9e1e8);} // batch of 15, stack shrinks as shields are taken
+  if(kind==='shield'){for(let i=0;i<15;i++){const m=makeShieldMesh(); m.position.set(0,.155+Math.floor(i/3)*.052,(i%3-1)*.34); supplyPallet.add(m);}} // v5.9: 15 profiles 2100x320, 3 columns x 5 rows; top one removed per shield
   else if(kind==='floor') wbox(supplyPallet,0,.24,0,1.35,.09,1.05,0x9aa7b4);
   else if(kind==='ceiling') wbox(supplyPallet,0,.24,0,1.35,.07,1.05,0xe8eef4);
   else if(kind==='plafond') wbox(supplyPallet,0,.24,0,1.15,.07,.4,0xf2f4ee);
 }
+let supplyCarried=false;
+function rectDistGoats(v){const dx=Math.max(0,Math.abs(v.x)-1.0), dz=Math.max(0,Math.abs(v.y)-.6); return Math.hypot(dx,dz);} // goats footprint ~2.0 x 1.2
+function supplyV(){return new THREE.Vector2(supplyPallet.position.x,supplyPallet.position.z);}
+function palletNearGoats(){const d=rectDistGoats(supplyV()); return d<1.5&&d>0.05&&!supplyCarried;}
+function forksUnderSupply(){const fc=forkCenter(); const al=Math.abs(Math.cos(jackAng-supplyPallet.rotation.y)); return fc.distanceTo(supplyV())<.6&&al>.85;}
+// ---- v5.9 CROSSHAIR AIM: raycast from camera centre, range 2.5m, highlight + label ----
+const aimRay=new THREE.Raycaster(); aimRay.far=2.5; let wAim=null, wAimRoot=null;
+const AIM={}; function aimable(id,obj,label){obj.userData.aimId=id; AIM[id]={obj,label}; return obj;}
+function aimRoots(){const a=Object.values(AIM).map(x=>x.obj).filter(o=>o&&o.visible&&o.parent); for(const o of [riffleSheet,monogalSheet,coverUnit,outputStack,insulPack]) if(o.visible)a.push(o); if(curPart)a.push(curPart); return a;}
+function setGlow(root,on){if(window.noGlow)return;root.traverse(m=>{if(m.isMesh){const ms=Array.isArray(m.material)?m.material:[m.material]; for(const mt of ms){if(!mt.emissive)continue; if(on){if(mt.userData.e0===undefined)mt.userData.e0=mt.emissive.getHex(); mt.emissive.setHex(0x4a6cff); mt.emissiveIntensity=.35;} else if(mt.userData.e0!==undefined){mt.emissive.setHex(mt.userData.e0); mt.emissiveIntensity=1;}}}});}
+function updateAim(){
+  if(mode!=='workshop')return; camera.updateMatrixWorld();
+  aimRay.setFromCamera(new THREE.Vector2(0,0),camera);
+  const hits=aimRay.intersectObjects(aimRoots(),true);
+  let found=null; for(const h of hits){let o=h.object; while(o&&!(o.userData.aimId||o===curPart))o=o.parent; if(!o)continue; const id=o===curPart?'part':o.userData.aimId; if(holdingW&&id===holdingW)continue; if(holding==='jack'&&id==='jack')continue; found={id,root:o}; break;}
+  if(wAimRoot&&(!found||found.root!==wAimRoot))setGlow(wAimRoot,false);
+  if(found&&found.root!==wAimRoot)setGlow(found.root,true);
+  wAimRoot=found?found.root:null; wAim=found?found.id:null;
+  const el=$('aimLabel'); if(el){ if(found){el.style.display='block'; el.textContent=found.id==='part'?(curPart.name.includes('Shield')?'Щит на козлах':curPart.name.includes('Floor')?'Пол кабины':curPart.name.includes('Ceiling')?'Потолок':'Плафон'):AIM[found.id].label;} else el.style.display='none'; }
+}
+const AIM_BY_TARGET=new Map();
+aimable('jack',jack,'Рохля'); aimable('goats',goats,'Козлы'); aimable('bench',bench,'Верстак'); aimable('supply',supplyPallet,'Поддон с деталями');
+aimable('output',outputPallet,'Выходной поддон'); aimable('bato',batoStack,'Лист шумки — Батопласт 600×600'); aimable('shelf',shelf,'Стеллаж'); aimable('roll',wRoll,'Рулон изолона');
+aimable('gateA',gateA.g,'Ворота А (приёмка)'); aimable('gateB',gateB.g,'Ворота Б (отправка)');
+riffleSheet.userData.aimId='shelf'; monogalSheet.userData.aimId='shelf'; coverUnit.userData.aimId='shelf'; outputStack.userData.aimId='output'; insulPack.userData.aimId='bato';
+AIM.shelf.extra=[riffleSheet,monogalSheet,coverUnit]; 
+const TOOL_LABELS={hammer:'Молоток',riveter:'Заклёпочник RX-800',pliers:'Плоскогубцы',roller:'Прикаточный валик',marker:'Маркер',screwdriver:'Отвёртка'};
+for(const id in wTools) aimable(id,wTools[id],TOOL_LABELS[id]||id);
 const WSteps=[];
-function S(title,hint,target,action,run,opts={}){WSteps.push({title,hint,target,action,run,...opts});}
+function S(title,hint,target,action,run,opts={}){
+  let aim=opts.aim; if(!aim&&!opts.cond&&!opts.pull){ if(target===P_GOATS)aim=['part','goats']; else if(target===P_SUPPLY)aim=['gateA','supply']; else if(target===P_SHELF)aim=['shelf']; else if(target===P_OUT)aim=['output','gateB']; else if(target===P_BENCH)aim=null; }
+  if(opts.cond&&!opts.aim&&/на козлы/.test(action))aim=['supply'];
+  WSteps.push({title,hint,target,action,run,...opts,aim});}
+function addHaul(what){
+  S(`Подкати рохлю под поддон (${what}) и подними`,'Возьми рохлю за ручку («Взять»), сам подкати её вилами в пазы поддона у ворот А (вилы вдоль досок, по центру) и нажми действие — вилы приподнимут поддон.',null,'⬆ Поднять поддон',d=>{supplyCarried=true; supplyPallet.position.y=.06; score+=20; d();},
+    {cond:()=>holding!=='jack'?{ok:false,msg:'🚜 Сначала возьми рохлю'}:!forksUnderSupply()?{ok:false,msg:'🎯 Заведи вилы под поддон'}:{ok:true}});
+  S(`Довези поддон (${what}) к козлам и опусти`,'Вези поддон на рохле сам (стик: толкать/руль заднего колеса) и поставь рядом с козлами — не дальше ~1,5 м. Нажми действие — вилы опустятся.',null,'⬇ Опустить у козел',d=>{supplyCarried=false; supplyPallet.position.y=0; d();},
+    {cond:()=>{if(holding!=='jack')return{ok:false,msg:'🚜 Держи рохлю'}; const dd=rectDistGoats(supplyV()); return dd<1.5&&dd>0.05?{ok:true}:{ok:false,msg:dd<=0.05?'↔ Слишком близко — поставь рядом с козлами':`📍 До козел ${dd.toFixed(1)} м (нужно < 1.5)`};}});
+}
+const takeCond=()=>!palletNearGoats()?{ok:false,msg:'📦 Сначала привези поддон к козлам (< 1.5 м)'}:playerPos.distanceTo(supplyV())>2.6?{ok:false,msg:'📍 Подойди к поддону'}:{ok:true};
 function addShieldCycle(first){
-  if(first) S('Ворота А: штабелёр привозит щиты','Нажми действие: ворота А поднимутся сегментами, штабелёр завезёт поддон со щитами 1040×2160 (комплекты ЩМК) и уедет.',P_SUPPLY,'🚪 Открыть ворота А',(d)=>{stackOnSupply('shield'); supplyAnim()(d);});
-  else S('Следующий щит на поддоне','Поддон со щитами уже у ворот А. Подойди к нему и возьми следующий щит.',P_SUPPLY,'👐 Взять следующий щит',d=>d());
-  S(first?'Забери поддон рохлей к козлам':'Поддон уже у козлов','Возьми рохлю за ручку (Взять), подойди с ней к поддону со щитами и нажми действие — поддон переедет к козлам. Для следующих щитов поддон уже там, действие просто подтвердит позицию.',P_SUPPLY,'🚜 Поддон к козлам',d=>{ if(supplyPallet.position.x>-3){d();return;} wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+( -1.8+8.5)*k;},done:d}; },{needsJack:true});
-  S('Возьми щит и положи на козлы','Подойди к поддону у козел и нажми действие: щит 2.16×1.04 м ляжет на козлы лицевой стороной вверх.',new THREE.Vector2(-1.8,0),'👐 Щит на козлы',d=>{partShield(); // remove one from supply stack
-      const ch=supplyPallet.children[supplyPallet.children.length-1]; if(ch&&supplyPallet.children.length>17)supplyPallet.remove(ch); d();});
+  if(first) S('Ворота А: штабелёр привозит щиты','Нажми действие: ворота А поднимутся сегментами, штабелёр завезёт поддон с 15 щитами-профилями 2100×320 и уедет.',P_SUPPLY,'🚪 Открыть ворота А',(d)=>{stackOnSupply('shield'); supplyAnim()(d);});
+  if(first) addHaul('щиты');
+  S('Возьми щит и положи на козлы','Отпусти рохлю, подойди к поддону у козел (поддон должен стоять < 1,5 м от козел) и нажми действие: профиль-щит 2100×320 ляжет на обе козлы полкой вверх.',null,'👐 Щит на козлы',d=>{partShield(); // remove one from supply stack
+      const ch=supplyPallet.children[supplyPallet.children.length-1]; if(ch&&supplyPallet.children.length>17)supplyPallet.remove(ch); d();},{cond:takeCond});
   S('Вставь заклёпки по точкам','Подойди к козлам: жёлтые точки — места заклёпок. Нажимай действие, заклёпки встанут во все точки.',P_GOATS,'🔩 Вставить заклёпки',d=>{insertRivets(); d();});
   S('Возьми пневмозаклёпочник со стола','Стол справа: подойди и нажми «Взять» — возьмёшь вытяжной пневмозаклёпочник, чёрный шланг тянется к компрессору.',P_BENCH,'✋ Взять заклёпочник',d=>d(),{tool:'riveter',takeOnly:true});
   S('Проклепай все точки','С заклёпочником в руке подойди к козлам и нажми действие: точки станут плоскими тёмными (пневмо).',P_GOATS,'💨 Проклепать',d=>{rivetAll(); d();},{tool:'riveter'});
-  S('Переверни щит','Подойди к козлам и переверни щит нелицевой (обратной) стороной вверх.',P_GOATS,'🔄 Перевернуть щит',d=>{curPart.rotation.x=Math.PI; d();});
-  S('Возьми шумоизоляцию из пачки','Пачка шумки у стола на полу. Подойди к ней и нажми действие — лист ляжет на нелицевую сторону щита.',new THREE.Vector2(2.2,-2.6),'🧻 Взять шумку',d=>{insulMesh=wbox(curPart,0,-.035,0,1.9,.018,.9,0xb8c4cf); insulMesh.name='SoundInsulation'; d();});
-  S('Возьми ролик и прокатай шумку','Возьми ролик со стола (Взять у стола), затем у козел нажми действие — прокатай по шумке, она прижмётся и потемнеет.',P_GOATS,'🎡 Прокатать роликом',d=>{if(insulMesh){insulMesh.material=mat(0x5f6d7a,.6);} d();},{tool:'roller'});
-  S('Подпиши щит маркером','Возьми маркер со стола (Взять), у козел нажми действие — на лицевой стороне появится подпись.',P_GOATS,'✍️ Подписать маркером',d=>{curPart.rotation.x=0; makeSign('ЩИТ '+(shieldDone+1)+' • ЩМК 1040×2160'); d();},{tool:'marker'});
+  S('Переверни щит','Подойди к козлам и переверни щит нелицевой (обратной) стороной вверх.',P_GOATS,'🔄 Перевернуть щит',d=>{curPart.rotation.x=Math.PI; curPart.position.y=.85; d();});
+  // Batoplast 600x600 cut into 2 strips 283 wide x 600 long per sheet -> 1.2m of shelf per sheet; shelf 2.1m needs 2 sheets (4 strips, last one trimmed).
+  for(let sheetN=1;sheetN<=2;sheetN++) S(`Наклей Батопласт: лист ${sheetN}/2`,'Наведи прицел на стопку листов Фантом Батопласт 600×600×1,5 на поддоне у стола и нажми действие — лист режется на 2 полосы по ширине полки (283 мм) и клеится на нелицевую сторону щита фольгой наружу. На щит 2100 мм нужно 2 листа.',null,`🧻 Лист Батопласта ${sheetN}/2`,d=>{
+      const top=batoStack.children[batoStack.children.length-2]; if(top&&batoStack.children.length>2) batoStack.remove(top);
+      if(!insulMesh){insulMesh=new THREE.Group(); insulMesh.name='SoundInsulation_Batoplast'; curPart.add(insulMesh);}
+      const x0=-1.05+(sheetN-1)*1.2; for(let k=0;k<2;k++){const len=Math.min(.6,1.05-(x0+k*.6)); if(len<=0)continue; const st=batoSheet(len-.004,.275); st.position.set(x0+k*.6+len/2,-.003,.02); st.rotation.x=Math.PI; insulMesh.add(st);} d();},{aim:['bato']});
+  S('Возьми ролик и прокатай шумку','Возьми ролик со стола (Взять у стола), затем у козел нажми действие — прокатай по шумке, она прижмётся и потемнеет.',P_GOATS,'🎡 Прокатать роликом',d=>{const t=wTools.roller; wAnim={t:0,dur:2.0,mode:'roll',fn:k=>{const x=-.9+1.8*(k<.5?k*2:2-k*2); t.rotation.set(0,Math.PI/2,0); t.position.set(x,.85+.004+.02,.018); t.userData.spin.rotation.x+=.35*(k<.5?1:-1); if(insulMesh&&k>.5)insulMesh.scale.y=.6;},done:()=>{if(insulMesh)insulMesh.scale.y=.6; t.rotation.set(-Math.PI/2,0,0); d();}};},{tool:'roller'});
+  S('Подпиши щит маркером','Возьми маркер со стола (Взять), у козел нажми действие — на лицевой стороне появится подпись.',P_GOATS,'✍️ Подписать маркером',d=>{curPart.rotation.x=0; curPart.position.y=.80; makeSign('ЩИТ '+(shieldDone+1)+'/15 • 2100×320'); if(signMesh){signMesh.position.set(0,.004,.02); signMesh.scale.set(.75,.75,.75);} d();},{tool:'marker'});
   S('Готовый щит — на выходной поддон','Подойди к козлам и отправь готовый щит на пустой поддон у ворот Б.',P_GOATS,'📦 Щит на поддон',d=>{finishPart(); shieldDone++; d();});
 }
 for(let shield_i=0;shield_i<15;shield_i++) addShieldCycle(shield_i===0); // party of 15 shields via common cycle, not hand-written steps
 // FLOOR
 S('Штабелёр привозит пол кабины','Действие: ворота А, штабелёр привозит плиту пола 1400×1100×60.',P_SUPPLY,'🚪 Поставка пола',d=>{stackOnSupply('floor'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
-S('Пол рохлей к козлам','Возьми рохлю, подойди к поддону с полом и вези его к козлам действием.',P_SUPPLY,'🚜 Пол к козлам',d=>{wAnim={t:0,dur:1.6,fn:k=>{supplyPallet.position.x=-8.5+(-1.8+8.5)*k;},done:d};},{needsJack:true});
-S('Положи пол на козлы','Подойди к поддону и положи плиту пола на козлы.',new THREE.Vector2(-1.8,0),'👐 Пол на козлы',d=>{partFloor(); d();});
+addHaul('пол');
+S('Положи пол на козлы','Подойди к поддону у козел и положи плиту пола на козлы.',null,'👐 Пол на козлы',d=>{partFloor(); d();},{cond:takeCond});
 S('Вставь заклёпки (пол)','Жёлтые точки по полу — вставь заклёпки действием у козел.',P_GOATS,'🔩 Вставить заклёпки',d=>{insertRivets(); d();});
 S('Проклепай пол','Нужен пневмозаклёпочник со стола (Взять у стола), затем действие у козел.',P_GOATS,'💨 Проклепать пол',d=>{rivetAll(); d();},{tool:'riveter'});
 S('Возьми лист рифлёнки со стеллажа','Стеллаж у стены: лист алюминия с ромб-текстурой. Подойди и возьми его действием.',P_SHELF,'✋ Взять рифлёнку',d=>{riffleSheet.visible=false; d();});
@@ -736,14 +852,16 @@ S('Подпиши пол маркером СБОКУ','Маркер со сто�
 S('Пол — на выходной поддон','Отправь готовый пол на выходной поддон. Повторяю: без шумоизоляции.',P_GOATS,'📦 Пол на поддон',d=>{finishPart(); d();});
 // CEILING
 S('Штабелёр привозит потолок','Ворота А: штабелёр привозит панель потолка 1400×1100 с бортиком.',P_SUPPLY,'🚪 Поставка потолка',d=>{stackOnSupply('ceiling'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
-S('Потолок к козлам и на козлы','Рохлей поддон к козлам (Взять рохлю), затем действием положи потолок на козлы.',P_SUPPLY,'🚜 Потолок на козлы',d=>{supplyPallet.position.x=-1.8; partCeiling(); d();},{needsJack:true});
+addHaul('потолок');
+S('Положи потолок на козлы','Подойди к поддону у козел и положи потолок на козлы.',null,'👐 Потолок на козлы',d=>{partCeiling(); d();},{cond:takeCond});
 S('Вставь клёпки ПО КРУГУ + углы','Оранжевые точки: по периметру и отдельно по 2 в каждом углу с лицевой стороны. Вставь все действием.',P_GOATS,'🔩 Вставить по кругу',d=>{insertRivets(); d();});
 S('Проклепай потолок по кругу','Пневмозаклёпочником проклепай все точки по кругу и углам.',P_GOATS,'💨 Проклепать по кругу',d=>{rivetAll(); d();},{tool:'riveter'});
 S('Подпиши потолок','Маркером со стола подпиши потолок.',P_GOATS,'✍️ Подписать потолок',d=>{makeSign('ПОТОЛОК 1400×1100'); d();},{tool:'marker'});
 S('Потолок — на поддон','Готовый потолок на выходной поддон.',P_GOATS,'📦 Потолок на поддон',d=>{finishPart(); d();});
 // PLAFOND
 S('Штабелёр привозит плафон','Ворота А: привозят плафон 1200×400 — раму с проёмом под свет.',P_SUPPLY,'🚪 Поставка плафона',d=>{stackOnSupply('plafond'); supplyPallet.position.x=-8.5; supplyAnim()(d);});
-S('Плафон на козлы','Рохлей поддон к козлам, плафон — на козлы действием.',P_SUPPLY,'🚜 Плафон на козлы',d=>{supplyPallet.position.x=-1.8; partPlafond(); d();},{needsJack:true});
+addHaul('плафон');
+S('Положи плафон на козлы','Подойди к поддону у козел и положи плафон на козлы.',null,'👐 Плафон на козлы',d=>{partPlafond(); d();},{cond:takeCond});
 S('Возьми лист моногаля со стеллажа','Светлый полупрозрачный лист «моногаль» на стеллаже. Возьми его.',P_SHELF,'✋ Взять моногаль',d=>{d();},{takeSheet:'monogal'});
 S('Сними плёнку — сторона 1','Моногаль в руках: сними защитную плёнку с первой стороны.',P_GOATS,'🎞 Снять плёнку (1)',d=>{if(monogalSheet.userData.film)monogalSheet.userData.film.scale.x=.45; d();});
 S('Сними плёнку — сторона 2','Сними плёнку со второй стороны — лист станет чистым прозрачным.',P_GOATS,'🎞 Снять плёнку (2)',d=>{monogalSheet.visible=false; d();});
@@ -772,9 +890,9 @@ function updateHUDW(){
   hint.textContent=st.hint;
   $('score').textContent='⭐ '+score; $('holdPill').textContent=holdingW?('✊ В руке: '+holdingW):(holding==='jack'?'✊ Рохля':'✋ Руки свободны');
   $('leverPill').textContent='🏭 Режим: ЦЕХ';
-  const b=$('action'); const near=!st.target||playerPos.distanceTo(st.target)<2.4;
-  let ok=near&&!wAnim; if(st.tool&&holdingW!==st.tool)ok=false; if(st.takeSheet&&holdingW!=='sheetW')ok=false; if(st.needsJack&&holding!=='jack')ok=false; if(st.pull&&holdingW!=='edgeW')ok=false;
-  b.disabled=!ok; b.textContent=st.pull&&holdingW==='edgeW'?`📏 Тяни к поддону: ${wPullLen.toFixed(2)} / 1.00 м`:(!near?'📍 Подойди ближе': st.tool&&holdingW!==st.tool?'🔧 Сначала возьми инструмент со стола': st.needsJack&&holding!=='jack'?'🚜 Сначала возьми рохлю': st.action);
+  const b=$('action'); const cnd=st.cond?st.cond():null; const aimOk=!st.aim||st.aim.includes(wAim); const near=cnd?true:(st.aim?aimOk:(!st.target||playerPos.distanceTo(st.target)<2.4));
+  let ok=near&&!wAnim; if(st.tool&&holdingW!==st.tool)ok=false; if(st.takeSheet&&holdingW!=='sheetW')ok=false; if(st.needsJack&&holding!=='jack')ok=false; if(st.pull&&holdingW!=='edgeW')ok=false; if(cnd&&!cnd.ok)ok=false; if(!aimOk)ok=false;
+  b.disabled=!ok; b.textContent=cnd&&!cnd.ok?cnd.msg:!aimOk?'🎯 Наведи прицел: '+st.aim.map(a=>a==='part'?'деталь на козлах':(AIM[a]?AIM[a].label:a)).join(' / '):st.pull&&holdingW==='edgeW'?`📏 Тяни к поддону: ${wPullLen.toFixed(2)} / 1.00 м`:(!near?'📍 Подойди ближе': st.tool&&holdingW!==st.tool?'🔧 Сначала возьми инструмент со стола': st.needsJack&&holding!=='jack'?'🚜 Сначала возьми рохлю': st.action);
   const tb=$('btnTake');
   if(holdingW){tb.textContent='🖐 Положить инструмент'; tb.disabled=false;}
   else if(holding){tb.textContent='🖐 Отпустить'; tb.disabled=false;}
@@ -783,6 +901,13 @@ function updateHUDW(){
 }
 function nearWInteract(){
   if(mode!=='workshop'||holdingW||wAnim||wFinished)return null;
+  // v5.9: ONLY the object under the crosshair (raycast 2.5m) can be taken
+  const st0=curW(); if(holding) return null; if(!wAim) return null;
+  if(wAim==='jack') return {id:'jack',label:'✋ Взять рохлю'};
+  if(wTools[wAim]) return {id:wAim,label:'✋ Взять: '+AIM[wAim].label};
+  if(wAim==='roll'&&st0&&st0.pull) return {id:'edgeW',label:'✋ Взять край изолона'};
+  if(wAim==='shelf'&&st0&&st0.takeSheet) return {id:'sheetW',label:'✋ Взять моногаль'};
+  return null;
   const st=curW();
   if(holding) return null;
   const jp=gripWorld(jackGrip); if(playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))<1.9) return {id:'jack',label:'✋ Взять рохлю'};
@@ -794,11 +919,11 @@ function nearWInteract(){
   if(st&&st.takeSheet&&playerPos.distanceTo(P_SHELF)<2.2) return {id:'sheetW',label:'✋ Взять моногаль'};
   return null;
 }
-function nearWInteractLabel(){const it=nearWInteract(); return it?it.label:'✋ Взять (подойди ближе)';}
+function nearWInteractLabel(){const it=nearWInteract(); return it?it.label:'🎯 Наведи прицел на предмет';}
 function doTakeW(){
   if(wAnim)return;
   if(holdingW==='edgeW'){holdingW=null; wStrip.visible=false; wPullLen=0; toast('🖐 Отпустил край изолона — не засчитано'); updateHUDW(); return;}
-  if(holdingW){const t=wTools[holdingW]; if(t)t.position.copy(t.userData.home); holdingW=null; updateHUDW(); return;}
+  if(holdingW){ if(wAim!=='bench'&&holdingW!=='sheetW'){toast('🎯 Наведи прицел на верстак, чтобы положить инструмент');return;} const t=wTools[holdingW]; if(t){t.position.copy(t.userData.home); if(holdingW==='roller')t.rotation.set(-Math.PI/2,0,0); else t.rotation.set(0,0,0);} holdingW=null; updateHUDW(); return;}
   if(holding){holding=null; updateHUDW(); return;}
   const it=nearWInteract(); if(!it)return;
   if(it.id==='jack'){holding='jack'; started=true;}
@@ -831,12 +956,13 @@ function updateWorkshopPull(){
   wRollSpin.rotation.x=-wPullLen/.25;
   if(curW()&&curW().pull&&wPullLen>=1.0&&playerPos.distanceTo(P_OUT)<1.6){holdingW=null; wStrip.visible=false; score+=50; toast(`✅ Изолон отмотан вручную: ${wPullLen.toFixed(2)} м`); advanceW();}
 }
-function updateWorkshop(dt){
+function updateWorkshop(dt){ updateAim();
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
+  if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng;}
   // held tool/sheet follows hands (in front of player)
   const f=dirOf(playerYaw);
-  for(const id in wTools){const t=wTools[id]; if(holdingW===id){t.position.set(playerPos.x+f.x*.52,1.02,playerPos.y+f.y*.52); t.rotation.y=playerYaw;}}
+  for(const id in wTools){const t=wTools[id]; if(holdingW===id&&!(wAnim&&wAnim.mode==='roll')){const hy=id==='riveter'?.86:id==='roller'?1.0:1.02; t.position.set(playerPos.x+f.x*.52,hy,playerPos.y+f.y*.52); t.rotation.y=playerYaw; if(id==='roller')t.rotation.x=-Math.PI/2;}}
   if(holdingW==='sheetW'){monogalSheet.position.set(playerPos.x+f.x*.5,1.0,playerPos.y+f.y*.5); monogalSheet.rotation.y=playerYaw;}
   updateHose();
   stacker.position.z=stacker.position.y||0;
@@ -844,7 +970,7 @@ function updateWorkshop(dt){
 function setWorkshopMode(){
   for(const o of [rack,pallet,zone,cart,izolonRoll,knife,tool]) o.visible=false;
   pallet.position.set(0,99,-20); stage=4; palletState='placed'; // disable warehouse slot logic
-  jackPos.set(-7.5,2.6); jackAng=0; playerPos.set(-9,3.6); playerYaw=.6; playerPitch=-.12;
+  jackPos.set(-8.5,-2.8); jackAng=0; playerPos.set(-9.2,-4.4); playerYaw=.3; playerPitch=-.12; // v5.9: jack parked south of supply spot, forks toward it
   cartPos.set(-20,-20);
   dots.innerHTML=''; WSteps.forEach(()=>{const d=document.createElement('div');d.className='dot';dots.appendChild(d);});
   $('btnLever').style.display='none';
@@ -852,7 +978,7 @@ function setWorkshopMode(){
   updateHUDW();
 }
 if(mode==='workshop'){ WG.visible=true; setWorkshopMode(); }
-else { WG.visible=false; stacker.visible=false; supplyPallet.visible=false; outputPallet.visible=false; goats.visible=false; bench.visible=false; insulPack.visible=false; compressor.visible=false; riffleSheet.visible=false; monogalSheet.visible=false; coverUnit.visible=false; wRoll.visible=false; for(const id in wTools)wTools[id].visible=false; hoseSegs.forEach(s=>s.visible=false);}
+else { WG.visible=false; stacker.visible=false; supplyPallet.visible=false; outputPallet.visible=false; goats.visible=false; bench.visible=false; insulPack.visible=false; batoStack.visible=false; compressor.visible=false; riffleSheet.visible=false; monogalSheet.visible=false; coverUnit.visible=false; wRoll.visible=false; for(const id in wTools)wTools[id].visible=false; hoseSegs.forEach(s=>s.visible=false);}
 // mode chooser overlay
 {const ov=document.createElement('div'); ov.id='modeChooser';
  ov.style.cssText='position:fixed;inset:auto 10px 64px 10px;z-index:9;display:flex;gap:10px;justify-content:center;pointer-events:none';
@@ -871,9 +997,20 @@ if(mode==='workshop'&&wdemo){
   if(wdemo==='w_stacker'){ stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.set(-9.5,0,0); stacker.position.set(-11,0,0); setGate(gateA,1); jackPos.set(3,6); wLook(-6.2,2.6,-11,0,-.25); }
   if(wdemo==='w_trestle_side'){ wLook(0,2.6,0,0,-.22); }
   if(wdemo==='w_trestle_end'){ wLook(-.65,-2.4,-.65,0,-.2); }
-  if(wdemo==='w_shield'){ partShield(); wIndex=3; wLook(-2.6,2.2,0,0,-.35); }
+  const WI=t=>Math.max(0,WSteps.findIndex(x=>x.title.includes(t)));
+  if(wdemo==='w_section'){ partShield(); wIndex=WI('Вставь заклёпки'); wLook(-1.9,0,0,0,-.08); window.demoCamY=.92; }
+  if(wdemo==='w_haul'){ stackOnSupply('shield'); supplyPallet.visible=true; holding='jack'; jackPos.set(-4.6,-.9); jackAng=.9; supplyCarried=true; const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng; wIndex=WI('Довези'); holding=null; wLook(-2.6,-3.2,-4.6,-.9,-.35); }
+  if(wdemo==='w_aim'){ wLook(3.0,-2.55,2.7,-3.7,-.62); }
+  if(wdemo==='w_bato'){ wLook(2.2,-.4,2.2,-1.9,-.55); }
+  if(wdemo==='w_roller'){ wLook(3.92,-2.95,3.92,-3.4,-.6); window.demoCamY=1.25; window.noGlow=true; }
+  if(wdemo==='w_riveter_close'){ wLook(2.6,-3.3,3.15,-3.3,-.45); window.demoCamY=1.2; window.noGlow=true; }
+  if(wdemo==='w_gateA_closed'){ wLook(-6.5,0,-12,0,.12); }
+  if(wdemo==='w_gateA_open'){ setGate(gateA,1); stacker.position.set(-11.6,0,0); stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.set(-10,0,0); wLook(-6.5,0,-12,0,.12); }
+  if(wdemo==='w_gateB_closed'){ wLook(6.5,0,12,0,.12); }
+  if(wdemo==='w_gateB_open'){ setGate(gateB,1); stacker.position.set(11.2,0,0); wLook(6.5,0,12,0,.12); }
+  if(wdemo==='w_shield'){ partShield(); wIndex=WI('Вставь заклёпки'); wLook(-2.6,2.2,0,0,-.35); }
   if(wdemo==='w_riveter'){ partShield(); insertRivets(); holdingW='riveter'; wIndex=5; wLook(-1.8,1.9,0,0,-.3); const f=dirOf(playerYaw); wTools.riveter.position.set(playerPos.x+f.x*.52,1.02,playerPos.y+f.y*.52); updateHose(); }
-  if(wdemo==='w_insulation'){ partShield(); curPart.rotation.x=Math.PI; insulMesh=wbox(curPart,0,-.035,0,1.9,.018,.9,0x5f6d7a); holdingW='roller'; wIndex=8; wLook(-2.4,2.1,0,0,-.32); }
+  if(wdemo==='w_insulation'){ partShield(); curPart.rotation.x=Math.PI; curPart.position.y=.85; insulMesh=new THREE.Group(); curPart.add(insulMesh); for(let k=0;k<4;k++){const len=k<3?.6:.3; const st=batoSheet(len-.004,.275); st.position.set(-1.05+k*.6+len/2,-.003,.02); st.rotation.x=Math.PI; insulMesh.add(st);} holdingW='roller'; wIndex=8; wLook(-2.4,2.1,0,0,-.32); }
   if(wdemo==='w_floor'){ partFloor(); const m=new THREE.Mesh(new THREE.BoxGeometry(1.35,.025,1.05),new THREE.MeshPhysicalMaterial({map:diamondTex(),roughness:.35,clearcoat:.6})); m.position.y=.045; curPart.add(m); insertRivets(); wIndex=28; wLook(-2.4,2.2,0,0,-.35); }
   if(wdemo==='w_ceiling'){ partCeiling(); wIndex=35; wLook(-2.6,2.4,0,0,-.38); }
   if(wdemo==='w_plafond'){ partPlafond(); monogalOnPart=new THREE.Mesh(new THREE.BoxGeometry(1.1,.012,.34),new THREE.MeshPhysicalMaterial({color:0xeaf7ff,transparent:true,opacity:.5,clearcoat:1})); monogalOnPart.position.y=.038; curPart.add(monogalOnPart);
@@ -891,7 +1028,7 @@ if(demo==='onpallet'){
   jackPos.set(0,-5.85); jackAng=0; holding='jack'; started=true; stage=1; palletState='ready'; // v5.5 inserted from north, forks south
   playerPos.copy(jackPos).addScaledVector(dirOf(jackAng+Math.PI),1.5); playerYaw=jackAng; playerPitch=-.10;
   if(slotShake>0){slotShake=Math.max(0,slotShake-0.04)}
- camera.position.set(playerPos.x+(slotShake? (Math.random()-.5)*.03*slotShake:0),1.62,playerPos.y);
+ camera.position.set(playerPos.x+(slotShake? (Math.random()-.5)*.03*slotShake:0),(window.demoCamY||1.62),playerPos.y);
   // pre-place hands exactly on grip
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng;
   jack.updateMatrixWorld(true);
@@ -961,7 +1098,7 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  if(mode==='warehouse'&&stage<=1)updateSlotHighlight();
  // camera = eyes
  const effYaw=(holding==='jack'||holding==='cart')?playerYaw+lookOffset:playerYaw;
- camera.position.set(playerPos.x,1.62,playerPos.y);
+ camera.position.set(playerPos.x,(window.demoCamY||1.62),playerPos.y);
  camera.rotation.set((holding==='jack'||holding==='cart')?playerPitch-.42:playerPitch,effYaw+Math.PI,0);
  updateHands(dt);
  zone.children[0].material.opacity=.28+.14*Math.sin(performance.now()*.004);
