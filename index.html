@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v6.0 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v6.1 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.0 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.1 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(52% + 18px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -44,6 +44,8 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 <script type="module">
 import * as THREE from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -194,69 +196,53 @@ const sTop=strapBox(1.5,.025,.09),sBot=strapBox(1.5,.025,.09),sF=strapBox(1.5,.3
 const strapLineMat=new THREE.LineBasicMaterial({color:0xe8eef2});
 let strapLine=null;
 
-// ---------- v6.0 REALISTIC HANDS: anatomical proportions (adult, mm), 4 fingers x 3 tapered phalanges with knuckles + nails,
-// thumb from palm base ~40deg with thenar bulge, smooth superellipsoid palm, wrist->forearm, workwear sleeve. Joint hierarchy = finger skeleton.
-const SKIN_M=new THREE.MeshStandardMaterial({color:0xd9a47c,roughness:.78,metalness:0}), NAIL_M=new THREE.MeshStandardMaterial({color:0xe8c0a6,roughness:.35});
+// ---------- v6.1 HANDS: Blender-built single smooth skinned mesh (hand.glb, ~5.7k tris, SDF + marching cubes -> smooth -> decimate,
+// armature forearm/hand/thumb_0..3/index|middle|ring|little_1..3, auto weights). Right hand in GLB; left = mirror (scale.x=-1).
+// Game hand frame: palm at origin, fingers -Z, back of hand +Y, forearm +Z. Bones flex toward palm with NEGATIVE local X rotation.
 const SLEEVE_M=new THREE.MeshStandardMaterial({color:0x2f4a73,roughness:.9});
-function superBlob(w,h,l,e=.35,seg=24){ // smooth rounded block (superellipsoid), w along x, h along y, l along z
-  const g=new THREE.SphereGeometry(1,seg,seg*0.75|0); const p=g.attributes.position; const sp=(v)=>Math.sign(v)*Math.pow(Math.abs(v),e);
-  for(let i=0;i<p.count;i++){p.setXYZ(i,sp(p.getX(i))*w/2,sp(p.getY(i))*h/2,sp(p.getZ(i))*l/2);} g.computeVertexNormals(); return g;}
-function phalanx(len,r0,r1){ // tapered segment along -z with rounded ends
-  const g=new THREE.Group();
-  const c=new THREE.Mesh(new THREE.CylinderGeometry(r1,r0,len,16,1,true),SKIN_M); c.rotation.x=-Math.PI/2; c.position.z=-len/2; c.scale.set(1,1,.86); g.add(c);
-  const k=new THREE.Mesh(new THREE.SphereGeometry(r0,16,12),SKIN_M); k.scale.set(1,.86,1); g.add(k); // knuckle at joint
-  c.castShadow=k.castShadow=true; return g;}
-function makeFinger(len,wid){ // len[3] m, wid base radius*2
-  const root=new THREE.Group(); let parent=root; const joints=[]; let r=wid/2;
-  for(let i=0;i<3;i++){
-    const j=new THREE.Group(); if(i>0)j.position.z=-len[i-1]; parent.add(j); joints.push(j);
-    const r1=r*(i===2?.80:.90); j.add(phalanx(len[i],r,r1));
-    if(i===2){const tip=new THREE.Mesh(new THREE.SphereGeometry(r1,16,12),SKIN_M); tip.position.z=-len[i]; tip.scale.set(1,.85,1.1); j.add(tip);
-      const nail=new THREE.Mesh(superBlob(r1*1.55,r1*.35,len[i]*.62,.5,14),NAIL_M); nail.position.set(0,r1*.72,-len[i]*.62); nail.rotation.x=.08; j.add(nail);}
-    r=r1; parent=j;
-  }
-  root.userData.joints=joints; return root;
+const FORE_TILT=.62;
+const HAND_FINGERS=['index','middle','ring','little','thumb'];
+let HAND_GLTF=null; const handWaiters=[];
+function attachHandModel(g){
+  const inner=SkeletonUtils.clone(HAND_GLTF.scene); inner.rotation.x=-Math.PI/2+FORE_TILT; inner.position.set(0,0,.05); if(g.userData.side<0) inner.scale.x=-1;
+  g.add(inner); const bones={};
+  inner.traverse(o=>{ if(o.isBone){bones[o.name]=o; o.userData.rest=o.quaternion.clone();}
+    if(o.isMesh){o.castShadow=true; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{m.roughness=Math.max(m.roughness,.55); m.side=THREE.FrontSide;});}});
+  g.userData.fingers=HAND_FINGERS.map(n=>({userData:{joints:[1,2,3].map(i=>bones[n+'_'+i]).filter(Boolean)},base:n==='thumb'?bones['thumb_0']:null}));
+  g.userData.bones=bones;
+  // forearm tilts down FORE_TILT about the wrist (like the sleeve); counter-rotate the hand bone so the palm keeps the game hand frame
+  const hb=bones['hand']; if(hb){ g.updateMatrixWorld(true); const gq=g.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const pq=gq.clone().multiply(hb.parent.getWorldQuaternion(new THREE.Quaternion())); const Rg=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-FORE_TILT);
+    hb.quaternion.copy(pq.clone().invert().multiply(Rg).multiply(pq).multiply(hb.quaternion));}
+  setCurl(g,g.userData.curl??.2);
 }
+new GLTFLoader().load('hand.glb',gl=>{HAND_GLTF=gl; handWaiters.splice(0).forEach(attachHandModel);},undefined,e=>console.warn('hand.glb',e));
 function makeHand(side){
-  const g=new THREE.Group(); g.name=side<0?'Hand_L':'Hand_R';
-  const palm=new THREE.Mesh(superBlob(.084,.03,.098,.62),SKIN_M); palm.position.z=.0; palm.castShadow=true; g.add(palm);
-  // knuckle ridge + thenar (thumb ball) + hypothenar bulges on the palm side
-  const ridge=new THREE.Mesh(superBlob(.08,.026,.03,.8),SKIN_M); ridge.position.set(0,.0,-.043); ridge.scale.set(1,.85,.8); g.add(ridge);
-  const thx=-side; // anatomical: back of hand +Y, fingers -Z -> right-hand thumb on -X
-  const thenar=new THREE.Mesh(new THREE.SphereGeometry(.026,18,14),SKIN_M); thenar.scale.set(.85,.62,1.35); thenar.position.set(thx*.022,-.004,.018); g.add(thenar);
-  const hypo=new THREE.Mesh(new THREE.SphereGeometry(.02,16,12),SKIN_M); hypo.scale.set(.8,.55,1.6); hypo.position.set(-thx*.027,-.003,.012); g.add(hypo);
-  // wrist + forearm + workwear sleeve
-  const wrist=new THREE.Mesh(superBlob(.062,.036,.05,.5),SKIN_M); wrist.position.set(0,-.002,.062); g.add(wrist);
-  const forePivot=new THREE.Group(); forePivot.position.set(0,-.003,.07); forePivot.rotation.x=.62; g.add(forePivot);
-  const fore=new THREE.Mesh(new THREE.CylinderGeometry(.027,.038,.5,20),SKIN_M); fore.rotation.x=Math.PI/2; fore.scale.set(1,1,.8); fore.position.z=.25; forePivot.add(fore);
-  const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(.04,.046,.34,20),SLEEVE_M); sleeve.rotation.x=Math.PI/2; sleeve.position.z=.47; forePivot.add(sleeve);
-  const cuff=new THREE.Mesh(new THREE.TorusGeometry(.04,.006,8,24),SLEEVE_M); cuff.position.z=.30; forePivot.add(cuff);
-  // fingers: index, middle (longest), ring, little — index on thumb side
-  const F=[[.042,.025,.020,.0185],[.047,.029,.021,.019],[.044,.027,.020,.018],[.035,.020,.018,.0155]];
-  const fingers=[];
-  for(let i=0;i<4;i++){const d=F[i]; const f=makeFinger([d[0],d[1],d[2]],d[3]); const x=thx*(.030-i*.020); f.position.set(x,.001,-.050+(i===1?-.004:i===3?.007:0)); f.rotation.y=thx*(.05-i*.035); g.add(f); fingers.push(f);}
-  // thumb: metacarpal hidden in thenar, emerges from palm base at ~40deg outward
-  const thumbBase=new THREE.Group(); thumbBase.position.set(thx*.036,-.007,.004); thumbBase.rotation.set(-.45,-thx*.52,-thx*.6); g.add(thumbBase);
-  const thumb=makeFinger([.034,.030,.026],.022); thumbBase.add(thumb); fingers.push(thumb);
-  g.userData={fingers,side,thumb,fore:forePivot};
+  const g=new THREE.Group(); g.name=side<0?'Hand_L':'Hand_R'; g.userData={fingers:[],side};
+  // workwear sleeve starts ~9 cm behind the wrist so the whole hand stays visible in grip poses
+  const forePivot=new THREE.Group(); forePivot.position.set(0,0,.05); forePivot.rotation.x=FORE_TILT; g.add(forePivot); g.userData.fore=forePivot;
+  const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(.037,.042,.36,20),SLEEVE_M); sleeve.rotation.x=Math.PI/2; sleeve.position.z=.30; forePivot.add(sleeve);
+  const cuff=new THREE.Mesh(new THREE.TorusGeometry(.036,.006,8,24),SLEEVE_M); cuff.position.z=.125; forePivot.add(cuff);
+  if(HAND_GLTF) attachHandModel(g); else handWaiters.push(g);
   scene.add(g); return g;
+}
+const _qx=new THREE.Quaternion(), _ax=new THREE.Vector3(1,0,0), _axT=new THREE.Vector3(0,0,1).normalize(); // thumb flexes across the palm
+function setCurl(hand,curl){
+  hand.userData.fingers.forEach((f,fi)=>{
+    const isThumb=fi===4;
+    f.userData.joints.forEach((j,i)=>{
+      const a=isThumb?curl*(i===0?.5:i===1?.7:.7):curl*(i===0?1.2:i===1?1.45:1.0)+.06*(1-curl)*(i+1);
+      j.quaternion.copy(j.userData.rest).multiply(_qx.setFromAxisAngle(isThumb?_axT:_ax,-a));
+    });
+    if(isThumb&&f.base) f.base.quaternion.copy(f.base.userData.rest).multiply(_qx.setFromAxisAngle(new THREE.Vector3(0,0,1),-curl*.25)).multiply(new THREE.Quaternion().setFromAxisAngle(_ax,-curl*.35));
+  });
 }
 const handL=makeHand(-1), handR=makeHand(1);
 let handScene=null, handCam=null;
 if(new URLSearchParams(location.search).get('demo')==='hands'){ handScene=new THREE.Scene(); handScene.background=new THREE.Color(0x2a2a2a);
   handScene.add(new THREE.HemisphereLight(0xffffff,0x444444,1.6)); const dl=new THREE.DirectionalLight(0xffffff,1.6); dl.position.set(.5,1,2); handScene.add(dl);
-  handCam=new THREE.OrthographicCamera(-.36,.36,.16,-.16,.01,10); handCam.position.set(0,0,2);
-  [0,-Math.PI/2,Math.PI,Math.PI/2].forEach((ry,i)=>{const h=makeHand(1); scene.remove(h); const pv=new THREE.Group(); pv.position.set(-.27+i*.18,-.01,0); pv.rotation.y=ry; h.rotation.x=Math.PI/2; pv.add(h); handScene.add(pv); setCurl(h,.05); h.userData.fore.rotation.x=0;});}
-function setCurl(hand,curl){
-  hand.userData.fingers.forEach((f,fi)=>{
-    const isThumb=fi===4;
-    f.userData.joints.forEach((j,i)=>{
-      // fingers wrap DOWN/around a horizontal bar; thumb wraps from opposite side (extra yaw handled in pose)
-      j.rotation.x=-(curl*(isThumb?.6:(i===0?1.15:i===1?1.35:1.0)))-(isThumb?0:.12*(1-curl));
-    });
-    if(isThumb) f.rotation.x=curl*.5; // thumb tips in from below/opposite side of bar
-  });
-}
+  handCam=new THREE.OrthographicCamera(-.36,.36,.17,-.15,.01,10); handCam.position.set(0,0,2);
+  [0,-Math.PI/2,Math.PI,Math.PI/2].forEach((ry,i)=>{const h=makeHand(1); scene.remove(h); const pv=new THREE.Group(); pv.position.set(-.27+i*.18,-.01,0); pv.rotation.y=ry; h.rotation.x=Math.PI/2; pv.add(h); handScene.add(pv); h.userData.curl=new URLSearchParams(location.search).get('curl')?+new URLSearchParams(location.search).get('curl'):.05; h.userData.fore.visible=false;});}
 setCurl(handL,.2); setCurl(handR,.2);
 // desired hand poses each frame
 const _v=new THREE.Vector3(), _v2=new THREE.Vector3(), _q=new THREE.Quaternion(), _e=new THREE.Euler();
