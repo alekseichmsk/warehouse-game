@@ -163,8 +163,13 @@ const looseStrip=box(scene,0,-1,0,1.30,.02,.95,0xfff7fb); looseStrip.visible=fal
 const strip=box(scene,0,-1,0,1.35,.03,.18,0xf3fbff); strip.visible=false;
 const knife=new THREE.Group(); knife.visible=false; scene.add(knife);
 box(knife,0,0,0,.09,.05,.34,M.yellow); box(knife,0,0,.24,.05,.025,.14,0xcfd6dc); box(knife,-.02,.035,.02,.06,.03,.12,M.black);
-const tool=new THREE.Group(); tool.scale.setScalar(.8); scene.add(tool); // strapper sits on cart top
-box(tool,0,0,0,.35,.15,.18,M.teal); box(tool,.10,.12,0,.22,.08,.14,M.dark); box(tool,-.13,.09,0,.07,.16,.07,M.black); // strapper 350x150x180, battery rear, top handle
+const tool=new THREE.Group(); scene.add(tool); // VertexTools 14.4V V2 strapper: ~370x130x160, teal, battery 14.4V rear/bottom, nose head front, top handle+display
+box(tool,0,0,0,.13,.15,.37,M.teal); // elongated body 370 long (Z), 130 wide, 150 high
+box(tool,0,.02,.19,.11,.11,.07,M.teal); // nose/head front where strap passes
+box(tool,0,-.045,.215,.07,.03,.02,0x333a3f); // strap slot at nose
+box(tool,0,.115,-.02,.05,.06,.24,M.black); // top handle along body
+box(tool,0,.09,.10,.09,.025,.07,0x2b3442); // small display/buttons on top
+box(tool,0,-.06,-.17,.12,.07,.10,M.black); // battery 14.4V at rear/bottom-rear
 const strapG=new THREE.Group(); strapG.visible=false; scene.add(strapG);
 const strapMat=mat(0xdde3e8,.4);
 function strapBox(w,h,d){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),strapMat);m.castShadow=true;strapG.add(m);return m}
@@ -239,7 +244,7 @@ const stages=[
  ["5. Подкати тележку — БАБИНОЙ вперёд","Подойди к ручке тележки сзади, нажми «Взять». Лицевая часть тележки — где бабина с лентой: кати её БАБИНОЙ к поддону, ручка остаётся у тебя сзади.","Ехать"],
  ["6. Изолон: отмотай от рулона, отрежь у рулона, положи на поддон","Большой рулон изолона стоит рядом с площадкой. 1) «Отмотай изолон от рулона» — рулон крутится, полоса тянется. 2) Возьми нож у рулона и «Отрежь полосу ножом у рулона». 3) «Положи полосу на поддон».","Отмотай изолон от рулона"],
  ["7. Протяни ленту под поддоном","Подойди к тележке у поддона и нажми «Протянуть ленту»: передняя бабина раскрутится, лента уйдёт под поддон и вокруг него.","Протянуть ленту"],
- ["8. Затяни стреппером","Стрепер лежит на тележке. Возьми его руками («Взять стреппер»), подойди к поддону и нажми «Затянуть».","Затянуть стреппером"],
+ ["8. Затяни стреппером","Упаковщик VertexTools лежит в корзинке/лотке тележки H-83. Подойди к тележке, возьми его из лотка («Взять»), подойди к поддону и нажми «Затянуть».","Затянуть стреппером"],
 ];
 let stage=0, pumps=0, score=0, elapsed=0, started=false, finished=false;
 let leverPos='neutral', leverAnim=0; // 3-position control lever: 'lift' | 'neutral' | 'lower' (Jungheinrich/Toyota principle)
@@ -250,7 +255,7 @@ let anim=null, pumpT=0, cutHandPos=null;
 let jackPos=new THREE.Vector2(-2.0,-2.4), jackAng=Math.PI, steer=0, jackVel=0;
 let cartPos=new THREE.Vector2(-6,3.5), cartAng=Math.PI/2, cartVel=0;
 let playerPos=new THREE.Vector2(0.7,0.9), playerYaw=-2.62, playerPitch=-.10, lookOffset=0, demoFreeze=false;
-tool.position.set(-6,.92,3.15);
+tool.position.set(-6,.58,3.15); // immediately snapped into H-83 tray by updateHands (stage<7 follows cart)
 const $=id=>document.getElementById(id);
 const dots=$('dots'); stages.forEach(()=>{const d=document.createElement('div');d.className='dot';dots.appendChild(d)});
 function angDiff(a,b){let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d}
@@ -312,7 +317,7 @@ function nearestInteract(){
  const jp=gripWorld(jackGrip); if(playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))<1.8)cands.push({id:'jack',label:'✋ Взять ручку рохли',d:playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))});
  const cp=gripWorld(cartGrip); if(playerPos.distanceTo(new THREE.Vector2(cp.x,cp.z))<1.8)cands.push({id:'cart',label:'✋ Взять ручку тележки',d:playerPos.distanceTo(new THREE.Vector2(cp.x,cp.z))});
  if(stage===5&&sheetSub===1&&knife.visible){const kp=knife.position; if(playerPos.distanceTo(new THREE.Vector2(kp.x,kp.z))<1.9)cands.push({id:'knife',label:'✋ Взять нож',d:playerPos.distanceTo(new THREE.Vector2(kp.x,kp.z))})}
- if(stage===7&&tool.visible!==false){const tp=tool.position; if(playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))<1.9)cands.push({id:'tool',label:'✋ Взять стреппер',d:playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))})}
+ if(stage===7&&tool.visible!==false){const tp=tool.position; if(playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))<1.9)cands.push({id:'tool',label:'✋ Взять упаковщик из лотка тележки',d:playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))})}
  cands.sort((a,b)=>a.d-b.d); return cands[0]||null;
 }
 $('btnTake').onclick=doTake;
@@ -353,7 +358,7 @@ function doAction(){
  else if(stage===5&&sheetSub===2){ const px=pallet.position.x,pz=pallet.position.z; looseStrip.visible=false;
    anim={t:0,dur:1.0,fn:k=>{sheet.visible=true; sheet.position.set(px,1.5-1.32*k,pz+.02); sheet.rotation.y=(1-k)*.4},done:()=>{sheet.position.y=.185; nextStage('⬜ Полоса изолона на поддоне! Теперь лента')}}}
  else if(stage===6){strapG.visible=true;positionStrap(0.02);
-   anim={t:0,dur:3,fn:k=>{bobbin.rotation.x-=0.38; positionStrap(k); drawLooseStrap(k)},done:()=>{if(strapLine){scene.remove(strapLine);strapLine=null} tool.position.set(cartPos.x,.92,cartPos.y); toast('🧵 Лента вокруг поддона! Возьми стреппер на тележке');nextStage()}}}
+   anim={t:0,dur:3,fn:k=>{bobbin.rotation.x-=0.38; positionStrap(k); drawLooseStrap(k)},done:()=>{if(strapLine){scene.remove(strapLine);strapLine=null} tool.position.set(cartPos.x,.58,cartPos.y); toast('🧵 Лента вокруг поддона! Возьми стреппер на тележке');nextStage()}}}
  else if(stage===7&&holding==='tool'){const px=pallet.position.x,pz=pallet.position.z;
    anim={t:0,dur:2,mode:'tighten',fn:k=>{tool.position.set(px+Math.sin(k*42)*.012*(1-k),.36,pz+.1); strapG.scale.y=1-.16*k; strapG.position.y=.025*k},done:()=>{holding=null;tool.position.set(px+.8,.24,pz+.8);finished=true;score+=200;toast('🎉 Готово! Поддон обвязан лентой',3200);updateHUD()}}}
 }
@@ -501,7 +506,7 @@ function updateHands(dt){
  }
  moveHand(handL,poseL,dt,curlL); moveHand(handR,poseR,dt,curlR);
  // free strapper rests on cart until stage7 placement overrides handled in actions; keep on cart top when stage<7 and not holding
- if(holding!=='tool'&&!(anim&&anim.mode==='tighten')&&stage<7){const cq=cart.quaternion; const off=new THREE.Vector3(-.05,.92,-.18).applyQuaternion(cq); tool.position.copy(cart.position).add(off); tool.rotation.y=cartAng}
+ if(holding!=='tool'&&!(anim&&anim.mode==='tighten')&&stage<7){const cq=cart.quaternion; const off=new THREE.Vector3(-.05,.56,-.18).applyQuaternion(cq); tool.position.copy(cart.position).add(off); tool.rotation.y=cartAng}
 }
 
 // ---------- Demo modes for screenshots ----------
