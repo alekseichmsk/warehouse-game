@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад v5.2 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад v5.3 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.2 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.3 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -98,31 +98,31 @@ const jack=new THREE.Group(); jack.name='PalletJack'; scene.add(jack);
 // Silhouette from user drawing (1000mm total, body top 365mm, fork top ~60mm, handle 1150mm, ONE big steering wheel Ø190, twin small rollers).
 // Game scale keeps fork centres at +-0.19 so forks still enter pallet slots; visually forks are thin 80mm plates with rounded tips.
 const jackForks=new THREE.Group(); jackForks.name='Forks_Lift'; jack.add(jackForks);
-const Fork_Left=box(jackForks,-.19,.038,.55,.075,.030,1.02,M.teal); Fork_Left.name='Fork_Left';
-const Fork_Right=box(jackForks,.19,.038,.55,.075,.030,1.02,M.teal); Fork_Right.name='Fork_Right';
-for(const x of[-.19,.19]){const tip=cyl(jackForks,x,.042,1.05,.04,.035,M.teal,'y',20); tip.name='ForkTip_Round';}
+const Fork_Left=box(jackForks,-.19,.04,.57,.08,.045,1.10,M.teal); Fork_Left.name='Fork_Left';
+const Fork_Right=box(jackForks,.19,.04,.57,.08,.045,1.10,M.teal); Fork_Right.name='Fork_Right';
+for(const x of[-.19,.19]){const tip=cyl(jackForks,x,.04,1.12,.04,.045,M.teal,'y',20); tip.name='ForkTip_Round';}
 const rollerSpinGroups=[];
 function makeRollers(x,name){
   const g=new THREE.Group(); g.name=name; jackForks.add(g);
-  for(const z of[.90,.99]){const axle=new THREE.Group(); axle.position.set(x,.028,z); const m=cyl(axle,0,0,0,.028,.055,M.dark,'x',18); m.name=name+'_Roller'; g.add(axle); rollerSpinGroups.push(axle);}
+  for(const z of[.95,1.04]){const axle=new THREE.Group(); axle.position.set(x,.028,z); const m=cyl(axle,0,0,0,.028,.055,M.dark,'x',18); m.name=name+'_Roller'; g.add(axle); rollerSpinGroups.push(axle);}
   return g;
 }
 const Roller_Left=makeRollers(-.19,'Roller_Left');
 const Roller_Right=makeRollers(.19,'Roller_Right');
 const Body_Hydraulic=new THREE.Group(); Body_Hydraulic.name='Body_Hydraulic'; jackForks.add(Body_Hydraulic);
-// v5.2 silhouette: LOW elongated pump (top ~0.24) with long sloped nose down to forks, NOT a tall cube.
-// Main low body + sloped wedge nose (rotated thin box reads as wedge in profile) + small neck.
-box(Body_Hydraulic,0,.135,-.02,.26,.17,.44,M.teal);
-const slopeNose=box(Body_Hydraulic,0,.115,.245,.24,.15,.30,M.teal); slopeNose.rotation.x=.62; slopeNose.name='Body_SlopedNose';
-box(Body_Hydraulic,0,.255,-.10,.15,.09,.16,M.teal);
-for(const sx of[-.135,.135]) box(Body_Hydraulic,sx,.16,-.20,.025,.20,.10,M.dark); // steering bracket cheeks beside big wheel
-const Pump_Piston=cyl(jackForks,0,.335,-.10,.024,.085,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.335;
+// v5.3 silhouette: COMPACT pump block only (0.24w x 0.32L x 0.26h, top 0.32) at forks root.
+// NO wedge/slope: forks are long low plates from block face; only a short flat link joins them.
+box(Body_Hydraulic,0,.225,-.12,.24,.23,.32,M.teal);
+box(Body_Hydraulic,0,.355,-.16,.15,.05,.18,M.teal);
+box(Body_Hydraulic,0,.045,.08,.18,.04,.22,M.teal); // short flat chassis link, horizontal
+for(const sx of[-.135,.135]) box(Body_Hydraulic,sx,.17,-.28,.025,.18,.09,M.dark); // steering bracket cheeks beside big wheel
+const Pump_Piston=cyl(jackForks,0,.41,-.16,.024,.07,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.41;
 const steerGroup=new THREE.Group(); steerGroup.name='Steering_Unit'; jack.add(steerGroup);
-const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.105,-.235); steerGroup.add(Steering_Wheel);
-const steerWheel=cyl(Steering_Wheel,0,0,0,.105,.052,0xff3b30,'x',30); steerWheel.name='Steering_Wheel_Mesh';
+const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.095,-.30); steerGroup.add(Steering_Wheel);
+const steerWheel=cyl(Steering_Wheel,0,0,0,.095,.052,0xff3b30,'x',30); steerWheel.name='Steering_Wheel_Mesh';
 cyl(Steering_Wheel,0,0,0,.030,.060,0xd7dde2,'x',16);
-const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.115,.009,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.set(0,.108,-.235); steerGroup.add(steerRing);
-const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.30,-.10); steerGroup.add(Handle_Column);
+const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.115,.009,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.set(0,.098,-.30); steerGroup.add(steerRing);
+const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.35,-.16); steerGroup.add(Handle_Column);
 const handlePivot=Handle_Column;
 const handleBar=box(Handle_Column,0,.36,-.20,.035,.78,.035,M.black); handleBar.name='Handle_Column_Mesh'; handleBar.rotation.x=-.38; // top leans BACK to grip (RotX+ would lean top toward forks, disconnecting loop)
 const Release_Lever=box(Handle_Column,0,.66,-.40,.20,.035,.08,M.red); Release_Lever.name='Release_Lever';
@@ -373,7 +373,7 @@ function drawLooseStrap(k){if(strapLine)scene.remove(strapLine);
  const bp=new THREE.Vector3(); bobbin.getWorldPosition(bp);
  const pts=[bp,new THREE.Vector3(bp.x*.5+pallet.position.x*.5,.22,bp.z*.5+pallet.position.z*.5),new THREE.Vector3(pallet.position.x,.1,pallet.position.z+.55)];
  strapLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),strapLineMat); scene.add(strapLine)}
-function forkCenter(){const f=dirOf(jackAng);return new THREE.Vector2(jackPos.x+f.x*0.62,jackPos.y+f.y*0.62)}
+function forkCenter(){const f=dirOf(jackAng);return new THREE.Vector2(jackPos.x+f.x*0.57,jackPos.y+f.y*0.57)}
 
 // ---------- Stage checks ----------
 function slotAim(){
@@ -447,15 +447,15 @@ function updateJack(dt,inp){
    // swung opposite to the wheel when pushing forks-first.
    // NEW: signed rate - pushing (v>0) and pulling (v<0) turn the body in opposite
    // senses, and at standstill (v=0) body is frozen. Left wheel + push => nose LEFT.
-   const WHEELBASE=0.95;
+   const WHEELBASE=1.15;
    jackAng += (jackVel*Math.sin(steer)/WHEELBASE)*dt;
-   Steering_Wheel.rotation.x+=jackVel*dt/.105; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028;
+   Steering_Wheel.rotation.x+=jackVel*dt/.095; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028;
  } // else: jackAng FROZEN - cannot spin forks on the spot
  jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-4.8,8);
  // PALLET SLOT COLLISION (stage 0, pallet still on rack floor)
  if((stage===0||stage===1)&&palletState!=='onForks'){
    const fc=forkCenter(); const pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
-   const tip=new THREE.Vector2().copy(jackPos).addScaledVector(dirOf(jackAng),1.22);
+   const tip=new THREE.Vector2().copy(jackPos).addScaledVector(dirOf(jackAng),1.15);
    const insidePallet=(v)=>Math.abs(v.x-pp.x)<.78&&Math.abs(v.y-pp.y)<.55;
    const aim=slotAim();
    if((insidePallet(tip)||insidePallet(fc))&&!aim.ok){
