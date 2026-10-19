@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад v5.4 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад v5.5 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.4 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v5.5 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div>
 <div id="joy"><div id="stick"></div></div>
@@ -75,7 +75,7 @@ const zone=new THREE.Group(); zone.position.set(4.6,0.02,2.6); scene.add(zone);
 const zp=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.7),new THREE.MeshBasicMaterial({color:0xffe600,transparent:true,opacity:.38})); zp.rotation.x=-Math.PI/2; zone.add(zp);
 const zline=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-1.6,0,-1.35),new THREE.Vector3(1.6,0,-1.35),new THREE.Vector3(1.6,0,1.35),new THREE.Vector3(-1.6,0,1.35)]),new THREE.LineBasicMaterial({color:0xffd83d})); zline.position.y=.03; zone.add(zline);
 // Rack
-const rack=new THREE.Group(); rack.position.set(0,0,-6.2); scene.add(rack);
+const rack=new THREE.Group(); rack.position.set(0,0,-8.7); scene.add(rack); // v5.5: rack moved north so jack+operator fit BEHIND pallet (new entry side)
 for(const x of[-2.7,-.9,.9,2.7]){box(rack,x,1.5,.45,.16,3,.16,M.blue);box(rack,x,1.5,-.45,.16,3,.16,M.blue)}
 for(const y of[.55,1.65,2.75]) for(const z of[.45,-.45]) box(rack,0,y,z,5.6,.18,.14,M.orange);
 box(rack,-1.4,1.05,0,1.4,.7,.9,0x8d6b48); box(rack,1.5,2.2,0,1.5,.65,.9,0x777777);
@@ -83,14 +83,16 @@ box(rack,-1.4,1.05,0,1.4,.7,.9,0x8d6b48); box(rack,1.5,2.2,0,1.5,.65,.9,0x777777
 function makePallet(){const g=new THREE.Group(); for(let i=0;i<5;i++) box(g,-.6+i*.3,.14,0,.22,.05,.95,i%2?M.wood:M.wood2);
  for(const x of[-.62,0,.62]) for(const z of[-.4,0,.4]) box(g,x,.07,z,.2,.09,.16,M.wood2);
  for(let i=0;i<3;i++) box(g,0,.015,-.4+i*.4,1.45,.03,.18,M.wood); return g}
-const pallet=makePallet(); pallet.position.set(0,0,-5.2); scene.add(pallet);
+const pallet=makePallet(); pallet.position.set(0,0,-5.2); pallet.rotation.y=0; scene.add(pallet);
+// v5.5: entry side flipped 180deg. Entry face is NORTH (-Z, rack side); south face (aisle) is closed by a plank so old side visibly does not work.
+box(pallet,0,.075,.44,1.45,.11,.07,0x8d6b48);
 // slot highlights (entry gaps between blocks, forks at x +-0.31)
 const slotMatL=new THREE.MeshBasicMaterial({color:0x888888,transparent:true,opacity:.45,depthWrite:false});
 const slotMatR=slotMatL.clone();
 function slotBox(mat,x){const m=new THREE.Mesh(new THREE.BoxGeometry(.20,.075,.86),mat);m.position.set(x,.075,0);pallet.add(m);return m}
 slotBox(slotMatL,-.19); slotBox(slotMatR,.19); // fork channels align with forks at +-190mm
-for(const zz of[-.54,.54]){const a=new THREE.Mesh(new THREE.BoxGeometry(.22,.13,.09),slotMatL);a.position.set(-.31,.065,zz);pallet.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(.22,.13,.09),slotMatR);b.position.set(.31,.065,zz);pallet.add(b)}
-for(const zz of[-.82,.82]){const a=new THREE.Mesh(new THREE.BoxGeometry(.18,.018,.5),slotMatL);a.position.set(-.31,.02,zz);pallet.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(.18,.018,.5),slotMatR);b.position.set(.31,.02,zz);pallet.add(b)}
+for(const zz of[-.54]){const a=new THREE.Mesh(new THREE.BoxGeometry(.22,.13,.09),slotMatL);a.position.set(-.31,.065,zz);pallet.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(.22,.13,.09),slotMatR);b.position.set(.31,.065,zz);pallet.add(b)} // v5.5 tabs only on NORTH entry face
+for(const zz of[-.82]){const a=new THREE.Mesh(new THREE.BoxGeometry(.18,.018,.5),slotMatL);a.position.set(-.31,.02,zz);pallet.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(.18,.018,.5),slotMatR);b.position.set(.31,.02,zz);pallet.add(b)} // v5.5 floor tabs only on NORTH entry side
 let slotState='idle', slotShake=0, lastSlotWarn=0;
 
 // ---------- Pallet jack (pivot = REAR steering wheel; forks +Z local; handle -Z) ----------
@@ -247,9 +249,9 @@ function moveHand(hand,pose,dt,curl){
 
 // ---------- Game state ----------
 const stages=[
- ["1. Возьми рохлю и попади вилами ТОЛЬКО в пазы поддона","Подойди к ручке рохли (сзади, у красного рулевого колеса) и нажми «Взять». Вилы входят только в пазы поддона (подсветка: зелёный — целься, красный — мимо), прямо, без перекоса, вилы опущены. На месте вилы НЕ поворачиваются — поворачивается только рукоять и заднее колесо.","Ехать"],
+ ["1. Возьми рохлю и попади вилами ТОЛЬКО в пазы поддона — СО СТОРОНЫ СТЕЛЛАЖА","Заезд СМЕНИЛСЯ на противоположную сторону: теперь только со стороны стеллажа (сзади поддона, северная сторона), вилы идут в проход. Со стороны прохода (юг, прежняя сторона) заезд НЕ засчитывается — там закрытая сторона. Рохля уже стоит с новой стороны: подойди к её ручке и нажми «Взять». Подсветка пазов — только у северного торца: зелёный — целься, красный — мимо, прямо, без перекоса, вилы опущены.","Ехать"],
  ["2. Подними поддон","Рычаг в ПОДЪЁМ (кнопка «Рычаг»), затем нажимай «Качать ручку» 3 раза — качание дышла качает насос, вилы растут.","Качать ручку ×3"],
- ["3. Вывези поддон на жёлтую площадку","Рычаг в НЕЙТРАЛЬ — в ней насос отключён и можно везти. Тяни рохлю за рукоять на себя: повернул дышло — на тот же угол повернулись рулевые колёса у насоса, вилы идут ведомым прицепом следом.","Ехать"],
+ ["3. Вывези поддон на жёлтую площадку","Рычаг в НЕЙТРАЛЬ — в ней насос отключён и можно везти. Управление — ЗАДНИМ колесом, как машина задом: толкаешь от себя, повернул дышло/заднее колесо влево — корма уходит влево, а нос вил при этом доворачивается ВПРАВО (и наоборот). На месте корпус с вилами не поворачивается.","Ехать"],
  ["4. Опусти поддон и отойди","Поставь рычаг в ОПУСКАНИЕ и нажми действие — пока держишь рычаг, клапан открыт и вилы плавно идут вниз пропорционально. Затем «Отпустить» и отойди.","Рычаг — опустить"],
  ["5. Подкати тележку — БАБИНОЙ вперёд","Подойди к ручке тележки сзади, нажми «Взять». Лицевая часть тележки — где бабина с лентой: кати её БАБИНОЙ к поддону, ручка остаётся у тебя сзади.","Ехать"],
  ["6. Изолон: отмотай от рулона, отрежь у рулона, положи на поддон","Большой рулон изолона стоит рядом с площадкой. 1) «Отмотай изолон от рулона» — рулон крутится, полоса тянется. 2) Возьми нож у рулона и «Отрежь полосу ножом у рулона». 3) «Положи полосу на поддон».","Отмотай изолон от рулона"],
@@ -262,9 +264,9 @@ let holding=null; // 'jack'|'cart'|'knife'|'tool'
 let sheetSub=0; // stage6: 0 need sheet, 1 need knife/cut
 let palletState='rack'; // rack|onForks|placed
 let anim=null, pumpT=0, cutHandPos=null;
-let jackPos=new THREE.Vector2(-2.0,-2.4), jackAng=Math.PI, steer=0, jackVel=0;
+let jackPos=new THREE.Vector2(0,-6.6), jackAng=0, steer=0, jackVel=0; // v5.5: jack starts NORTH of pallet (rack side), forks pointing SOUTH into pallet
 let cartPos=new THREE.Vector2(-6,3.5), cartAng=Math.PI/2, cartVel=0;
-let playerPos=new THREE.Vector2(0.7,0.9), playerYaw=-2.62, playerPitch=-.10, lookOffset=0, demoFreeze=false;
+let playerPos=new THREE.Vector2(0.9,-7.7), playerYaw=-0.35, playerPitch=-.10, lookOffset=0, demoFreeze=false; // v5.5: player starts on new (north/rack) entry side, looking south to pallet
 tool.position.set(-6,.58,3.15); // immediately snapped into H-83 tray by updateHands (stage<7 follows cart)
 const $=id=>document.getElementById(id);
 const dots=$('dots'); stages.forEach(()=>{const d=document.createElement('div');d.className='dot';dots.appendChild(d)});
@@ -385,15 +387,16 @@ function forkCenter(){const f=dirOf(jackAng);return new THREE.Vector2(jackPos.x+
 function slotAim(){
   const pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
   const pr=pallet.rotation.y||0;
-  const pf=dirOf(pr); // pallet entry axis (world Z rotated)
+  const pf=dirOf(pr); // v5.5: SIGNED fork-travel direction: entering from pallet local -Z (north face) forks travel toward local +Z (south when pr=0)
   const f=dirOf(jackAng);
-  const angleErr=Math.acos(THREE.MathUtils.clamp(Math.abs(f.dot(pf)),-1,1)); // 0 = parallel to entry axis
+  const angleErr=Math.acos(THREE.MathUtils.clamp(f.dot(pf),-1,1)); // signed: old opposite heading now gives ~PI, not 0
   const perp=new THREE.Vector2(pf.y,-pf.x);
-  const lateral=Math.abs(new THREE.Vector2().subVectors(pp,jackPos).dot(perp));
-  // forks centre lateral is same line (forks symmetric about jack axis when steer ~0): also require steer small
+  const rel=new THREE.Vector2().subVectors(jackPos,pp);
+  const lateral=Math.abs(rel.dot(perp));
+  const onEntrySide=rel.dot(pf)<-0.2; // jack body must be on north/entry side of pallet centre, not in the aisle
   const lowered=jackForks.position.y<0.02;
-  const ok=angleErr<0.21 && lateral<0.08 && Math.abs(steer)<0.25 && lowered;
-  return {ok,angleErr,lateral,lowered,pp};
+  const ok=angleErr<0.21 && lateral<0.08 && Math.abs(steer)<0.25 && lowered && onEntrySide;
+  return {ok,angleErr,lateral,lowered,onEntrySide,pp,entryDir:pf};
 }
 function updateSlotHighlight(){
   const aim=slotAim(); const fc=forkCenter(); const dist=fc.distanceTo(aim.pp);
@@ -425,18 +428,17 @@ function updateWalk(dt,inp){
    const move=new THREE.Vector2().addScaledVector(f,-inp.y).addScaledVector(r,inp.x);
    if(move.length()>0){move.normalize(); playerPos.addScaledVector(move,2.3*dt*inp.length())}
  }
- playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-4.8,8.5);
+ playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-9.3,8.5); // v5.5 north entry side is playable
  // pallet is solid for walking player
  const pp2=new THREE.Vector2(pallet.position.x,pallet.position.z); const dpp=playerPos.distanceTo(pp2);
  if(dpp<.95&&dpp>0.001){playerPos.copy(pp2).addScaledVector(new THREE.Vector2().subVectors(playerPos,pp2).normalize(),.95)}
 }
 function updateJack(dt,inp){
  const prevPos=jackPos.clone(), prevAng=jackAng;
- // Steering: inp.x (stick/keyboard left-right) directly turns the steering unit.
- // Sign convention (verified headless v5.2): steer>0 = wheel looks LEFT of body
- // (at jackAng=PI, dirOf(jackAng+steer).x<0 = operator's left), steer<0 = RIGHT.
- // Stick LEFT (inp.x<0) must give steer>0, so steer -= inp.x (was correct for input,
- // the bug was in BODY follow below, not here).
+ // REAR steering (v5.5, like a car reversing): inp.x turns the rear steering
+ // wheel + tiller behind the pump. steer>0 = rear wheel turned to the OPERATOR'S
+ // LEFT (stick LEFT, inp.x<0 -> steer -= inp.x gives steer>0). The fork nose
+ // does NOT steer like front wheels: the body yaws the opposite way (below).
  if(Math.abs(inp.x)>.12) steer=THREE.MathUtils.clamp(steer-inp.x*2.2*dt,-1.35,1.35); // +-~77 deg
  else steer=THREE.MathUtils.lerp(steer,0,1-Math.exp(-dt*1.4));
  const targetV=-inp.y*1.7; // stick up (inp.y<0) = push forward, forks-first
@@ -446,18 +448,16 @@ function updateJack(dt,inp){
    const wheelAng=jackAng+steer;
    // Pivot (steering wheel) rolls exactly along wheel direction in world:
    jackPos.addScaledVector(dirOf(wheelAng),jackVel*dt);
-   // Body/forks yaw: v * sin(steer) / wheelbase.
-   // OLD (buggy): jackAng chased wheelAng via err*(1-exp(-dt*...)) capped by |v|*dt*1.9,
-   // i.e. body always rotated TOWARD wheel regardless of push/pull sign encoded only in cap;
-   // combined with pivot motion along wheelAng the fork TIP (jackPos + L*dirOf(jackAng))
-   // swung opposite to the wheel when pushing forks-first.
-   // NEW: signed rate - pushing (v>0) and pulling (v<0) turn the body in opposite
-   // senses, and at standstill (v=0) body is frozen. Left wheel + push => nose LEFT.
+   // Body/forks yaw for REAR steering: -(v/L)*sin(steer), like reversing a car.
+   // Push forward (v>0, forks ahead) with rear wheel turned to operator's LEFT
+   // (steer>0): pivot/rear is carried LEFT, body yaws opposite, so fork nose
+   // swings to operator's RIGHT. Same-side nose follow (+v*sin/L) was the bug.
+   // At standstill this block is not entered: body frozen, only tiller/wheel turn.
    const WHEELBASE=1.15;
-   jackAng += (jackVel*Math.sin(steer)/WHEELBASE)*dt;
+   jackAng += -(jackVel*Math.sin(steer)/WHEELBASE)*dt;
    Steering_Wheel.rotation.x+=jackVel*dt/.095; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028;
  } // else: jackAng FROZEN - cannot spin forks on the spot
- jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-4.8,8);
+ jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-9.3,8); // v5.5 jack operates north of pallet
  // PALLET SLOT COLLISION (stage 0, pallet still on rack floor)
  if((stage===0||stage===1)&&palletState!=='onForks'){
    const fc=forkCenter(); const pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
@@ -530,7 +530,7 @@ function updateHands(dt){
 // ---------- Demo modes for screenshots ----------
 const demo=new URLSearchParams(location.search).get('demo');
 if(demo==='grip'){
-  jackPos.set(0,-4.15); jackAng=Math.PI; holding='jack'; started=true; stage=1; palletState='ready';
+  jackPos.set(0,-5.85); jackAng=0; holding='jack'; started=true; stage=1; palletState='ready'; // v5.5 inserted from north, forks south
   playerPos.copy(jackPos).addScaledVector(dirOf(jackAng+Math.PI),1.5); playerYaw=jackAng; playerPitch=-.10;
   if(slotShake>0){slotShake=Math.max(0,slotShake-0.04)}
  camera.position.set(playerPos.x+(slotShake? (Math.random()-.5)*.03*slotShake:0),1.62,playerPos.y);
@@ -541,9 +541,9 @@ if(demo==='grip'){
 } else if(demo==='slots'){
   // forks aimed straight at pallet slots, close, highlight green
   pallet.position.set(0,0,-5.2);
-  jackPos.set(0,-3.55); jackAng=Math.PI; steer=0; holding=null; started=true; stage=0; palletState='rack';
-  // player behind jack handle looking at pallet slots
-  playerPos.set(1.75,-2.05); playerYaw=-2.62; playerPitch=-.14; demoFreeze=true;
+  jackPos.set(0,-6.6); jackAng=0; steer=0; holding=null; started=true; stage=0; palletState='rack'; // v5.5 from north/rack side, forks south
+  // player behind jack (north) looking south at pallet entry slots
+  playerPos.set(1.6,-7.7); playerYaw=-0.55; playerPitch=-.14; demoFreeze=true;
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; jack.updateMatrixWorld(true);
   // hands free visible low
 } else if(demo==='cut'){
@@ -560,9 +560,14 @@ if(demo==='grip'){
   const pl=gripPose(cartGrip,-.11),pr=gripPose(cartGrip,.11); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 }
 
-else if(demo==='jack'){
-  jackPos.set(0,-3.2); jackAng=Math.PI; steer=.25; holding='jack'; started=true; stage=1; palletState='ready'; leverPos='lift';
-  playerPos.set(1.55,-2.90); playerYaw=-1.57; playerPitch=-.48; demoFreeze=true; handL.visible=false; handR.visible=false; // side view: silhouette, big steering wheel, low forks (hands hidden only in this demo still)
+else if(demo==='turn'){
+  // v5.5 rear-steer proof: pushing south, tiller/rear wheel LEFT (+40deg), nose already swung RIGHT (jackAng<0)
+  jackPos.set(0,-3.4); jackAng=-0.38; steer=0.70; holding='jack'; started=true; stage=2; palletState='rack';
+  playerPos.set(-3.4,-3.40); playerYaw=1.57; playerPitch=-.18; demoFreeze=true; handL.visible=false; handR.visible=false; // side view: tiller/wheel left, fork nose right
+  jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; steerGroup.rotation.y=steer; jack.updateMatrixWorld(true);
+} else if(demo==='jack'){
+  jackPos.set(0,-6.3); jackAng=0; steer=.25; holding='jack'; started=true; stage=1; palletState='ready'; leverPos='lift'; // v5.5 forks south from north side
+  playerPos.set(-1.55,-6.05); playerYaw=1.57; playerPitch=-.48; demoFreeze=true; handL.visible=false; handR.visible=false; // side view: silhouette, big steering wheel, low forks (hands hidden only in this demo still)
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; steerGroup.rotation.y=steer; jack.updateMatrixWorld(true);
   const pl=gripPose(jackGrip,-.115),pr=gripPose(jackGrip,.115); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 }
