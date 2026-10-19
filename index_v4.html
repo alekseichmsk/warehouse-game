@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Склад v4 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(180deg,#8ed8ff,#ffe3f3);font-family:'Baloo 2',system-ui,-apple-system,'Segoe UI Rounded',Segoe UI,Roboto,sans-serif;color:#26324a;touch-action:none}
+#c{position:fixed;inset:0;display:block}
+#hud{position:fixed;top:10px;left:10px;right:10px;padding:14px 16px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:3px solid #fff;border-radius:28px;box-shadow:0 10px 30px rgba(80,120,220,.25);pointer-events:none;z-index:3}
+#stageTitle{font-size:clamp(20px,4vw,30px);font-weight:800;line-height:1.05;color:#332a7a;letter-spacing:.2px}
+#stageHint{font-size:clamp(12px,2.7vw,16px);opacity:.95;max-width:860px;line-height:1.35;color:#43506e;font-weight:600}
+#meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pill{background:#fff;border:2px solid #ffe08a;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;color:#5a4a12;box-shadow:0 3px 8px rgba(120,90,0,.12)}
+#dots{display:flex;gap:7px;margin-top:9px}.dot{width:16px;height:16px;border-radius:50%;background:#dbe7ff;border:2px solid #fff;box-shadow:inset -2px -3px 5px rgba(90,120,200,.25),0 2px 5px rgba(80,120,220,.2);transition:transform .25s}.dot.on{background:radial-gradient(circle at 32% 28%,#fff 0 18%,#7cf28a 45%,#25c94e);transform:scale(1.05)}.dot.cur{background:radial-gradient(circle at 32% 28%,#fff 0 18%,#ffe95c 48%,#ffb703);transform:scale(1.35);animation:bob 1s ease-in-out infinite alternate}
+@keyframes bob{from{transform:scale(1.22) translateY(0)}to{transform:scale(1.42) translateY(-2px)}}
+#joy{position:fixed;left:16px;bottom:20px;width:136px;height:136px;border-radius:50%;background:rgba(255,255,255,.55);backdrop-filter:blur(8px);border:4px solid #fff;box-shadow:0 12px 28px rgba(70,110,220,.3),inset 0 0 0 3px rgba(140,200,255,.5);touch-action:none;z-index:4}
+#stick{position:absolute;left:41px;top:41px;width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff 0 16%,#ff9ec6 42%,#ff5da2);border:3px solid #fff;box-shadow:0 6px 14px rgba(220,60,140,.35)}
+#btns{position:fixed;right:14px;bottom:20px;display:flex;flex-direction:column;gap:10px;align-items:end;z-index:4}
+button{pointer-events:auto;border:3px solid #fff;border-radius:999px;padding:14px 20px;font-family:inherit;font-size:16px;font-weight:800;color:#fff;background:linear-gradient(135deg,#ff8ac2,#ff6b35);box-shadow:0 7px 0 #e14b7a,0 12px 22px rgba(230,80,130,.35);min-width:176px;touch-action:none;cursor:pointer;transition:transform .08s,box-shadow .08s}
+button:disabled{filter:grayscale(.55);opacity:.55;box-shadow:0 4px 0 #b9c4d6}
+button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
+#btnTake{background:linear-gradient(135deg,#6ee7ff,#2979ff);box-shadow:0 7px 0 #1663d9,0 12px 22px rgba(40,110,255,.35)}
+#btnTake:active{box-shadow:0 2px 0 #1663d9}
+#btnTake.release{background:linear-gradient(135deg,#ffd166,#ff8c42);box-shadow:0 7px 0 #e07b24}
+#toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:4px solid #ff8ac2;border-radius:999px;padding:16px 26px;font-size:clamp(19px,4.5vw,32px);font-weight:800;color:#332a7a;display:none;text-align:center;z-index:6;max-width:92vw;box-shadow:0 16px 40px rgba(220,80,150,.3)}
+#cross{position:fixed;left:50%;top:52%;transform:translate(-50%,-50%);font-size:22px;font-weight:800;color:#fff;opacity:.9;pointer-events:none;z-index:2;text-shadow:0 0 6px #7cc7ff,0 2px 4px rgba(50,80,160,.5)}
+#help{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);font-size:11px;font-weight:700;color:#43506e;background:rgba(255,255,255,.75);border:2px solid #fff;border-radius:999px;padding:3px 10px;white-space:nowrap;z-index:3}
+@media(max-width:1100px){#help{display:none}}
+@media(max-width:600px){#help{display:none}button{min-width:150px;font-size:14px;padding:13px 16px}#hud{left:6px;right:6px;top:6px;padding:10px 12px;border-radius:22px}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud"><div id="stageTitle"></div><div id="stageHint"></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill">🫧 Вид от 1-го лица • v4 Bubble</span></div><div id="dots"></div></div>
+<div id="cross">+</div>
+<div id="joy"><div id="stick"></div></div>
+<div id="btns"><button id="btnTake">✋ Взять</button><button id="action">Действие</button></div>
+<div id="toast"></div><div id="help">Телефон: левый стик — ходьба/толкать, свайп справа — обзор • ПК: WASD — движение, мышь (зажать справа) — обзор, E — взять/отпустить, Space — действие</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12; renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+{const cv=document.createElement('canvas');cv.width=16;cv.height=256;const cx=cv.getContext('2d');const gr=cx.createLinearGradient(0,0,0,256);gr.addColorStop(0,'#6ecfff');gr.addColorStop(.55,'#aee7ff');gr.addColorStop(1,'#ffe3f3');cx.fillStyle=gr;cx.fillRect(0,0,16,256);const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;scene.background=tex;}
+scene.fog=new THREE.Fog(0xbfe9ff,22,42);
+const camera=new THREE.PerspectiveCamera(68,1,0.05,100); camera.rotation.order='YXZ';
+scene.add(new THREE.HemisphereLight(0xd8f4ff,0xffe0ec,1.15));
+scene.add(new THREE.AmbientLight(0xfff6e8,.45));
+const sun=new THREE.DirectionalLight(0xfff1c9,1.75); sun.position.set(6,11,5); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.radius=4; sun.shadow.bias=-0.0004; scene.add(sun);
+const fill=new THREE.DirectionalLight(0xffc7e3,.45); fill.position.set(-6,5,-4); scene.add(fill);
+function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()} addEventListener('resize',resize); resize();
+
+const M={wood:0xe0aa67,wood2:0xc98d4b,teal:0x00c2d1,dark:0x3a4452,blue:0x2979ff,orange:0xff7a1a,grey:0xc3cedb,white:0xffffff,yellow:0xffd400,black:0x2b3442,red:0xff3d71,skin:0xf2c49b,skin2:0xeab98d};
+function mat(c,r=.7){return new THREE.MeshPhysicalMaterial({color:c,roughness:Math.max(.12,r*.5),metalness:.02,clearcoat:.75,clearcoatRoughness:.28,envMapIntensity:.7})}
+function box(parent,x,y,z,w,h,d,c,r){const rad=Math.max(.004,Math.min(w,h,d)*.22);const m=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,2,rad),r||mat(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function cyl(parent,x,y,z,rad,h,c,axis='y',seg=24){const m=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,h,seg),mat(c,.55));m.position.set(x,y,z);if(axis==='x')m.rotation.z=Math.PI/2;if(axis==='z')m.rotation.x=Math.PI/2;m.castShadow=true;parent.add(m);return m}
+
+// ---------- World ----------
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(24,20),new THREE.MeshPhysicalMaterial({color:0xeaf6ff,roughness:.35,clearcoat:.5,clearcoatRoughness:.4})); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+const grid=new THREE.GridHelper(22,22,0xffffff,0xcfe4ff); grid.position.y=.01; grid.material.transparent=true; grid.material.opacity=.55; scene.add(grid);
+for(let i=0;i<14;i++){const cols=[0xffc7e3,0xaee7ff,0xfff3a6,0xc8f7c5,0xe3d4ff];const cir=new THREE.Mesh(new THREE.CircleGeometry(.35+((i*37)%50)/100,28),new THREE.MeshStandardMaterial({color:cols[i%cols.length],roughness:.4,transparent:true,opacity:.5}));cir.rotation.x=-Math.PI/2;cir.position.set(-9+((i*53)%18),.012,-4+((i*29)%11));cir.receiveShadow=true;scene.add(cir);}
+// 🫧 decorative floating rainbow bubbles (background only, never block gameplay)
+const bubbles=[];
+{const bcols=[0xff9ec6,0x7ed6ff,0xffe95c,0x9dffb0,0xd3b8ff,0xffb36b];
+for(let i=0;i<16;i++){const r=.14+((i*41)%30)/100;const b=new THREE.Mesh(new THREE.SphereGeometry(r,20,14),new THREE.MeshPhysicalMaterial({color:bcols[i%bcols.length],roughness:.05,metalness:0,clearcoat:1,clearcoatRoughness:.05,transparent:true,opacity:.38}));b.position.set(-9+((i*67)%18),.6+((i*31)%30)/10,-7+((i*47)%13));const hl=new THREE.Mesh(new THREE.SphereGeometry(r*.28,10,8),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.85}));hl.position.set(-r*.35,r*.4,r*.55);b.add(hl);scene.add(b);bubbles.push({m:b,sp:.12+((i*13)%20)/100,ph:i*1.7,x:b.position.x});}}
+const zone=new THREE.Group(); zone.position.set(4.6,0.02,2.6); scene.add(zone);
+const zp=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.7),new THREE.MeshBasicMaterial({color:0xffe600,transparent:true,opacity:.38})); zp.rotation.x=-Math.PI/2; zone.add(zp);
+const zline=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-1.6,0,-1.35),new THREE.Vector3(1.6,0,-1.35),new THREE.Vector3(1.6,0,1.35),new THREE.Vector3(-1.6,0,1.35)]),new THREE.LineBasicMaterial({color:0xffd83d})); zline.position.y=.03; zone.add(zline);
+// Rack
+const rack=new THREE.Group(); rack.position.set(0,0,-6.2); scene.add(rack);
+for(const x of[-2.7,-.9,.9,2.7]){box(rack,x,1.5,.45,.16,3,.16,M.blue);box(rack,x,1.5,-.45,.16,3,.16,M.blue)}
+for(const y of[.55,1.65,2.75]) for(const z of[.45,-.45]) box(rack,0,y,z,5.6,.18,.14,M.orange);
+box(rack,-1.4,1.05,0,1.4,.7,.9,0x8d6b48); box(rack,1.5,2.2,0,1.5,.65,.9,0x777777);
+// Pallet
+function makePallet(){const g=new THREE.Group(); for(let i=0;i<5;i++) box(g,-.6+i*.3,.14,0,.22,.05,.95,i%2?M.wood:M.wood2);
+ for(const x of[-.62,0,.62]) for(const z of[-.4,0,.4]) box(g,x,.07,z,.2,.09,.16,M.wood2);
+ for(let i=0;i<3;i++) box(g,0,.015,-.4+i*.4,1.45,.03,.18,M.wood); return g}
+const pallet=makePallet(); pallet.position.set(0,0,-5.2); scene.add(pallet);
+// slot highlights (entry gaps between blocks, forks at x +-0.31)
+const slotMatL=new THREE.MeshBasicMaterial({color:0x888888,transparent:true,opacity:.45,depthWrite:false});
+const slotMatR=slotMatL.clone();
+function slotBox(mat,x){const m=new THREE.Mesh(new THREE.BoxGeometry(.20,.075,.86),mat);m.position.set(x,.075,0);pallet.add(m);return m}
+slotBox(slotMatL,-.31); slotBox(slotMatR,.31);
+for(const zz of[-.54,.54]){const a=new THREE.Mesh(new THREE.BoxGeometry(.22,.13,.09),slotMatL);a.position.set(-.31,.065,zz);pallet.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(.22,.13,.09),slotMatR);b.position.set(.31,.065,zz);pallet.add(b)}
+for(const zz of[-.82,.82]){const a=new THREE.Mesh(new THREE.BoxGeometry(.18,.018,.5),slotMatL);a.position.set(-.31,.02,zz);pallet.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(.18,.018,.5),slotMatR);b.position.set(.31,.02,zz);pallet.add(b)}
+let slotState='idle', slotShake=0, lastSlotWarn=0;
+
+// ---------- Pallet jack (pivot = REAR steering wheel; forks +Z local; handle -Z) ----------
+const jack=new THREE.Group(); scene.add(jack);
+const jackForks=new THREE.Group(); jack.add(jackForks);
+box(jackForks,-.28,.12,1.05,.16,.08,1.7,M.teal); box(jackForks,.28,.12,1.05,.16,.08,1.7,M.teal);
+box(jackForks,0,.32,.18,.68,.42,.42,M.teal); box(jackForks,0,.55,.08,.35,.25,.3,M.teal);
+for(const x of[-.28,.28]) cyl(jackForks,x,.07,1.75,.07,.1,M.dark,'x');
+const steerGroup=new THREE.Group(); jack.add(steerGroup); // yaws with steering (rear wheel!)
+const steerWheel=cyl(steerGroup,0,.16,0,.17,.12,0xff3b30,'x',28);
+const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.25,.025,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.y=.18; steerGroup.add(steerRing);
+cyl(steerGroup,0,.38,0,.06,.35,M.dark);
+const handlePivot=new THREE.Group(); handlePivot.position.set(0,.5,0); steerGroup.add(handlePivot); // tilts when pumping
+const handleBar=box(handlePivot,0,.40,-.46,.09,.82,.09,M.black); handleBar.rotation.x=.55;
+box(handlePivot,0,.76,-.66,.30,.07,.12,M.red); // release lever on handle
+// horizontal grip bar (hands grab HERE)
+const jackGrip=new THREE.Group(); jackGrip.position.set(0,.84,-.76); handlePivot.add(jackGrip);
+cyl(jackGrip,0,0,0,.035,.52,M.black,'x',16);
+box(jackGrip,0,.03,.02,.46,.05,.08,0x333a3f);
+
+// ---------- Strap cart SMALL: FRONT (+Z) = bobbin dia 0.48, width 0.55 ----------
+const cart=new THREE.Group(); scene.add(cart);
+box(cart,0,.50,-.18,.55,.55,.50,M.blue); box(cart,0,.82,-.18,.50,.08,.45,0x6aa7ff);
+const bobbin=new THREE.Group(); bobbin.position.set(0,.52,.30); cart.add(bobbin);
+cyl(bobbin,0,0,0,.16,.38,0xd7dde2,'x',20);
+cyl(bobbin,-.21,0,0,.24,.04,0x7e8a94,'x',20); cyl(bobbin,.21,0,0,.24,.04,0x7e8a94,'x',20);
+for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.165,.010,6,20),mat(0x8f9aa3));t.rotation.y=Math.PI/2;t.position.x=-.13+i*.09;bobbin.add(t)}
+const bobLabel=box(cart,0,.68,.10,.30,.10,.04,M.yellow);
+box(cart,0,.14,-.02,.45,.08,.75,M.dark);
+for(const [x,z] of[[-.24,-.32],[.24,-.32],[-.24,.28],[.24,.28]]) cyl(cart,x,.13,z,.13,.07,M.black,'x');
+// handle bar at BACK
+const cartGrip=new THREE.Group(); cartGrip.position.set(0,.78,-.52); cart.add(cartGrip);
+box(cart,-.18,.62,-.46,.06,.22,.06,M.black); box(cart,.18,.62,-.46,.06,.22,.06,M.black);
+cyl(cartGrip,0,0,0,.032,.48,M.black,'x',14);
+
+// izolon sheet, strip, knife, strapper, strap
+const sheet=box(scene,0,-1,0,1.35,.035,.95,M.white); sheet.material.transparent=true; sheet.material.opacity=.94; sheet.visible=false;
+// BIG IZOLON ROLL (cut strip FROM roll, not on pallet)
+const rollPos=new THREE.Vector2(6.9,0.7);
+const izolonRoll=new THREE.Group(); izolonRoll.position.set(rollPos.x,0,rollPos.y); izolonRoll.rotation.y=-.5; scene.add(izolonRoll);
+const rollSpin=new THREE.Group(); rollSpin.position.y=.28; izolonRoll.add(rollSpin);
+const rollCore=cyl(rollSpin,0,0,0,.25,1.05,0xf2f4ee,'x',26); rollCore.material=mat(0xffffff,.5);
+cyl(rollSpin,-.53,0,0,.25,.03,0xdfe5da,'x',26); cyl(rollSpin,.53,0,0,.25,.03,0xdfe5da,'x',26);
+cyl(rollSpin,0,0,0,.07,1.12,0xb08954,'x',14);
+for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.252,.006,6,26),mat(0xd8ded2));t.rotation.y=Math.PI/2;t.position.x=-.39+i*.26;rollSpin.add(t)}
+box(izolonRoll,-.45,0,0,.08,.28,.5,0x44505a); box(izolonRoll,.45,0,0,.08,.28,.5,0x44505a);
+box(izolonRoll,0,.06,-.32,1.0,.06,.12,0x44505a);
+const rollLabel=box(izolonRoll,0,.52,.18,.55,.16,.03,M.yellow);
+// strip unrolled from roll (grows during unroll anim) + loose cut strip on floor
+const unrolled=box(scene,0,-1,0,.95,.018,1.4,0xfff7fb); unrolled.visible=false;
+const looseStrip=box(scene,0,-1,0,1.30,.02,.95,0xfff7fb); looseStrip.visible=false;
+const strip=box(scene,0,-1,0,1.35,.03,.18,0xf3fbff); strip.visible=false;
+const knife=new THREE.Group(); knife.visible=false; scene.add(knife);
+box(knife,0,0,0,.09,.05,.34,M.yellow); box(knife,0,0,.24,.05,.025,.14,0xcfd6dc); box(knife,-.02,.035,.02,.06,.03,.12,M.black);
+const tool=new THREE.Group(); tool.scale.setScalar(.8); scene.add(tool); // strapper sits on cart top
+box(tool,0,0,0,.42,.22,.24,M.teal); box(tool,.12,.17,0,.28,.1,.18,M.dark); box(tool,-.15,.12,0,.08,.22,.08,M.black);
+const strapG=new THREE.Group(); strapG.visible=false; scene.add(strapG);
+const strapMat=mat(0xdde3e8,.4);
+function strapBox(w,h,d){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),strapMat);m.castShadow=true;strapG.add(m);return m}
+const sTop=strapBox(1.5,.025,.09),sBot=strapBox(1.5,.025,.09),sF=strapBox(1.5,.32,.025),sB=strapBox(1.5,.32,.025);
+const strapLineMat=new THREE.LineBasicMaterial({color:0xe8eef2});
+let strapLine=null;
+
+// ---------- SIMPLE SKIN HANDS (no gloves): palm + 5 fingers x3 segments ----------
+function makeFinger(len,wid){
+  const root=new THREE.Group(); let parent=root; const joints=[];
+  for(let i=0;i<3;i++){
+    const j=new THREE.Group(); if(i>0)j.position.z=-len[i-1]; parent.add(j); joints.push(j);
+    const s=new THREE.Mesh(new THREE.BoxGeometry(wid,wid*.85,len[i]),mat(M.skin,.6)); s.position.z=-len[i]/2; s.castShadow=true; j.add(s);
+    parent=j;
+  }
+  root.userData.joints=joints; return root;
+}
+function makeHand(side){ // simple: forearm + palm box + 5 plain fingers, NO nails/details
+  const g=new THREE.Group();
+  const palm=new THREE.Mesh(new THREE.BoxGeometry(.09,.028,.10),mat(M.skin,.65)); palm.castShadow=true; g.add(palm);
+  // forearm: plain skin box going back (+Z) and slightly down, visible from bottom of frame
+  const forePivot=new THREE.Group(); forePivot.position.set(0,-.004,.045); forePivot.rotation.x=.30; g.add(forePivot);
+  const fore=new THREE.Mesh(new THREE.BoxGeometry(.052,.020,.34),mat(M.skin2,.65)); fore.position.z=.19; fore.castShadow=true; forePivot.add(fore);
+  const fingers=[];
+  for(let i=0;i<4;i++){const f=makeFinger([.040,.032,.026],.018); f.position.set(-.034+i*.023,-.002,-.050); g.add(f); fingers.push(f)}
+  const thumb=makeFinger([.034,.028,.022],.020); thumb.position.set(side*.048,-.006,-.012); thumb.rotation.y=-side*.85; thumb.rotation.z=side*.35; g.add(thumb); fingers.push(thumb);
+  g.userData={fingers,side,thumb};
+  scene.add(g); return g;
+}
+const handL=makeHand(-1), handR=makeHand(1);
+function setCurl(hand,curl){
+  hand.userData.fingers.forEach((f,fi)=>{
+    const isThumb=fi===4;
+    f.userData.joints.forEach((j,i)=>{
+      // fingers wrap DOWN/around a horizontal bar; thumb wraps from opposite side (extra yaw handled in pose)
+      j.rotation.x=-(curl*(isThumb?1.05:(i===0?.85:i===1?1.05:1.15)));
+    });
+    if(isThumb) f.rotation.x=curl*.9; // thumb tips in from below/opposite side of bar
+  });
+}
+setCurl(handL,.2); setCurl(handR,.2);
+// desired hand poses each frame
+const _v=new THREE.Vector3(), _v2=new THREE.Vector3(), _q=new THREE.Quaternion(), _e=new THREE.Euler();
+function camPose(hand,ox,oy,oz,rx,ry){
+  _v.set(ox,oy,oz); camera.localToWorld(_v);
+  _e.set(rx,ry,0,'YXZ'); _q.setFromEuler(_e);
+  const camQ=camera.quaternion.clone(); const localQ=new THREE.Quaternion().setFromEuler(new THREE.Euler(rx,ry,0,'YXZ'));
+  return {p:_v.clone(), q:camQ.multiply(localQ)};
+}
+function worldPose(obj,ox,oy,oz,yaw,rx=0){
+  obj.getWorldPosition(_v); const right=new THREE.Vector3(1,0,0).applyQuaternion(obj.getWorldQuaternion(new THREE.Quaternion()));
+  // offset in object's local frame
+  const local=new THREE.Vector3(ox,oy,oz); obj.localToWorld(local);
+  const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(rx,yaw,0,'YXZ'));
+  return {p:local,q};
+}
+function moveHand(hand,pose,dt,curl){
+  const k=1-Math.exp(-dt*11);
+  hand.position.lerp(pose.p,k);
+  hand.quaternion.slerp(pose.q,k);
+  // curl easing stored on userData
+  hand.userData.curl=THREE.MathUtils.lerp(hand.userData.curl?? .2,curl,k);
+  setCurl(hand,hand.userData.curl);
+}
+
+// ---------- Game state ----------
+const stages=[
+ ["1. Возьми рохлю и попади вилами ТОЛЬКО в пазы поддона","Подойди к ручке рохли (сзади, у красного рулевого колеса) и нажми «Взять». Вилы входят только в пазы поддона (подсветка: зелёный — целься, красный — мимо), прямо, без перекоса, вилы опущены. На месте вилы НЕ поворачиваются — поворачивается только рукоять и заднее колесо.","Ехать"],
+ ["2. Подними поддон","Держишь ручку. Нажимай «Качать ручку» 3 раза — рукоять качается вниз-вверх в твоих руках, поддон поднимается.","Качать ручку ×3"],
+ ["3. Вывези поддон на жёлтую площадку","Толкай/тяни рохлю за ручку. Помни: рулишь задним колесом — сначала уходит зад, потом разворачиваются вилы с поддоном.","Ехать"],
+ ["4. Опусти поддон и отойди","Нажми «Рычаг — опустить», затем «Отпустить» ручку и отойди от поддона пешком.","Рычаг — опустить"],
+ ["5. Подкати тележку — БАБИНОЙ вперёд","Подойди к ручке тележки сзади, нажми «Взять». Лицевая часть тележки — где бабина с лентой: кати её БАБИНОЙ к поддону, ручка остаётся у тебя сзади.","Ехать"],
+ ["6. Изолон: отмотай от рулона, отрежь у рулона, положи на поддон","Большой рулон изолона стоит рядом с площадкой. 1) «Отмотай изолон от рулона» — рулон крутится, полоса тянется. 2) Возьми нож у рулона и «Отрежь полосу ножом у рулона». 3) «Положи полосу на поддон».","Отмотай изолон от рулона"],
+ ["7. Протяни ленту под поддоном","Подойди к тележке у поддона и нажми «Протянуть ленту»: передняя бабина раскрутится, лента уйдёт под поддон и вокруг него.","Протянуть ленту"],
+ ["8. Затяни стреппером","Стрепер лежит на тележке. Возьми его руками («Взять стреппер»), подойди к поддону и нажми «Затянуть».","Затянуть стреппером"],
+];
+let stage=0, pumps=0, score=0, elapsed=0, started=false, finished=false;
+let holding=null; // 'jack'|'cart'|'knife'|'tool'
+let sheetSub=0; // stage6: 0 need sheet, 1 need knife/cut
+let palletState='rack'; // rack|onForks|placed
+let anim=null, pumpT=0, cutHandPos=null;
+let jackPos=new THREE.Vector2(-2.0,-2.4), jackAng=Math.PI, steer=0, jackVel=0;
+let cartPos=new THREE.Vector2(-6,3.5), cartAng=Math.PI/2, cartVel=0;
+let playerPos=new THREE.Vector2(0.7,0.9), playerYaw=-2.62, playerPitch=-.10, lookOffset=0, demoFreeze=false;
+tool.position.set(-6,.92,3.15);
+const $=id=>document.getElementById(id);
+const dots=$('dots'); stages.forEach(()=>{const d=document.createElement('div');d.className='dot';dots.appendChild(d)});
+function angDiff(a,b){let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d}
+function dirOf(a){return new THREE.Vector2(Math.sin(a),Math.cos(a))}
+function toast(txt,ms=1600){const t=$('toast');t.textContent=txt;t.style.display='block';setTimeout(()=>t.style.display='none',ms)}
+function nextStage(txt){stage++;score+=100;if(txt)toast(txt);updateHUD()}
+function updateHUD(){
+ $('stageTitle').textContent=finished?'🎉 Готово! Поддон упакован':stages[stage][0];
+ $('stageHint').textContent=finished?`Время: ${elapsed.toFixed(1)} c • Очки: ${score}. Нажми «Ещё раз».`:stages[stage][1];
+ $('score').textContent='⭐ '+score;
+ $('holdPill').textContent=holding==='jack'?'✊ Держишь ручку РОХЛИ (руль — заднее колесо)':holding==='cart'?'✊ Держишь тележку (бабина спереди)':holding==='knife'?'🔪 В руке нож':holding==='tool'?'🔧 В руках стреппер':'✋ Руки свободны';
+ [...dots.children].forEach((d,i)=>{d.className='dot'+(i<stage||finished?' on':i===stage?' cur':'')});
+ const b=$('action');
+ if(finished){b.disabled=false;b.textContent='🔄 Ещё раз';return}
+ if(stage===1){b.disabled=holding!=='jack';b.textContent=`💪 Качать ручку (${pumps}/3)`}
+ else if(stage===3){b.disabled=!(holding==='jack'&&palletState==='onForks');b.textContent='⬇ Рычаг — опустить'}
+ else if(stage===5){ const dRoll=playerPos.distanceTo(rollPos), dPal=playerPos.distanceTo(new THREE.Vector2(pallet.position.x,pallet.position.z));
+   if(sheetSub===0){b.disabled=holding!==null||!!anim||dRoll>2.6;b.textContent='🌀 Отмотай изолон от рулона'}
+   else if(sheetSub===1){b.disabled=holding!=='knife'||dRoll>2.8;b.textContent='✂️ Отрежь полосу ножом у рулона'}
+   else {b.disabled=holding!==null||dPal>2.6;b.textContent='⬜ Положи полосу на поддон'} }
+ else if(stage===6){b.disabled=!!anim;b.textContent='🧵 Протянуть ленту (бабина крутится!)'}
+ else if(stage===7){b.disabled=holding!=='tool';b.textContent='🔧 Затянуть стреппером'}
+ else {b.disabled=true;b.textContent=stage===0?'✋ Сначала возьми рохлю за ручку':stage===2?'🚜 Вези на жёлтую площадку':stage===4?'🧵 Возьми тележку за ручку сзади':'…'}
+ const tb=$('btnTake');
+ if(holding){tb.textContent='🖐 Отпустить';tb.classList.add('release');tb.disabled=false}
+ else {const it=nearestInteract(); tb.textContent=it?it.label:'✋ Взять (подойди ближе)'; tb.disabled=!it; tb.classList.remove('release')}
+}
+
+// ---------- Input ----------
+let joyVec=new THREE.Vector2(), keys={};
+const joy=$('joy'), stick=$('stick'); let joyId=null;
+function setStick(dx,dy){stick.style.left=(41+dx*38)+'px';stick.style.top=(41+dy*38)+'px'}
+joy.addEventListener('pointerdown',e=>{joyId=e.pointerId;joy.setPointerCapture(e.pointerId);moveJoy(e)});
+joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)moveJoy(e)});
+function endJoy(e){if(e.pointerId===joyId){joyId=null;joyVec.set(0,0);setStick(0,0)}}
+joy.addEventListener('pointerup',endJoy); joy.addEventListener('pointercancel',endJoy);
+function moveJoy(e){const r=joy.getBoundingClientRect();let dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2);const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}joyVec.set(dx,dy);setStick(dx,dy);started=true}
+// swipe look on right half of canvas + mouse drag
+let lookId=null,lookX=0,lookY=0;
+canvas.addEventListener('pointerdown',e=>{if(e.clientX>innerWidth*.35){lookId=e.pointerId;lookX=e.clientX;lookY=e.clientY;canvas.setPointerCapture(e.pointerId)}});
+canvas.addEventListener('pointermove',e=>{if(e.pointerId!==lookId)return;const dx=e.clientX-lookX,dy=e.clientY-lookY;lookX=e.clientX;lookY=e.clientY;
+ if(holding==='jack'||holding==='cart'){lookOffset=THREE.MathUtils.clamp(lookOffset-dx*.004,-.7,.7)} else playerYaw-=dx*.005;
+ playerPitch=THREE.MathUtils.clamp(playerPitch-dy*.003,-.55,.35)});
+function endLook(e){if(e.pointerId===lookId)lookId=null}
+canvas.addEventListener('pointerup',endLook); canvas.addEventListener('pointercancel',endLook);
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ')e.preventDefault(); if(e.key===' ')doAction(); if(e.key.toLowerCase()==='e')doTake()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function rawInput(){let v=new THREE.Vector2(joyVec.x,joyVec.y);
+ if(keys['a']||keys['arrowleft'])v.x-=1; if(keys['d']||keys['arrowright'])v.x+=1;
+ if(keys['w']||keys['arrowup'])v.y-=1; if(keys['s']||keys['arrowdown'])v.y+=1;
+ if(v.length()>1)v.normalize(); if(v.length()>0.1)started=true; return v}
+
+// ---------- Interaction / grip ----------
+function gripWorld(obj){const p=new THREE.Vector3(); obj.getWorldPosition(p); return p}
+function nearestInteract(){
+ if(holding||anim||finished)return null;
+ const cands=[];
+ const jp=gripWorld(jackGrip); if(playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))<1.8)cands.push({id:'jack',label:'✋ Взять ручку рохли',d:playerPos.distanceTo(new THREE.Vector2(jp.x,jp.z))});
+ const cp=gripWorld(cartGrip); if(playerPos.distanceTo(new THREE.Vector2(cp.x,cp.z))<1.8)cands.push({id:'cart',label:'✋ Взять ручку тележки',d:playerPos.distanceTo(new THREE.Vector2(cp.x,cp.z))});
+ if(stage===5&&sheetSub===1&&knife.visible){const kp=knife.position; if(playerPos.distanceTo(new THREE.Vector2(kp.x,kp.z))<1.9)cands.push({id:'knife',label:'✋ Взять нож',d:playerPos.distanceTo(new THREE.Vector2(kp.x,kp.z))})}
+ if(stage===7&&tool.visible!==false){const tp=tool.position; if(playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))<1.9)cands.push({id:'tool',label:'✋ Взять стреппер',d:playerPos.distanceTo(new THREE.Vector2(tp.x,tp.z))})}
+ cands.sort((a,b)=>a.d-b.d); return cands[0]||null;
+}
+$('btnTake').onclick=doTake;
+function doTake(){
+ if(anim)return;
+ if(holding){
+   if(holding==='knife'){knife.visible=true; knife.position.set(playerPos.x+dirOf(playerYaw).x*.4,.22,playerPos.y+dirOf(playerYaw).y*.4)}
+   if(holding==='tool'){tool.position.set(playerPos.x+dirOf(playerYaw).x*.4,.25,playerPos.y+dirOf(playerYaw).y*.4)}
+   holding=null; toast('🖐 Отпустил'); updateHUD(); return;
+ }
+ const it=nearestInteract(); if(!it)return;
+ holding=it.id; started=true;
+ if(holding==='knife')knife.visible=false;
+ toast(it.id==='jack'?'✊ Взялся за ручку рохли! Стик ◀▶ рулит задним колесом':it.id==='cart'?'✊ Взялся за тележку. Бабина — спереди, кати её к поддону':it.id==='knife'?'🔪 Нож в руке':'🔧 Стреппер в руках');
+ updateHUD();
+}
+$('action').onclick=doAction;
+function doAction(){
+ if(finished){location.reload();return}
+ if(anim)return;
+ if(stage===1&&holding==='jack'){pumps++; pumpT=1;
+   const lift=.055*pumps; pallet.position.y=lift; jackForks.position.y=lift*.8;
+   if(pumps>=3){palletState='onForks';nextStage('✅ Поддон поднят на вилах!')} else updateHUD();}
+ else if(stage===3&&holding==='jack'&&palletState==='onForks'){palletState='placed';pallet.position.y=0;jackForks.position.y=0;score+=50;toast('⬇ Поддон опущен. Отпусти ручку и отойди пешком');updateHUD()}
+ else if(stage===5&&sheetSub===0){ // UNROLL from big roll
+   anim={t:0,dur:2.2,mode:'unroll',fn:k=>{rollSpin.rotation.x+=0.22; unrolled.visible=true;
+     const rp=new THREE.Vector3(); izolonRoll.getWorldPosition(rp);
+     const dir=new THREE.Vector3(-Math.sin(izolonRoll.rotation.y),0,-Math.cos(izolonRoll.rotation.y));
+     const len=.3+1.35*k; unrolled.scale.z=len/1.4; unrolled.position.set(rp.x+dir.x*(0.28+len/2),.035,rp.z+dir.z*(0.28+len/2)); unrolled.rotation.y=izolonRoll.rotation.y;},
+     done:()=>{sheetSub=1; knife.visible=true; const rp=izolonRoll.position; knife.position.set(rp.x-.55,.30,rp.z+.55); knife.rotation.y=.6; toast('🌀 Полоса отмотана! Возьми нож у рулона'); updateHUD()}}; updateHUD()}
+ else if(stage===5&&sheetSub===1&&holding==='knife'){
+   const rp=izolonRoll.position; const cutP=new THREE.Vector3(rp.x-.75,.30,rp.z+.15);
+   anim={t:0,dur:1.5,mode:'cut',fn:k=>{cutHandPos=cutP.clone(); cutHandPos.x+=(k-.5)*.25; rollSpin.rotation.x+=0.01},
+     done:()=>{cutHandPos=null;holding=null;unrolled.visible=false; looseStrip.visible=true; looseStrip.position.set(rp.x-1.15,.04,rp.z+.25); looseStrip.rotation.y=izolonRoll.rotation.y+.15; knife.visible=true; knife.position.set(rp.x-.5,.22,rp.z+.6); sheetSub=2; toast('✂️ Полоса отрезана от рулона! Отнеси её на поддон'); updateHUD()}}}
+ else if(stage===5&&sheetSub===2){ const px=pallet.position.x,pz=pallet.position.z; looseStrip.visible=false;
+   anim={t:0,dur:1.0,fn:k=>{sheet.visible=true; sheet.position.set(px,1.5-1.32*k,pz+.02); sheet.rotation.y=(1-k)*.4},done:()=>{sheet.position.y=.185; nextStage('⬜ Полоса изолона на поддоне! Теперь лента')}}}
+ else if(stage===6){strapG.visible=true;positionStrap(0.02);
+   anim={t:0,dur:3,fn:k=>{bobbin.rotation.x-=0.38; positionStrap(k); drawLooseStrap(k)},done:()=>{if(strapLine){scene.remove(strapLine);strapLine=null} tool.position.set(cartPos.x,.92,cartPos.y); toast('🧵 Лента вокруг поддона! Возьми стреппер на тележке');nextStage()}}}
+ else if(stage===7&&holding==='tool'){const px=pallet.position.x,pz=pallet.position.z;
+   anim={t:0,dur:2,mode:'tighten',fn:k=>{tool.position.set(px+Math.sin(k*42)*.012*(1-k),.36,pz+.1); strapG.scale.y=1-.16*k; strapG.position.y=.025*k},done:()=>{holding=null;tool.position.set(px+.8,.24,pz+.8);finished=true;score+=200;toast('🎉 Готово! Поддон обвязан лентой',3200);updateHUD()}}}
+}
+function positionStrap(k){const px=pallet.position.x,pz=pallet.position.z,y=pallet.position.y;
+ strapG.position.set(px,y+.02,pz); sTop.position.set(0,.24,0); sBot.position.set(0,-.02,0); sF.position.set(0,.10,.5); sB.position.set(0,.10,-.5);
+ sTop.visible=k>.05; sF.visible=k>.3; sBot.visible=k>.55; sB.visible=k>.8;}
+function drawLooseStrap(k){if(strapLine)scene.remove(strapLine);
+ const bp=new THREE.Vector3(); bobbin.getWorldPosition(bp);
+ const pts=[bp,new THREE.Vector3(bp.x*.5+pallet.position.x*.5,.22,bp.z*.5+pallet.position.z*.5),new THREE.Vector3(pallet.position.x,.1,pallet.position.z+.55)];
+ strapLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),strapLineMat); scene.add(strapLine)}
+function forkCenter(){const f=dirOf(jackAng);return new THREE.Vector2(jackPos.x+f.x*1.05,jackPos.y+f.y*1.05)}
+
+// ---------- Stage checks ----------
+function slotAim(){
+  const pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
+  const pr=pallet.rotation.y||0;
+  const pf=dirOf(pr); // pallet entry axis (world Z rotated)
+  const f=dirOf(jackAng);
+  const angleErr=Math.acos(THREE.MathUtils.clamp(Math.abs(f.dot(pf)),-1,1)); // 0 = parallel to entry axis
+  const perp=new THREE.Vector2(pf.y,-pf.x);
+  const lateral=Math.abs(new THREE.Vector2().subVectors(pp,jackPos).dot(perp));
+  // forks centre lateral is same line (forks symmetric about jack axis when steer ~0): also require steer small
+  const lowered=jackForks.position.y<0.02;
+  const ok=angleErr<0.21 && lateral<0.08 && Math.abs(steer)<0.25 && lowered;
+  return {ok,angleErr,lateral,lowered,pp};
+}
+function updateSlotHighlight(){
+  const aim=slotAim(); const fc=forkCenter(); const dist=fc.distanceTo(aim.pp);
+  let col=0x888888; // grey idle
+  if(stage===0||stage===1){ col=aim.ok?0x2bff5a:(dist<2.2?0xff4040:0x888888); }
+  slotMatL.color.setHex(col); slotMatR.color.setHex(col);
+  slotMatL.opacity=slotMatR.opacity=(col===0x888888?.35:.75);
+  slotState=aim.ok?'ok':(dist<2.2?'bad':'idle');
+  return aim;
+}
+function checkStages(){
+ const fc=forkCenter(), pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
+ if(stage===0){const aim=updateSlotHighlight();
+   // entered: fork centre well inside pallet footprint and aligned
+   if(aim.ok&&fc.distanceTo(pp)<.45){palletState='ready';nextStage('✅ Вилы точно в пазах поддона!')}}
+ else if(stage===2&&palletState==='onForks'){if(Math.abs(pp.x-zone.position.x)<1.4&&Math.abs(pp.y-zone.position.z)<1.15)nextStage('✅ Поддон на жёлтой площадке!')}
+ else if(stage===3&&palletState==='placed'&&!holding){if(playerPos.distanceTo(pp)>2.3)nextStage('✅ Ты отошёл. Теперь тележка с лентой!')}
+ else if(stage===4&&holding==='cart'){const bp=new THREE.Vector3(); bobbin.getWorldPosition(bp); const bd=new THREE.Vector2(bp.x,bp.z);
+   const facing=dirOf(cartAng).dot(new THREE.Vector2(pp.x-cartPos.x,pp.y-cartPos.y).normalize());
+   if(bd.distanceTo(pp)<1.55&&facing>.25)nextStage('✅ Тележка БАБИНОЙ у поддона!')}
+}
+
+// ---------- Movement / kinematics ----------
+function updateWalk(dt,inp){
+ // look only via swipe/mouse drag (no on-screen arrows)
+ lookOffset=THREE.MathUtils.lerp(lookOffset,0,1-Math.exp(-dt*2));
+ if(inp.length()>.1){
+   const f=dirOf(playerYaw), r=new THREE.Vector2(-f.y,f.x);
+   const move=new THREE.Vector2().addScaledVector(f,-inp.y).addScaledVector(r,inp.x);
+   if(move.length()>0){move.normalize(); playerPos.addScaledVector(move,2.3*dt*inp.length())}
+ }
+ playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-4.8,8.5);
+ // pallet is solid for walking player
+ const pp2=new THREE.Vector2(pallet.position.x,pallet.position.z); const dpp=playerPos.distanceTo(pp2);
+ if(dpp<.95&&dpp>0.001){playerPos.copy(pp2).addScaledVector(new THREE.Vector2().subVectors(playerPos,pp2).normalize(),.95)}
+}
+function updateJack(dt,inp){
+ const prevPos=jackPos.clone(), prevAng=jackAng;
+ // steering handle + rear wheel yaw freely (even standing) - but BODY does not follow yet
+ if(Math.abs(inp.x)>.12) steer=THREE.MathUtils.clamp(steer-inp.x*2.0*dt,-1.05,1.05);
+ else steer=THREE.MathUtils.lerp(steer,0,1-Math.exp(-dt*1.4));
+ const targetV=-inp.y*1.7;
+ jackVel=THREE.MathUtils.lerp(jackVel,targetV,1-Math.exp(-dt*6));
+ const SPEED_EPS=0.08;
+ if(Math.abs(jackVel)>SPEED_EPS){
+   const wheelAng=jackAng+steer;
+   jackPos.addScaledVector(dirOf(wheelAng),jackVel*dt);
+   // BODY (forks) yaw ONLY while moving: rate proportional to speed & angle error (trailing)
+   const err=angDiff(wheelAng,jackAng);
+   const maxYaw=Math.abs(jackVel)*dt*1.9; // rad cap tied to distance travelled
+   const want=err*(1-Math.exp(-dt*(0.7+Math.abs(jackVel)*1.3)));
+   jackAng+=THREE.MathUtils.clamp(want,-maxYaw,maxYaw);
+   steerWheel.rotation.x+=jackVel*dt*3;
+ } // else: jackAng FROZEN completely - cannot spin forks on the spot
+ jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-4.8,8);
+ // PALLET SLOT COLLISION (stage 0, pallet still on rack floor)
+ if((stage===0||stage===1)&&palletState!=='onForks'){
+   const fc=forkCenter(); const pp=new THREE.Vector2(pallet.position.x,pallet.position.z);
+   const tip=new THREE.Vector2().copy(jackPos).addScaledVector(dirOf(jackAng),1.85);
+   const insidePallet=(v)=>Math.abs(v.x-pp.x)<.78&&Math.abs(v.y-pp.y)<.55;
+   const aim=slotAim();
+   if((insidePallet(tip)||insidePallet(fc))&&!aim.ok){
+     jackPos.copy(prevPos); jackAng=prevAng; jackVel=0; slotShake=1;
+     const now=performance.now(); if(now-lastSlotWarn>1800){lastSlotWarn=now; toast('🚫 Вилы должны попасть в пазы поддона — прямо, без перекоса, вилы опущены')}
+   }
+   // solid pallet for jack body (origin/rear) too
+   if(Math.abs(jackPos.x-pp.x)<.75&&Math.abs(jackPos.y-pp.y)<.55&&!insidePallet(tip)){jackPos.copy(prevPos)}
+ }
+ const handleAng=jackAng+Math.PI+steer;
+ playerPos.copy(jackPos).addScaledVector(dirOf(handleAng),1.5);
+ playerYaw=handleAng+Math.PI;
+ if(palletState==='onForks'){const fc=forkCenter(); pallet.position.x=fc.x; pallet.position.z=fc.y; pallet.rotation.y=jackAng;
+   if(sheet.visible){sheet.position.x=fc.x;sheet.position.z=fc.y}}
+}
+function updateCart(dt,inp){
+ if(Math.abs(inp.x)>.12) cartAng-=inp.x*1.5*dt*(cartVel<-0.05?-1:1); // turn handle, cart yaws
+ const targetV=-inp.y*1.9;
+ cartVel=THREE.MathUtils.lerp(cartVel,targetV,1-Math.exp(-dt*6));
+ if(Math.abs(cartVel)>.03){cartPos.addScaledVector(dirOf(cartAng),cartVel*dt); bobbin.rotation.x+=cartVel*dt*.7}
+ cartPos.x=THREE.MathUtils.clamp(cartPos.x,-9.5,9.5); cartPos.y=THREE.MathUtils.clamp(cartPos.y,-4.5,8);
+ const behind=cartAng+Math.PI;
+ playerPos.copy(cartPos).addScaledVector(dirOf(behind),1.25);
+ playerYaw=behind+Math.PI; // = cartAng, facing bobbin/pallet ahead
+}
+
+// ---------- Hands posing ----------
+const _poseL={p:new THREE.Vector3(),q:new THREE.Quaternion()}, _poseR={p:new THREE.Vector3(),q:new THREE.Quaternion()};
+function gripPose(obj,sideOff){
+  const p=new THREE.Vector3(); obj.getWorldPosition(p);
+  const wq=obj.getWorldQuaternion(new THREE.Quaternion());
+  const right=new THREE.Vector3(1,0,0).applyQuaternion(wq); p.addScaledVector(right,sideOff);
+  p.y+=.015; // palm sits just over bar, bar passes through curled fingers
+  const dir=new THREE.Vector3(); obj.getWorldDirection(dir); const yaw=Math.atan2(dir.x,dir.z);
+  const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(-.55,yaw+Math.PI,0,'YXZ'));
+  return {p, q};
+}
+function updateHands(dt){
+ camera.updateMatrixWorld();
+ let poseL,poseR,curlL=.22,curlR=.22;
+ if(anim&&anim.mode==='cut'&&cutHandPos){
+   poseL=camPose(handL,-.26,-.34,-.5,-.5,.25);
+   poseR={p:cutHandPos.clone(),q:new THREE.Quaternion().setFromEuler(new THREE.Euler(-.7,playerYaw+Math.PI,0,'YXZ'))}; curlR=.9;
+   knife.visible=true; knife.position.copy(cutHandPos).add(new THREE.Vector3(0,-.03,.08)); knife.rotation.set(0,playerYaw,0);
+ } else if(holding==='jack'){
+   poseL=gripPose(jackGrip,-.14); poseR=gripPose(jackGrip,.14); curlL=curlR=1.0;
+ } else if(holding==='cart'){
+   poseL=gripPose(cartGrip,-.13); poseR=gripPose(cartGrip,.13); curlL=curlR=1.0;
+ } else if(holding==='knife'){
+   poseL=camPose(handL,-.27,-.33,-.5,-.5,.3);
+   poseR=camPose(handR,.26,-.28,-.48,-.6,-.25); curlR=.92;
+   knife.visible=true; const hp=poseR.p; knife.position.copy(hp).add(new THREE.Vector3(Math.sin(playerYaw)*-.12,-.04,Math.cos(playerYaw)*-.12)); knife.rotation.set(0,playerYaw+Math.PI,0);
+ } else if(holding==='tool'){
+   poseL=camPose(handL,-.17,-.30,-.52,-.6,.2); poseR=camPose(handR,.17,-.30,-.52,-.6,-.2); curlL=curlR=.9;
+   if(!anim){const f=dirOf(playerYaw); tool.position.set(playerPos.x+f.x*.55,.95,playerPos.y+f.y*.55); tool.rotation.y=playerYaw}
+ } else if(anim&&anim.mode==='tighten'){
+   poseL=camPose(handL,-.17,-.30,-.52,-.6,.2); poseR=camPose(handR,.17,-.30,-.52,-.6,-.2); curlL=curlR=.9;
+ } else {
+   poseL=camPose(handL,-.23,-.26,-.50,-.55,.35);
+   poseR=camPose(handR,.23,-.26,-.50,-.55,-.35);
+ }
+ moveHand(handL,poseL,dt,curlL); moveHand(handR,poseR,dt,curlR);
+ // free strapper rests on cart until stage7 placement overrides handled in actions; keep on cart top when stage<7 and not holding
+ if(holding!=='tool'&&!(anim&&anim.mode==='tighten')&&stage<7){const cq=cart.quaternion; const off=new THREE.Vector3(-.05,.92,-.18).applyQuaternion(cq); tool.position.copy(cart.position).add(off); tool.rotation.y=cartAng}
+}
+
+// ---------- Demo modes for screenshots ----------
+const demo=new URLSearchParams(location.search).get('demo');
+if(demo==='grip'){
+  jackPos.set(0,-4.15); jackAng=Math.PI; holding='jack'; started=true; stage=1; palletState='ready';
+  playerPos.copy(jackPos).addScaledVector(dirOf(jackAng+Math.PI),1.5); playerYaw=jackAng; playerPitch=-.10;
+  if(slotShake>0){slotShake=Math.max(0,slotShake-0.04)}
+ camera.position.set(playerPos.x+(slotShake? (Math.random()-.5)*.03*slotShake:0),1.62,playerPos.y);
+  // pre-place hands exactly on grip
+  jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng;
+  jack.updateMatrixWorld(true);
+  const pl=gripPose(jackGrip,-.15),pr=gripPose(jackGrip,.15); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
+} else if(demo==='slots'){
+  // forks aimed straight at pallet slots, close, highlight green
+  pallet.position.set(0,0,-5.2);
+  jackPos.set(0,-3.55); jackAng=Math.PI; steer=0; holding=null; started=true; stage=0; palletState='rack';
+  // player behind jack handle looking at pallet slots
+  playerPos.set(1.75,-2.05); playerYaw=-2.62; playerPitch=-.14; demoFreeze=true;
+  jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; jack.updateMatrixWorld(true);
+  // hands free visible low
+} else if(demo==='cut'){
+  pallet.position.set(zone.position.x,0,zone.position.z); palletState='placed';
+  unrolled.visible=true; unrolled.position.set(rollPos.x-.85,.035,rollPos.y+.35); unrolled.rotation.y=izolonRoll.rotation.y;
+  knife.visible=true; knife.position.set(rollPos.x-.75,.30,rollPos.y+.15);
+  playerPos.set(rollPos.x-1.1,rollPos.y+1.15); playerYaw=2.35; playerPitch=-.25; demoFreeze=true; stage=5; sheetSub=1; started=true;
+} else if(demo==='cart'){
+  pallet.position.set(zone.position.x,0,zone.position.z); palletState='placed'; sheet.visible=true; sheet.position.set(zone.position.x,.185,zone.position.z+.02);
+  cartPos.set(4.25,4.40); cartAng=Math.PI; holding='cart'; stage=6; started=true;
+  playerPos.set(5.45,5.85); playerYaw=-2.72; playerPitch=-.16; lookOffset=0; demoFreeze=true; // diagonal behind-side: hands on rear grip, small bobbin faces pallet ahead
+  cart.position.set(cartPos.x,0,cartPos.y); cart.rotation.y=cartAng;
+ cart.updateMatrixWorld(true);
+  const pl=gripPose(cartGrip,-.13),pr=gripPose(cartGrip,.18); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
+}
+
+// ---------- Main loop ----------
+const clock=new THREE.Clock();
+function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),.05);
+ if(started&&!finished)elapsed+=dt;
+ const inp=rawInput();
+ if(pumpT>0)pumpT=Math.max(0,pumpT-dt*2.2);
+ handlePivot.rotation.x=pumpT>0?-Math.sin(pumpT*Math.PI)*.55:0;
+ if(anim){anim.t+=dt; const k=Math.min(1,anim.t/anim.dur); anim.fn(k); if(k>=1){const d=anim.done;anim=null;d&&d();updateHUD()}}
+ else if(!demoFreeze){
+   if(holding==='jack')updateJack(dt,inp);
+   else if(holding==='cart')updateCart(dt,inp);
+   else updateWalk(dt,inp);
+   checkStages();
+ }
+ // sync models
+ jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng;
+ steerGroup.rotation.y=steer;
+ steerRing.material.color.setHex(Math.abs(steer)>.12?0xffe600:0x9be15d);
+ cart.position.set(cartPos.x,0,cartPos.y); cart.rotation.y=cartAng;
+ if(stage<=1)updateSlotHighlight();
+ // camera = eyes
+ const effYaw=(holding==='jack'||holding==='cart')?playerYaw+lookOffset:playerYaw;
+ camera.position.set(playerPos.x,1.62,playerPos.y);
+ camera.rotation.set((holding==='jack'||holding==='cart')?playerPitch-.42:playerPitch,effYaw+Math.PI,0);
+ updateHands(dt);
+ zone.children[0].material.opacity=.28+.14*Math.sin(performance.now()*.004);
+ const bt=performance.now()*.001; for(const b of bubbles){b.m.position.y+=Math.sin(bt*.7+b.ph)*.0006+b.sp*dt; b.m.position.x=b.x+Math.sin(bt*.5+b.ph)*.25; if(b.m.position.y>4.2)b.m.position.y=.5;}
+ $('timer').textContent='⏱ '+elapsed.toFixed(1)+' c';
+ // refresh take/action availability lightly
+ if(!anim)updateHUD();
+ renderer.render(scene,camera);
+}
+updateHUD(); loop();
+</script></body></html>
