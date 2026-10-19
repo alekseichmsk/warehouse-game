@@ -95,28 +95,36 @@ let slotState='idle', slotShake=0, lastSlotWarn=0;
 
 // ---------- Pallet jack (pivot = REAR steering wheel; forks +Z local; handle -Z) ----------
 const jack=new THREE.Group(); jack.name='PalletJack'; scene.add(jack);
-// Simplified main parts only (names = Blender pallet_jack_parts / Godot nodes). Proportions: overall ~1550mm, forks 1150x160, width across forks 540mm, lowered fork top 75mm, steering wheel Ø180 at pump unit, fork rollers Ø74.
+// Silhouette from user drawing (1000mm total, body top 365mm, fork top ~60mm, handle 1150mm, ONE big steering wheel Ø190, twin small rollers).
+// Game scale keeps fork centres at +-0.19 so forks still enter pallet slots; visually forks are thin 80mm plates with rounded tips.
 const jackForks=new THREE.Group(); jackForks.name='Forks_Lift'; jack.add(jackForks);
-const Fork_Left=box(jackForks,-.19,.05,.62,.16,.05,1.15,M.teal); Fork_Left.name='Fork_Left';
-const Fork_Right=box(jackForks,.19,.05,.62,.16,.05,1.15,M.teal); Fork_Right.name='Fork_Right';
-function makeRoller(x,z){const g=new THREE.Group(); g.position.set(x,.037,z); const m=cyl(g,0,0,0,.037,.09,M.dark,'x',20); m.name='roller_mesh'; jackForks.add(g); return g}
-const Roller_Left=makeRoller(-.19,1.08); Roller_Left.name='Roller_Left';
-const Roller_Right=makeRoller(.19,1.08); Roller_Right.name='Roller_Right';
+const Fork_Left=box(jackForks,-.19,.042,.55,.08,.035,1.00,M.teal); Fork_Left.name='Fork_Left';
+const Fork_Right=box(jackForks,.19,.042,.55,.08,.035,1.00,M.teal); Fork_Right.name='Fork_Right';
+for(const x of[-.19,.19]){const tip=cyl(jackForks,x,.042,1.05,.04,.035,M.teal,'y',20); tip.name='ForkTip_Round';}
+const rollerSpinGroups=[];
+function makeRollers(x,name){
+  const g=new THREE.Group(); g.name=name; jackForks.add(g);
+  for(const z of[.90,.99]){const axle=new THREE.Group(); axle.position.set(x,.028,z); const m=cyl(axle,0,0,0,.028,.055,M.dark,'x',18); m.name=name+'_Roller'; g.add(axle); rollerSpinGroups.push(axle);}
+  return g;
+}
+const Roller_Left=makeRollers(-.19,'Roller_Left');
+const Roller_Right=makeRollers(.19,'Roller_Right');
 const Body_Hydraulic=new THREE.Group(); Body_Hydraulic.name='Body_Hydraulic'; jackForks.add(Body_Hydraulic);
-box(Body_Hydraulic,0,.10,.02,.54,.13,.30,M.teal); box(Body_Hydraulic,0,.28,-.02,.26,.30,.24,M.teal);
-const Pump_Piston=cyl(jackForks,0,.46,-.02,.030,.12,0xd7dde2,'y',16); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.46;
-// Steering unit at pump: tiller + steering wheel(s) rigidly yaw together around vertical axis (Toyota/Jungheinrich principle)
+box(Body_Hydraulic,0,.17,.00,.32,.22,.34,M.teal);
+const slope=box(Body_Hydraulic,0,.23,.16,.28,.20,.16,M.teal); slope.rotation.x=.5; // sloped front wall, low elongated body (not a tall cube)
+box(Body_Hydraulic,0,.31,-.05,.16,.12,.14,M.teal);
+const Pump_Piston=cyl(jackForks,0,.38,-.05,.026,.09,0xd7dde2,'y',14); Pump_Piston.name='Pump_Piston'; const pistonBaseY=.38;
 const steerGroup=new THREE.Group(); steerGroup.name='Steering_Unit'; jack.add(steerGroup);
-const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.09,0); steerGroup.add(Steering_Wheel);
-const steerWheel=cyl(Steering_Wheel,0,0,0,.09,.05,0xff3b30,'x',28); steerWheel.name='Steering_Wheel_Mesh';
-const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.11,.012,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.y=.10; steerGroup.add(steerRing);
-const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.42,0); steerGroup.add(Handle_Column);
-const handlePivot=Handle_Column; // pumping tilt
-const handleBar=box(Handle_Column,0,.30,-.30,.07,.68,.07,M.black); handleBar.name='Handle_Column_Mesh'; handleBar.rotation.x=.55;
-const Release_Lever=box(Handle_Column,0,.60,-.52,.26,.05,.10,M.red); Release_Lever.name='Release_Lever';
-const jackGrip=new THREE.Group(); jackGrip.name='Handle_Grip'; jackGrip.position.set(0,.68,-.62); Handle_Column.add(jackGrip);
-cyl(jackGrip,0,0,0,.032,.48,M.black,'x',16);
-box(jackGrip,0,.03,.02,.42,.05,.08,0x333a3f);
+const Steering_Wheel=new THREE.Group(); Steering_Wheel.name='Steering_Wheel'; Steering_Wheel.position.set(0,.095,-.20); // protrudes behind pump body, visible in profile steerGroup.add(Steering_Wheel);
+const steerWheel=cyl(Steering_Wheel,0,0,0,.095,.05,0xff3b30,'x',30); steerWheel.name='Steering_Wheel_Mesh';
+const steerRing=new THREE.Mesh(new THREE.TorusGeometry(.105,.011,8,28),new THREE.MeshBasicMaterial({color:0xffe600})); steerRing.rotation.x=Math.PI/2; steerRing.position.set(0,.10,-.20); steerGroup.add(steerRing);
+const Handle_Column=new THREE.Group(); Handle_Column.name='Handle_Column'; Handle_Column.position.set(0,.34,-.02); steerGroup.add(Handle_Column);
+const handlePivot=Handle_Column;
+const handleBar=box(Handle_Column,0,.34,-.26,.04,.72,.04,M.black); handleBar.name='Handle_Column_Mesh'; handleBar.rotation.x=.42; // thin long tiller rod
+const Release_Lever=box(Handle_Column,0,.62,-.46,.22,.04,.09,M.red); Release_Lever.name='Release_Lever';
+const jackGrip=new THREE.Group(); jackGrip.name='Handle_Grip'; jackGrip.position.set(0,.72,-.52); Handle_Column.add(jackGrip);
+const loopMesh=new THREE.Mesh(new THREE.TorusGeometry(.085,.014,10,26),mat(M.black,.5)); loopMesh.rotation.x=.35; jackGrip.add(loopMesh);
+cyl(jackGrip,0,0,0,.028,.36,M.black,'x',14); // transverse grip bar inside loop - round hands grab here
 
 // ---------- Strap cart SMALL: FRONT (+Z) = bobbin dia 0.48, width 0.55 ----------
 const cart=new THREE.Group(); scene.add(cart);
@@ -420,7 +428,7 @@ function updateJack(dt,inp){
    const maxYaw=Math.abs(jackVel)*dt*1.9; // rad cap tied to distance travelled
    const want=err*(1-Math.exp(-dt*(0.7+Math.abs(jackVel)*1.3)));
    jackAng+=THREE.MathUtils.clamp(want,-maxYaw,maxYaw);
-   Steering_Wheel.rotation.x+=jackVel*dt/.09; Roller_Left.rotation.x+=jackVel*dt/.037; Roller_Right.rotation.x+=jackVel*dt/.037; // rolling from steering wheel, fork rollers follow
+   Steering_Wheel.rotation.x+=jackVel*dt/.095; for(const r of rollerSpinGroups) r.rotation.x+=jackVel*dt/.028; // big steering wheel rolls, twin fork rollers follow
  } // else: jackAng FROZEN completely - cannot spin forks on the spot
  jackPos.x=THREE.MathUtils.clamp(jackPos.x,-9.5,9.5); jackPos.y=THREE.MathUtils.clamp(jackPos.y,-4.8,8);
  // PALLET SLOT COLLISION (stage 0, pallet still on rack floor)
@@ -527,8 +535,8 @@ if(demo==='grip'){
 }
 
 else if(demo==='jack'){
-  jackPos.set(0,-3.2); jackAng=Math.PI; steer=.55; holding='jack'; started=true; stage=1; palletState='ready'; leverPos='lift';
-  playerPos.set(0.95,-1.85); playerYaw=-2.53; playerPitch=-.05; demoFreeze=true;
+  jackPos.set(0,-3.2); jackAng=Math.PI; steer=.25; holding='jack'; started=true; stage=1; palletState='ready'; leverPos='lift';
+  playerPos.set(2.35,-2.95); playerYaw=-1.57; playerPitch=.12; demoFreeze=true; // side view: silhouette, big steering wheel, low forks
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; steerGroup.rotation.y=steer; jack.updateMatrixWorld(true);
   const pl=gripPose(jackGrip,-.14),pr=gripPose(jackGrip,.14); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 }
@@ -540,7 +548,7 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  if(pumpT>0)pumpT=Math.max(0,pumpT-dt*2.2);
  handlePivot.rotation.x=pumpT>0?-Math.sin(pumpT*Math.PI)*.55:0;
  if(leverAnim>0)leverAnim=Math.max(0,leverAnim-dt*1.8);
- Release_Lever.position.y=.60-(leverPos==='lower'||leverAnim>0&&leverPos==='lower'? .018:leverPos==='lift'?-.006:0); Release_Lever.rotation.x=(leverPos==='lower'?-.18:leverPos==='lift'?.10:0);
+ Release_Lever.position.y=.62-(leverPos==='lower'||leverAnim>0&&leverPos==='lower'? .018:leverPos==='lift'?-.006:0); Release_Lever.rotation.x=(leverPos==='lower'?-.18:leverPos==='lift'?.10:0);
  if(anim){anim.t+=dt; const k=Math.min(1,anim.t/anim.dur); anim.fn(k); if(k>=1){const d=anim.done;anim=null;d&&d();updateHUD()}}
  else if(!demoFreeze){
    if(holding==='jack')updateJack(dt,inp);
