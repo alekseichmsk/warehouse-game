@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v6.8 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v6.9 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -65,7 +65,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.8 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.9 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -283,7 +283,7 @@ function makeHand(side){
 const GRIP_A=new THREE.Vector3(-Math.cos(15*Math.PI/180),0,-Math.sin(15*Math.PI/180)); // handle axis toward thumb side
 const GRIP_FWD=new THREE.Vector3(0,0,-1);
 const GRIP_POS={power:new THREE.Vector3(.002,0,-.026), pistol:new THREE.Vector3(.000,0,-.022)};
-const GRIPS={riveter:{grip:'pistol'},hammer:{grip:'power'},pliers:{grip:'power'},marker:{grip:'power'},screwdriver:{grip:'power'},roller:{grip:'power'},knife:{grip:'power'}};
+const GRIPS={tape:{grip:'power'},riveter:{grip:'pistol'},hammer:{grip:'power'},pliers:{grip:'power'},marker:{grip:'power'},screwdriver:{grip:'power'},roller:{grip:'power'},knife:{grip:'power'}};
 const SOLVE_CACHE={};
 function basisQ(a,b){const c=new THREE.Vector3().crossVectors(a,b); return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(a,b,c));}
 const GRIP_FWD_PISTOL=new THREE.Vector3(0,-.8,-.6).normalize(); // grip front (trigger side) faces the curled fingers
@@ -610,6 +610,7 @@ function updateWalk(dt,inp){
  }
  playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-9.3,8.5);
  if(typeof mode!=='undefined'&&mode==='workshop'&&typeof benchPos!=='undefined'){const R_=.28, hx=BENCH_W/2+R_, hz=BENCH_D/2+R_; const dx=playerPos.x-benchPos.x, dz=playerPos.y-benchPos.y; if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx), pz=hz-Math.abs(dz); if(px<pz)playerPos.x=benchPos.x+Math.sign(dx||1)*hx; else playerPos.y=benchPos.y+Math.sign(dz||1)*hz;}} // v6.5 bench collision
+ if(window.__colBoxes)for(const c of window.__colBoxes){const R_=.28,hx=c.hx+R_,hz=c.hz+R_,dx=playerPos.x-c.x,dz=playerPos.y-c.z; if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz); if(px<pz)playerPos.x=c.x+Math.sign(dx||1)*hx; else playerPos.y=c.z+Math.sign(dz||1)*hz;}} // v6.9 lift-floor station
  if(typeof hoseLimit==='function')hoseLimit(_ppv); // v6.6 hose reach // v5.5 north entry side is playable
  // v5.7: pallet is a LOW 0.14m step, NOT a solid trap. Old code pushed the player onto a
  // fixed 0.95m circle around pallet centre; stepping onto/into that circle from a corner
@@ -1024,6 +1025,7 @@ let OBST=null, hoseWrap=0; function obstacles(){ if(OBST)return OBST; OBST=[]; c
   goats.updateMatrixWorld(true); goats.traverse(o=>{if(o.isMesh){const b=new THREE.Box3().setFromObject(o); if(!b.isEmpty()&&b.max.y-b.min.y>.15)OBST.push(b);}});
   for(const g of[supplyPallet,outputPallet]){if(g){g.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(g); if(!b.isEmpty())OBST.push(b);}}
   OBST.push(new THREE.Box3(new THREE.Vector3(-13,0,-9),new THREE.Vector3(13,8,-7.87)),new THREE.Box3(new THREE.Vector3(-13,0,7.87),new THREE.Vector3(13,8,9)));
+  for(const b of (window.__extraObst||[]))OBST.push(b);
   window.__obst=()=>OBST.length; return OBST;}
 function pushOutXZ(p,r,ylo,yhi){let hit=null; for(const b of obstacles()){ if(yhi<b.min.y||ylo>b.max.y)continue; if(p.x>b.min.x-r&&p.x<b.max.x+r&&p.z>b.min.z-r&&p.z<b.max.z+r){const dx1=p.x-(b.min.x-r), dx2=(b.max.x+r)-p.x, dz1=p.z-(b.min.z-r), dz2=(b.max.z+r)-p.z; const m=Math.min(dx1,dx2,dz1,dz2); if(m===dx1)p.x-=dx1; else if(m===dx2)p.x+=dx2; else if(m===dz1)p.z-=dz1; else p.z+=dz2; hit=b;}} return hit;}
 function hoseTension(){ // recoil spring ~6 N/m over the coiled length; direction = along the last hose segment
@@ -1039,7 +1041,7 @@ function supportBelow(x,z,yTop,B){ // highest upward surface below yTop at (x,z)
   const inTop=Math.abs(x-benchPos.x)<BENCH_W/2&&Math.abs(z-benchPos.y)<BENCH_D/2;
   for(const c of B.conts){const I=c.inner; if(x>I.x0&&x<I.x1&&z>I.z0&&z<I.z1&&I.y<=yTop+.002&&I.y>best.y&&(c.P.k>.02||B.host===c.n)){ if(inTop&&!c.open&&B.host!==c.n)continue; best={y:I.y,cont:c};}}
   if(inTop&&BENCH_TOP<=yTop+.002&&BENCH_TOP>best.y)best={y:BENCH_TOP,cont:null};
-  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack].filter(o=>o&&o.visible&&o.parent);
+  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation].filter(o=>o&&o.visible&&o.parent);
   _dr.set(new THREE.Vector3(x,yTop+.002,z),_dn); _dr.far=yTop+.002-best.y; if(_dr.far>0){for(const h of _dr.intersectObjects(objs,true)){if(!h.face||!isShown(h.object))continue; const nY=h.face.normal.clone().transformDirection(h.object.matrixWorld).y; if(nY>.5){if(h.point.y>best.y)best={y:h.point.y,cont:null}; break;}}}
   return best;}
 function restQuat(t,yaw){return new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0)).multiply(t.userData.homeQ||new THREE.Quaternion());}
@@ -1107,7 +1109,7 @@ for(const [id,f] of [['pliers','pliers_180.glb'],['screwdriver','screwdriver_ph2
  for(let i=0;i<rim.count;i++){const nx=(rnd()-.5)*1.5, nz=(rnd()-.5)*1.5; const h=.003+.024*(1-Math.pow(Math.min(1,Math.max(Math.abs(nx),Math.abs(nz))),3))*.55; e.set(Math.PI/2+(rnd()-.5)*.5,rnd()*6.28,0,'YXZ'); q.setFromEuler(e); m4.compose(new THREE.Vector3(nx*W/2*.85,.006+h*rnd(),nz*D/2*.85),q,new THREE.Vector3(1,1,1)); rim.setMatrixAt(i,m4);}
  g.add(rim); g.userData.shapes=[{t:'cyl',a:[-.09,.012,0],b:[.09,.012,0],r:.016}]; }
 // ===== bench layout: every tool rests on the tabletop (bottom = 0.80 m), proper side down, no overlaps =====
-const LAYOUT={hammer:[-.80,-.20,[0,0,Math.PI/2]],rivetbag:[-.56,-.10,[0,.15,0]],riveter:[-.30,.16,[0,0,0]],pliers:[.05,-.22,[0,.3,0]],roller:[.40,.17,[-Math.PI/2,0,0]],marker:[.66,-.16,[0,-.2,0]],screwdriver:[.88,.12,[0,.25,0]]};
+const LAYOUT={hammer:[-.80,-.20,[0,0,Math.PI/2]],rivetbag:[-.56,-.10,[0,.15,0]],riveter:[-.30,.16,[0,0,0]],pliers:[.05,-.22,[0,.3,0]],roller:[.40,.17,[-Math.PI/2,0,0]],marker:[.66,-.16,[0,-.2,0]],screwdriver:[.88,.12,[0,.25,0]],tape:[.12,.22,[0,.4,0]]};
 function benchLayout(){ const placed=[]; for(const id in wTools){const t=wTools[id]; if(t.children.some(c=>c.name==='AimBox_'+id))continue; if(['pliers','screwdriver','hammer'].includes(id)&&!window['__'+id+'GLB'])continue; const q=t.quaternion.clone(), p=t.position.clone(); t.quaternion.identity(); t.position.set(0,0,0); const bb=visBox(t); t.quaternion.copy(q); t.position.copy(p); t.updateMatrixWorld(true); if(bb.isEmpty())continue; const sz=bb.getSize(new THREE.Vector3()); const hb=new THREE.Mesh(new THREE.BoxGeometry(sz.x+.01,sz.y+.01,sz.z+.01),new THREE.MeshBasicMaterial({visible:false})); hb.position.copy(bb.getCenter(new THREE.Vector3())); hb.name='AimBox_'+id; hb.userData.keep=true; t.add(hb);}
   for(const id in LAYOUT){const t=wTools[id]; if(!t)continue; if(holdingW===id||BODIES[id])continue; if(t.userData.home&&t.position.distanceTo(t.userData.home)>.05)continue; const [x,z,r]=LAYOUT[id];
     t.rotation.set(r[0],r[1],r[2]); t.userData.homeQ=t.quaternion.clone(); t.position.copy(toolHome(x,z)); t.updateMatrixWorld(true);
@@ -1171,6 +1173,75 @@ function ensureMandrel(){const t=wTools.riveter; if(!t)return null; let m=t.getO
   m=new THREE.Mesh(new THREE.LatheGeometry(pr.map(v=>new THREE.Vector2(v[0],v[1])),LITE?8:14),new THREE.MeshLambertMaterial({color:0x8d949b})); m.name='Mandrel_M6';
   m.rotation.x=Math.PI/2; m.position.set(0,.245,.171-.002); m.userData.keep=true; t.add(m); return m;}
 setInterval(ensureMandrel,1000);
+
+// ===================== v6.9 STAGE 1: lift (elevator) cabin floor station + tape measure =====================
+// Floor size 1100x2100 (passenger lift ~1000 kg); tray: RHS 60x40x2 perimeter + 4 RHS 40x40x2 cross members, 2 mm top sheet,
+// 20x20x2 rim angle on 3 sides; door side: AMg2 checker plate «чечевица» 3+1.5 mm threshold strip 1100x150 on a 10 mm riser
+// (tiles 10 mm + adhesive ~5 mm come flush with it). Model: lift/make_lift.py (Blender) -> lift_floor_tray.glb
+const LIFT_POS=new THREE.Vector2(-4.3,-3.8), LIFT_TABLE_H=.70, LIFT_TW=2.30, LIFT_TD=1.25;
+const liftStation=new THREE.Group(); liftStation.name='LiftFloorStation'; liftStation.position.set(LIFT_POS.x,0,LIFT_POS.y); scene.add(liftStation); window.__liftStation=liftStation;
+{const S=0x3b4552, T=0x6b7480; // welded assembly table: 4 legs SHS 60, frame 80x40, slatted top 6 flat bars
+ for(const sx of[-1,1])for(const sz of[-1,1]) wbox(liftStation,sx*(LIFT_TW/2-.05),LIFT_TABLE_H/2,sz*(LIFT_TD/2-.05),.06,LIFT_TABLE_H,.06,S);
+ for(const sz of[-1,1]) wbox(liftStation,0,LIFT_TABLE_H-.04,sz*(LIFT_TD/2-.05),LIFT_TW,.08,.04,S);
+ for(const sx of[-1,1]) wbox(liftStation,sx*(LIFT_TW/2-.05),LIFT_TABLE_H-.04,0,.04,.08,LIFT_TD,S);
+ for(let i=0;i<6;i++) wbox(liftStation,-LIFT_TW/2+.2+i*(LIFT_TW-.4)/5,LIFT_TABLE_H-.01,0,.05,.02,LIFT_TD-.02,T);
+ for(const sz of[-1,1]) wbox(liftStation,0,.12,sz*(LIFT_TD/2-.05),LIFT_TW-.1,.04,.04,S);
+ const sign=document.createElement('canvas'); sign.width=512; sign.height=96; const c=sign.getContext('2d'); c.fillStyle='#ffd400'; c.fillRect(0,0,512,96); c.fillStyle='#1d2330'; c.font='bold 40px sans-serif'; c.fillText('ПОЛ КАБИНЫ ЛИФТА',22,46); c.font='26px sans-serif'; c.fillText('1100×2100 • плитка 300×300 / 1200×600',22,84);
+ const sg=new THREE.Mesh(new THREE.PlaneGeometry(.9,.17),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(sign)})); sg.position.set(0,LIFT_TABLE_H-.04,LIFT_TD/2-.025+.001); liftStation.add(sg);
+ window.__colBoxes=(window.__colBoxes||[]).concat([{x:LIFT_POS.x,z:LIFT_POS.y,hx:LIFT_TW/2,hz:LIFT_TD/2}]);
+ const L=.03; window.__extraObst=[]; for(const sx of[-1,1])for(const sz of[-1,1]){const x=LIFT_POS.x+sx*(LIFT_TW/2-.05), z=LIFT_POS.y+sz*(LIFT_TD/2-.05); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(x-L,0,z-L),new THREE.Vector3(x+L,LIFT_TABLE_H,z+L)));}
+ _gl.load('lift_floor_tray.glb',g=>{fixMats(g.scene); g.scene.rotation.y=Math.PI/2; g.scene.position.y=LIFT_TABLE_H; g.scene.name='LiftFloorTray_1100x2100'; liftStation.add(g.scene); window.__liftReady=true;
+   window.__liftDims=()=>{const b=new THREE.Box3().setFromObject(g.scene); return {min:b.min.toArray(),max:b.max.toArray(),sheetY:LIFT_TABLE_H+.062,x:LIFT_POS.x,z:LIFT_POS.y};};});
+}
+// --- tape measure 5 m x 25 mm (yellow ABS case with black rubber, chrome hook, lock slider) ---
+{const g=new THREE.Group(); const Y=0xffc414, K=0x1d1f24;
+ const cs=wbox(g,0,0,0,.036,.072,.072,Y); wbox(g,.0185,0,0,.003,.064,.064,K); wbox(g,-.0185,0,0,.003,.064,.064,K);
+ cyl(g,.0205,0,0,.016,.002,0xc9cfd6,'x',20); wbox(g,0,.038,-.01,.012,.006,.026,K); wbox(g,0,-.03,.037,.03,.012,.004,K);
+ wbox(g,0,-.0335,.0395,.025,.0006,.006,0xffd84a); const hk=wbox(g,0,-.031,.0425,.027,.009,.0012,0xc9cfd6); hk.name='TapeHook0';
+ g.userData.shapes=[{t:'cyl',a:[-.018,0,0],b:[.018,0,0],r:.036}]; g.userData.spec={axis:[1,0,0],up:[0,1,0],grasp:[0,0,0],kind:'power'}; g.userData.mouth=new THREE.Vector3(0,-.033,.04);
+ regTool('tape',g,.12,.22);}
+const TAPE_MAX=5.0; let tape={on:false,A:null,An:null,B:null,mm:0,retract:0};
+const tapeTex=(()=>{const cv=document.createElement('canvas'); cv.width=2048; cv.height=64; const x=cv.getContext('2d'); x.fillStyle='#ffd21a'; x.fillRect(0,0,2048,64); x.fillStyle='#111';
+  for(let mm=0;mm<1000;mm++){const px=mm*2.048; const h=mm%100===0?40:mm%10===0?26:mm%5===0?17:9; if(mm%1===0)x.fillRect(px,0,mm%10===0?2.4:1.1,h);}
+  x.font='bold 22px sans-serif'; for(let cm=1;cm<100;cm++){ if(cm%10===0){x.fillStyle='#d01515'; x.fillText(String(cm),cm*20.48-14,60);} else {x.fillStyle='#111'; x.font='bold 15px sans-serif'; x.fillText(String(cm%10),cm*20.48-4,58); x.font='bold 22px sans-serif';}}
+  const t=new THREE.CanvasTexture(cv); t.wrapS=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;})();
+const tapeBlade=new THREE.Mesh(new THREE.PlaneGeometry(1,.025),new THREE.MeshBasicMaterial({map:tapeTex,side:THREE.DoubleSide})); tapeBlade.visible=false; tapeBlade.name='TapeBlade'; tapeBlade.renderOrder=4; scene.add(tapeBlade);
+const tapeTail=new THREE.Mesh(new THREE.PlaneGeometry(1,.025),new THREE.MeshBasicMaterial({color:0xffd21a,side:THREE.DoubleSide})); tapeTail.visible=false; tapeTail.name='TapeBladeTail'; scene.add(tapeTail);
+const tapeHook=new THREE.Mesh(new THREE.BoxGeometry(.027,.012,.0012),new THREE.MeshLambertMaterial({color:0xc9cfd6})); tapeHook.visible=false; tapeHook.name='TapeHook'; scene.add(tapeHook);
+const tapeDot=new THREE.Mesh(new THREE.SphereGeometry(.006,10,8),new THREE.MeshBasicMaterial({color:0xff2d55})); tapeDot.visible=false; scene.add(tapeDot);
+{const el=document.createElement('div'); el.id='tapeRead'; el.style.cssText='position:fixed;left:50%;top:calc(50% + 46px);transform:translateX(-50%);z-index:5;pointer-events:none;font-weight:900;font-size:26px;color:#1d2330;background:rgba(255,214,26,.95);border:3px solid #fff;border-radius:14px;padding:3px 14px;display:none;box-shadow:0 6px 18px rgba(0,0,0,.25);font-variant-numeric:tabular-nums'; document.body.appendChild(el);}
+const _trc=new THREE.Raycaster(), _MR=THREE.Mesh.prototype.raycast; let _tapeT=0, _tapeHit=null;
+function tapeCast(){ // works on ANY object: raycast every visible mesh (even ones with raycast disabled for gameplay), skip hands/held tool/tape/hose/invisible
+  camera.updateMatrixWorld(); _trc.setFromCamera(new THREE.Vector2(0,0),camera); _trc.far=TAPE_MAX+3; const out=[]; const skip=new Set([tapeBlade,tapeTail,tapeHook,tapeDot]);
+  const held=holdingW?wTools[holdingW]:null;
+  scene.traverseVisible(o=>{ if(!o.isMesh||skip.has(o)||o.isInstancedMesh&&o.name==='CoilHose')return; const m=o.material; if(!m||m.visible===false)return; let q=o; while(q){if(q===handL||q===handR||q===held)return; q=q.parent;}
+    if(o.isInstancedMesh){o.raycast(_trc,out);} else _MR.call(o,_trc,out);});
+  out.sort((a,b)=>a.distance-b.distance); let h=out.find(h=>h.distance>.08);
+  if(!h){const r=_trc.ray; if(r.direction.y<-1e-3){const t=-r.origin.y/r.direction.y; if(t<_trc.far)h={point:r.origin.clone().addScaledVector(r.direction,t),face:{normal:new THREE.Vector3(0,1,0)},object:null,distance:t};}}
+  if(h){let n=h.face?h.face.normal.clone():new THREE.Vector3(0,1,0); if(h.object)n.transformDirection(h.object.matrixWorld); if(n.dot(_trc.ray.direction)>0)n.negate(); return {p:h.point.clone(),n,obj:h.object?h.object.name:'floor'};}
+  return null;}
+function ribbon(m,a,b,up){const d=b.clone().sub(a), L=d.length(); if(L<1e-4){m.visible=false;return;} m.visible=true; m.position.copy(a).add(b).multiplyScalar(.5);
+  const x=d.normalize(); let z=up.clone().addScaledVector(x,-up.dot(x)); if(z.lengthSq()<1e-6)z=new THREE.Vector3(0,1,0).addScaledVector(x,-x.y); z.normalize(); const y=new THREE.Vector3().crossVectors(z,x);
+  m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z)); m.scale.set(L,1,1); return L;}
+function tapeMouthW(){const t=wTools.tape; t.updateMatrixWorld(true); return t.localToWorld(t.userData.mouth.clone());}
+function updateTape(dt){ const el=document.getElementById('tapeRead'); const hk0=wTools.tape&&wTools.tape.getObjectByName('TapeHook0');
+  if(mode!=='workshop'||holdingW!=='tape'){ if(tape.on||tapeBlade.visible){tape.on=false; [tapeBlade,tapeTail,tapeHook,tapeDot].forEach(o=>o.visible=false); if(el)el.style.display='none'; if(hk0)hk0.visible=true;} return;}
+  const hold=keys[' ']||window.__rollHold;
+  _tapeT-=dt; if(_tapeT<=0||!_tapeHit){_tapeHit=tapeCast(); _tapeT=1/12;}
+  if(hold&&!tape.on&&tape.retract<=0&&_tapeHit){tape.on=true; tape.A=_tapeHit.p.clone(); tape.An=_tapeHit.n.clone(); tape.objA=_tapeHit.obj; window.__tapeA=tape.A.toArray(); }
+  if(tape.on){ const H=_tapeHit; if(H){ tape.B=H.p.clone(); tape.objB=H.obj;} 
+    if(tape.B){ let d=tape.B.clone().sub(tape.A); if(d.length()>TAPE_MAX){d.setLength(TAPE_MAX); tape.B=tape.A.clone().add(d);} tape.mm=Math.round(tape.A.distanceTo(tape.B)*1000);
+      const up=tape.An.clone(); const L=ribbon(tapeBlade,tape.A,tape.B,up); tapeTex.repeat.set(L,1); tapeTex.offset.x=0; const M=tapeMouthW(); ribbon(tapeTail,tape.B,M,up);
+      tapeHook.visible=true; tapeHook.position.copy(tape.A).addScaledVector(up,.006); tapeHook.quaternion.copy(tapeBlade.quaternion); tapeDot.visible=true; tapeDot.position.copy(tape.B); if(hk0)hk0.visible=false;
+      el.style.display='block'; el.textContent=`📏 ${tape.mm.toLocaleString('ru-RU')} мм`+(tape.mm>=TAPE_MAX*1000?' (лента 5 м)':'');}
+    if(!hold){ tape.on=false; tape.retract=.35; window.__tapeLast={mm:tape.mm,A:tape.A.toArray(),B:tape.B?tape.B.toArray():null,objA:tape.objA,objB:tape.objB}; toast(`📏 Замер: ${tape.mm.toLocaleString('ru-RU')} мм`); tape.R0=tape.A.clone();}
+  } else if(tape.retract>0){ tape.retract-=dt; const k=Math.max(0,tape.retract/.35); const M=tapeMouthW(); const A=M.clone().lerp(tape.R0,k); const L=ribbon(tapeBlade,A,M,tape.An); if(L)tapeTex.repeat.set(L,1); tapeTail.visible=false; tapeDot.visible=false; tapeHook.visible=true; tapeHook.position.copy(A);
+    if(tape.retract<=0){[tapeBlade,tapeTail,tapeHook].forEach(o=>o.visible=false); if(hk0)hk0.visible=true; setTimeout(()=>{if(!tape.on)el.style.display='none';},1500);} }
+  else { if(el&&el.style.display==='block'&&!tape.on&&tape.retract<=0){} }
+  const b=$('action'); if(b&&!wAnim){b.disabled=false; b.textContent=tape.on?`📏 Тяни: ${tape.mm} мм — отпусти, чтобы смотать`:'📏 Зажми на точке A и веди прицел к точке B';}
+}
+{const _uhw=updateHUDW; updateHUDW=function(){_uhw.apply(this,arguments); if(holdingW==='tape'&&!wAnim){const b=$('action'); b.disabled=false; b.textContent=tape.on?`📏 Тяни: ${tape.mm} мм — отпусти, чтобы смотать`:'📏 Зажми на точке A и веди прицел к точке B';}};}
+window.__tapeState=()=>({on:tape.on,mm:tape.mm,A:tape.A&&tape.A.toArray(),B:tape.B&&tape.B.toArray(),retract:tape.retract,blade:tapeBlade.visible,last:window.__tapeLast||null,hit:_tapeHit?{p:_tapeHit.p.toArray(),obj:_tapeHit.obj}:null});
 window.__camNear=v=>{camera.near=v; camera.updateProjectionMatrix(); return 1;}; window.__rivState=(i,st)=>setRivetState(i,st); window.__rivSurf=i=>{const p=rivetPts[i]; return p.userData.surf.map(o=>({s:o.s.toArray(),n:o.n.toArray()}));}; window.__nutInfo=()=>({D:NUT.D,F:NUT.F,L:NUT.L,hole:NUT.HOLE,states:rivetPts.map(p=>p.userData.state),nuts:rivetPts.filter(p=>p.userData.nut).length,set:rivetPts.filter(p=>p.userData.nut&&p.userData.nut.userData.set).length});
 function addRivets(list,color=0xffd400){const g=new THREE.Group(); g.name='RivetPoints'; curPart.add(g); rivetPts=[];
   for(const [x,z] of list) rivetPoint(g,x,.045,z,.026,.022,color,'y'); return g;}
@@ -1334,7 +1405,7 @@ aimable('output',outputPallet,'Выходной поддон'); aimable('bato',b
 aimable('gateA',gateA.g,'Ворота А (приёмка)'); aimable('doorA',gateA.door,'Калитка ворот А'); aimable('doorB',gateB.door,'Калитка ворот Б'); aimable('gateB',gateB.g,'Ворота Б (отправка)');
 riffleSheet.userData.aimId='shelf'; monogalSheet.userData.aimId='shelf'; coverUnit.userData.aimId='shelf'; outputStack.userData.aimId='output'; insulPack.userData.aimId='bato';
 AIM.shelf.extra=[riffleSheet,monogalSheet,coverUnit]; 
-const TOOL_LABELS={rivetbag:'Пакет резьбовых заклёпок M6',hammer:'Молоток',riveter:'Заклёпочник RX-800',pliers:'Плоскогубцы',roller:'Прикаточный валик',marker:'Маркер',screwdriver:'Отвёртка'};
+const TOOL_LABELS={rivetbag:'Пакет резьбовых заклёпок M6',hammer:'Молоток',riveter:'Заклёпочник RX-800',pliers:'Плоскогубцы',roller:'Прикаточный валик',marker:'Маркер',screwdriver:'Отвёртка',tape:'Рулетка 5 м'};
 for(const id in wTools) aimable(id,wTools[id],TOOL_LABELS[id]||id);
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
@@ -1423,6 +1494,9 @@ window.__aimAt=function(what,idx){ // test helper: walk next to the target and t
   else { const o=what==='supply'?supplyPallet.children[supplyPallet.children.length-1]:what==='part'?curPart:what==='goats'?goats:what==='bato'?batoStack:what==='output'?outputPallet:what==='floorTool'?wTools[idx]:wTools[what]||AIM[what].obj;
     const bb=new THREE.Box3().setFromObject(o); p=bb.getCenter(v.clone()); if(what==='part'||what==='goats'||what==='bato'||what==='output'){p.y=bb.max.y-.01;}
     const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(wTools[what]&&wTools[what].userData.home&&wTools[what].position.distanceTo(wTools[what].userData.home)<.05||what==='floorTool'&&wTools[idx]&&wTools[idx].position.distanceTo(wTools[idx].userData.home)<.05||what==='bench'){ if(what==='bench'){p.set(benchPos.x,BENCH_TOP,benchPos.y+BENCH_D/2-.15);} d.set(0,1);} if(what.startsWith&&what.startsWith('wb:')){const P=WB_PARTS[what.slice(3)]; if(P&&P.hit){P.hit.getWorldPosition(p); const c=new THREE.Vector2(p.x-benchPos.x,p.z-benchPos.y); d.copy(Math.abs(c.x)/BENCH_W>Math.abs(c.y)/BENCH_D?new THREE.Vector2(Math.sign(c.x),0):new THREE.Vector2(0,Math.sign(c.y)||1)); const hb=new THREE.Box3().setFromObject(P.hit); if(what.includes('Tray')){d.set(0,1); p.z=hb.max.z; p.y=hb.min.y+.03;} else { if(d.x)p.x=d.x>0?hb.max.x:hb.min.x; else p.z=d.y>0?hb.max.z:hb.min.z; p.y=Math.min(p.y,BENCH_TOP-.12);}}} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:(what.startsWith&&what.startsWith('wb:'))?(what.includes('Tray')?0.6:0.75):1.1);}
+  {const tl=what==='floorTool'?wTools[idx]:wTools[what]; if(tl&&p&&from){ // v6.9: off-home tool -> pick an approach direction with clear line of sight (not hidden behind a stack / trestle)
+     const eyeY=(window.demoCamY||1.62), base=new THREE.Vector2(from.x-p.x,from.y-p.z), R=base.length()||1.1; const sees=f=>{const o=new THREE.Vector3(f.x,eyeY,f.y); aimRay.set(o,p.clone().sub(o).normalize()); aimRay.far=5; const h=aimRay.intersectObjects(aimRoots(),true)[0]; let q=h&&h.object; while(q){if(q===tl)return true; q=q.parent;} return false;};
+     if(!sees(from)){for(const a of[.6,-.6,1.2,-1.2,1.8,-1.8,2.5,-2.5,Math.PI]){const f=new THREE.Vector2(p.x,p.z).add(base.clone().rotateAround(new THREE.Vector2(),a)); if(Math.abs(f.x-benchPos.x)<BENCH_W/2+.3&&Math.abs(f.y-benchPos.y)<BENCH_D/2+.3)continue; if(sees(f)){from=f;break;}}}}}
   playerPos.copy(from); const eye=(window.demoCamY||1.62); const dx=p.x-from.x, dz=p.z-from.y; playerYaw=Math.atan2(dx,dz); playerPitch=Math.atan2(p.y-eye,Math.hypot(dx,dz)); return [p.x,p.y,p.z];};
 window.__rayDbg=()=>{camera.updateMatrixWorld(); aimRay.setFromCamera(new THREE.Vector2(0,0),camera); return aimRay.intersectObjects(aimRoots(),true).slice(0,4).map(h=>[h.object.name,+h.distance.toFixed(2)]).concat([[camera.position.toArray()]]);};
 window.__rinfo=()=>({calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries});
@@ -1537,6 +1611,7 @@ function doTakeW(){
 }
 function checkHolds(){const st=curW(); if(st&&st.holds&&holdingW===st.holds&&!wAnim){score+=10; advanceW();}}
 function doActionW(){
+  if(holdingW==='tape')return; // v6.9: tape measure works by HOLD (updateTape)
   if(wFinished){location.href='?mode=workshop'; return;}
   if(wAnim)return; const st=curW(); if(!st)return;
   if(st.pull){ // completion checked in updateWorkshopPull, action only hints
@@ -1597,7 +1672,7 @@ function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=
   rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
   if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
   if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
-function updateWorkshop(dt){ updateWB(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}

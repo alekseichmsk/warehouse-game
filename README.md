@@ -134,6 +134,12 @@ cd warehouse_game && python3 -m http.server 8765
 - Сообщения: 13 px, компактная плашка под шапкой (центр экрана свободен), автоскрытие через 2 с.
 - Тесты: логический прогон 298/298 шагов. `play_test.py` — 2 щита реальными действиями, 0 ошибок, включая взятие шумки взглядом сверху вниз (мышью). `mobile_test.py` — 390×844 с сенсором: свайп до −85°/+80°, «руки заняты», бросок, взятие шумки при взгляде вниз −85°.
 
+## v6.9 Bubble — lift cabin floor, STAGE 1
+- New station in the workshop (x −4.3, z −3.8): welded assembly table 2300×1250×700 with the **lift cabin floor tray 1100×2100** (Blender `lift/make_lift.py` → `lift_floor_tray.glb`): perimeter RHS 60×40×2, 4 cross RHS 40×40×2, 2 mm top sheet, 20×20×2 rim angle on 3 sides.
+- **Checker plate (рифлёнка «чечевица»)** AMg2 3+1.5 mm, lens 25×8.5×1.8 mm, ±28° alternating rows — used as the 1100×150 **door threshold strip** on a 10 mm riser (flush with 10 mm tile + ~5 mm adhesive). Ref vs model: `game_v69_checker_ref_vs_model.png`.
+- **Tape measure 5 m** (on the workbench): take it, HOLD action on point A (hook), aim at point B — yellow blade with mm/cm markings stretches, reading in mm on screen; release → reading toast + blade retracts. Works on any surface (raycasts every visible mesh + floor). Test: `tape_test.py`.
+- Stage 2+ (planned): wet tile saw, 2-component adhesive, trowel/notched trowel, tiles 300×300 & 1200×600 with SVP clips, rubber mallet, accelerated drying (≤1 min), grout, rag, packing.
+
 ## v6.8 Bubble
 - Rivets are now **threaded rivet nuts (клёпка-гайка) M6**, zinc-plated steel, flat flange: shank Ø9.0 knurled (12 ribs), flange Ø13×1.5, length 15.5 mm (grip 0.5–3.0), internal M6×1 thread. Shield holes are Ø9.1 mm (0.1 mm clearance on the shank); shield sheet 2.6 mm is within the grip range.
 - Used everywhere: zip bag (label «Заклёпка резьбовая M6 · 9×15,5 · сталь/цинк · 100 шт»), inserted in holes (flange on the sheet), after setting (shank upset/bulge behind the sheet, no mandrel stub).
