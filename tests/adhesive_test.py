@@ -1,7 +1,7 @@
 # v7.1 two-component adhesive test: open lids, take pouch, knife (extend), cut along the dashed line, pour, insert mixer, mix (before/after), pot life.
 from playwright.sync_api import sync_playwright
 import time,json,sys
-O='/workspace/warehouse_game/'; R={}; P=sys.argv[1] if len(sys.argv)>1 else 'game_v71_'
+O='/workspace/warehouse_game/'; R={}; P=sys.argv[1] if len(sys.argv)>1 else 'game_v72_'
 X,Z=-5.3,-6.55
 with sync_playwright() as p:
   b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--autoplay-policy=no-user-gesture-required'])

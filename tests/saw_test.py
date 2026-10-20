@@ -28,10 +28,10 @@ with sync_playwright() as p:
   for i in range(200):
     time.sleep(.15); st=E('__sawState()')
     if not shot and st['kerf']>.12:
-      E(f"__camAt({-7.3+.75},1.25,{-4.55+.85},{-7.3},.72,{-4.55})"); time.sleep(.6); pg.screenshot(path=O+'game_v71_saw_cutting.png'); shot=True; aimw('saw',2)
+      E(f"__camAt({-7.3+.75},1.25,{-4.55+.85},{-7.3},.72,{-4.55})"); time.sleep(.6); pg.screenshot(path=O+'game_v72_saw_cutting.png'); shot=True; aimw('saw',2)
     if st['cuts']>0: break
   pg.keyboard.up(' '); time.sleep(3.5); st=E('__sawState()'); R['after']={'cuts':st['cuts'],'last':st['last'],'pieces':st['pieces'],'tile':st['tile']}
-  E(f"__camAt({-7.3+.45},1.15,{-4.55+.75},{-7.3},.70,{-4.45})"); time.sleep(1.2); pg.screenshot(path=O+'game_v71_cut_pieces.png')
+  E(f"__camAt({-7.3+.45},1.15,{-4.55+.75},{-7.3},.70,{-4.45})"); time.sleep(1.2); pg.screenshot(path=O+'game_v72_cut_pieces.png')
   # take the offcut (physical object) and drop it on the floor
   off=st['last']['offcut'] if st['last'] else None
   if off:
@@ -57,6 +57,6 @@ with sync_playwright() as p:
     if E('__sawState().cuts')>1: break
     if i%40==39: pg.keyboard.up(' '); aimw('saw',2); pg.keyboard.down(' ')
   pg.keyboard.up(' '); time.sleep(3); R['big_after']=E('__sawState().last'); R['big_pieces']=E('__sawState().pieces')
-  E(f"__camAt({-7.3+1.3},1.5,{-4.55+1.7},{-7.3},.5,{-4.2})"); time.sleep(1.2); pg.screenshot(path=O+'game_v71_cut_1200x600.png')
+  E(f"__camAt({-7.3+1.3},1.5,{-4.55+1.7},{-7.3},.5,{-4.2})"); time.sleep(1.2); pg.screenshot(path=O+'game_v72_cut_1200x600.png')
   R['errs']=er
 print(json.dumps(R,ensure_ascii=False,indent=1))

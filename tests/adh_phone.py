@@ -17,6 +17,6 @@ with sync_playwright() as p:
         if a[0]<c[2] and c[0]<a[2] and a[1]<c[3] and c[1]<a[3]: ov.append((ks[i],ks[j]))
     off=[k for k,v in r.items() if v[0]<0 or v[1]<0 or v[2]>w or v[3]>h]
     R[nm]={'lidA':pg.evaluate('__adhState().lidA'),'rects':r,'overlap':ov,'off':off,'errs':er}
-    pg.screenshot(path=O+f'game_v71_phone_{nm}_adhesive.png'); ctx.close()
+    pg.screenshot(path=O+f'game_v72_phone_{nm}_adhesive.png'); ctx.close()
   print(json.dumps(R,ensure_ascii=False))
   b.close()

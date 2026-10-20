@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.1 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.2 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -62,11 +62,12 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
  #toast{top:auto;bottom:calc(12px + var(--sb));max-width:min(40vw,360px);font-size:12px}
  #help{display:none}
  #sawPanel{top:calc(var(--st) + 60px)!important}
+ #layPanel{top:calc(var(--st) + 60px)!important;font-size:10px!important;line-height:1.15!important;width:200px!important;padding:3px 6px!important} #layPanel button{padding:3px 8px!important}
 }
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.1 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.2 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -1042,7 +1043,7 @@ function supportBelow(x,z,yTop,B){ // highest upward surface below yTop at (x,z)
   const inTop=Math.abs(x-benchPos.x)<BENCH_W/2&&Math.abs(z-benchPos.y)<BENCH_D/2;
   for(const c of B.conts){const I=c.inner; if(x>I.x0&&x<I.x1&&z>I.z0&&z<I.z1&&I.y<=yTop+.002&&I.y>best.y&&(c.P.k>.02||B.host===c.n)){ if(inTop&&!c.open&&B.host!==c.n)continue; best={y:I.y,cont:c};}}
   if(inTop&&BENCH_TOP<=yTop+.002&&BENCH_TOP>best.y)best={y:BENCH_TOP,cont:null};
-  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation,window.__sawStation,window.__tileStock,window.__adhStation].filter(o=>o&&o.visible&&o.parent);
+  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation,window.__sawStation,window.__tileStock,window.__adhStation,window.__layStand].filter(o=>o&&o.visible&&o.parent);
   _dr.set(new THREE.Vector3(x,yTop+.002,z),_dn); _dr.far=yTop+.002-best.y; if(_dr.far>0){for(const h of _dr.intersectObjects(objs,true)){if(!h.face||!isShown(h.object))continue; const nY=h.face.normal.clone().transformDirection(h.object.matrixWorld).y; if(nY>.5){if(h.point.y>best.y)best={y:h.point.y,cont:null}; break;}}}
   return best;}
 function restQuat(t,yaw){return new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0)).multiply(t.userData.homeQ||new THREE.Quaternion());}
@@ -1682,6 +1683,209 @@ window.__adhAim=(what,off,dist)=>{ // walk in front (+z) of the station target a
   else if(what==='mixer'){const o=wTools.mixer; o.updateMatrixWorld(true); p=o.localToWorld(new THREE.Vector3(0,.2,0));} else {const o=wTools[what]; p=new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());}
   const d=dist||.75; playerPos.set(p.x+(off[3]||0),p.z+d); const eye=(window.demoCamY||1.62); playerYaw=Math.atan2(p.x-playerPos.x,p.z-playerPos.y); playerPitch=Math.atan2(p.y-eye,Math.hypot(p.x-playerPos.x,p.z-playerPos.y)); return p.toArray();};
 window.__adhPot=s=>{ADH.potT=s;}; window.__adhDbg=()=>({px:Array.from(pasteCv.getContext('2d').getImageData(10,128,1,1).data),pv:paste.visible,py:paste.position.y,pud:[puddle.visible,puddle.scale.x],wp:paste.getWorldPosition(new THREE.Vector3()).toArray(),side:paste.material.side}); window.__adhMix=v=>{ADH.mix=v; drawPaste();};
+// ===================== v7.2 STAGE 4: tile laying on the lift floor tray =====================
+// Blender lift/make_laying.py -> laying_tools.glb: flat trowel 280x120, notched trowel 280x120 (square teeth 10x10, pitch 20), rubber mallet (Ø60x110),
+// SVP (Russian «СВП клин»): clip 2 mm (base 50x30 + tab with window) + wedge 80x18, tightened with SVP pliers 230 mm.
+// Adhesive bed: 20 mm cells (kg/m²), ideal 4.0 kg/m² (10x10 comb ≈ 4–5 kg/m²); dab = 0.6 kg, trowel load = 1.8 kg (3 dabs), bucket 9.9 kg.
+const LAY={glb:false,cells:null,nx:0,nz:0,D:0,W:0,slots:[],placed:{},clips:{},dabs:[],load:0,comb:null,R:0,overlay:true,last:null,rng:12345,dirty:true,_dt:0,ghost:null,outline:null,cv:null,tex:null,plane:null,markers:[],stats:null};
+const CELL=.02, TGT=4.0, GOOD_LO=3.2, GOOD_HI=5.6, DAB_KG=.6, LOAD_KG=1.8, SEAM=.002, SNAP=.005, BED=.003, SHEET_Y=.062, MATCH_TOL=.003;
+if(ADH.kg===undefined)ADH.kg=9.9;
+function lrand(){LAY.rng=(LAY.rng*16807)%2147483647; return LAY.rng/2147483647;}
+function layOrder(){return LIFT_ORDERS[liftOrderIdx];}
+function tileDimsOf(o){ if(o.finish!=='tile')return null; return o.tile==='300×300'?[.3,.3]:[1.2,.6];} // 1200x600 lengthwise (1200 along the cabin depth D = tray x)
+function splitSpan(span,t){ let n=Math.floor((span+SEAM)/(t+SEAM)); let r=span-n*t-n*SEAM; if(r<.0005)return Array(n).fill(t); if(r<.1&&n>0){n--; const p=(span-n*t-(n+1)*SEAM)/2; return [p,...Array(n).fill(t),p];} return [...Array(n).fill(t),r];}
+function sawFeasible(full,need){ // can the ЗУБР make a w x h piece from a full tile? part = fence-1.1 (fence 10..300), offcut = L-fence-1.1; cut length <= 1020
+  const [a,b]=full, K=.0011; const one=(L,cutLen,t)=>{ if(Math.abs(L-t)<.0005)return true; if(cutLen>CUT_L+.001)return false; return (t<=.300-K+.0005&&t>=.010-K)||(L-t-K<=.300&&L-t-K>=.010);};
+  const [w,h]=need; return (one(a,b,w)&&one(b,w,h))||(one(b,a,h)&&one(a,h,w));}
+function buildPlan(){ const o=layOrder(); const d=liftTray.userData.dims; LAY.D=d.D; LAY.W=d.W; LAY.nx=Math.ceil(d.D/CELL); LAY.nz=Math.ceil(d.W/CELL); LAY.cells=new Float32Array(LAY.nx*LAY.nz); LAY.combed=new Float32Array(LAY.nx*LAY.nz).fill(-9); LAY.slots=[];
+  const T=tileDimsOf(o); if(!T)return; const x0=-d.D/2+.004, x1=d.D/2, z0=-d.W/2+.004, z1=d.W/2-.004; const xs=splitSpan(x1-x0,T[0]), zs=splitSpan(z1-z0,T[1]);
+  let x=x0; xs.forEach((w,i)=>{ let z=z0; zs.forEach((h,j)=>{ LAY.slots.push({id:`s${i}_${j}`,i,j,x0:x,x1:x+w,z0:z,z1:z+h,w,h,cx:x+w/2,cz:z+h/2,tile:null,need:Math.abs(w-T[0])<.0005&&Math.abs(h-T[1])<.0005?'full':'cut',feasible:sawFeasible(T,[w,h])}); z+=h+SEAM;}); x+=w+SEAM;}); }
+function slotAt(i,j){return LAY.slots.find(s=>s.i===i&&s.j===j);}
+// ---- adhesive bed canvas on the tray ----
+function layReset(){ if(!liftTray)return; for(const id in LAY.placed){const t=wTools[id]; if(t){scene.remove(t); delete wTools[id]; delete AIM[id];}} LAY.placed={}; for(const k in LAY.clips){const c=LAY.clips[k]; c.mesh&&c.mesh.removeFromParent(); c.wedge&&c.wedge.removeFromParent();} LAY.clips={}; for(const b of LAY.dabs)b.mesh.removeFromParent(); LAY.dabs=[];
+  buildPlan(); const cv=document.createElement('canvas'); cv.width=LAY.nx*4; cv.height=LAY.nz*4; LAY.cv=cv; LAY.ctx=cv.getContext('2d'); LAY.img=LAY.ctx.createImageData(cv.width,cv.height); LAY.tex=new THREE.CanvasTexture(cv); LAY.tex.colorSpace=THREE.SRGBColorSpace; LAY.tex.magFilter=THREE.NearestFilter;
+  LAY.plane=new THREE.Mesh(new THREE.PlaneGeometry(LAY.D,LAY.W),new THREE.MeshBasicMaterial({map:LAY.tex,transparent:true,depthWrite:false})); LAY.plane.rotation.x=-Math.PI/2; LAY.plane.position.y=SHEET_Y+.0006; LAY.plane.renderOrder=2; LAY.plane.name='AdhesiveBed'; liftTray.add(LAY.plane);
+  aimable('liftTray',liftTray,'Поддон пола кабины'); LAY.dirty=true; drawBed(); LAY.stats=null;}
+function cellIdx(x,z){const ix=Math.floor((x+LAY.D/2)/CELL), iz=Math.floor((z+LAY.W/2)/CELL); if(ix<0||iz<0||ix>=LAY.nx||iz>=LAY.nz)return -1; return iz*LAY.nx+ix;}
+function cellXZ(k){return [-LAY.D/2+(k%LAY.nx+.5)*CELL,-LAY.W/2+(Math.floor(k/LAY.nx)+.5)*CELL];}
+function underTile(k){const [x,z]=cellXZ(k); for(const id in LAY.placed){const P=LAY.placed[id]; if(Math.abs(x-P.x)<P.ex/2&&Math.abs(z-P.z)<P.ez/2)return true;} return false;}
+function cellState(k){const a=LAY.cells[k]; if(a<=.05)return 0; const c=LAY.combed[k]>-9; if(!c)return 1; return a<GOOD_LO?2:a>GOOD_HI?3:4;} // 0 none,1 heap (not combed),2 thin,3 thick,4 good
+function drawBed(){ if(!LAY.img)return; const I=LAY.img.data, Wc=LAY.cv.width, Hc=LAY.cv.height, ov=LAY.overlay&&layToolHeld(); const set=ADH.set; const OPEN=new Uint8Array(LAY.nx*LAY.nz); if(ov)for(let k=0;k<OPEN.length;k++)OPEN[k]=slotCellOpen(k)?1:0;
+  for(let py=0;py<Hc;py++)for(let px=0;px<Wc;px++){ const k=Math.floor(py/4)*LAY.nx+Math.floor(px/4), o=(py*Wc+px)*4; const a=LAY.cells[k], st=cellState(k); let r=0,g=0,b=0,al=0;
+    if(st===1){const s=Math.min(1,a/30); r=g=b=150-40*s; b+=2; al=.92;}
+    else if(st>=2){ const ang=LAY.combed[k], u=(px*5)*Math.sin(ang)-(py*5)*Math.cos(ang); const rib=((u%20)+20)%20<10; let fill=Math.min(1,a/TGT); const h=((px*73856093^py*19349663)>>>0)%100/100; const on=rib&&h<fill*1.05; if(on){r=g=b=158; al=1;} else {r=150;g=155;b=160; al=st===3?.85:.0; if(st===3){r=g=b=140;}} if(on&&!rib){} }
+    if(set&&al>0){r*=.7;g*=.7;b*=.7;}
+    if(ov){ const c=st===4?[60,200,90]:st===2?[240,200,40]:st===3?[60,120,240]:st===1?[230,140,40]:[230,60,60]; const m=.33; if(!(st===0&&!OPEN[k])){ r=r*(1-m)+c[0]*m; g=g*(1-m)+c[1]*m; b=b*(1-m)+c[2]*m; al=Math.max(al,.38);} }
+    I[o]=r; I[o+1]=g; I[o+2]=b; I[o+3]=al*255;}
+  LAY.ctx.putImageData(LAY.img,0,0); LAY.tex.needsUpdate=true; LAY.dirty=false;}
+function slotCellOpen(k){const [x,z]=cellXZ(k); for(const s of LAY.slots)if(!s.tile&&x>s.x0&&x<s.x1&&z>s.z0&&z<s.z1)return true; return false;}
+function slotCoverage(s){let n=0,g=0,sum=0; for(let x=s.x0+CELL/2;x<s.x1;x+=CELL)for(let z=s.z0+CELL/2;z<s.z1;z+=CELL){const k=cellIdx(x,z); if(k<0)continue; n++; sum+=LAY.cells[k]; if(cellState(k)===4)g++;} return {cov:n?g/n:0,avg:n?sum/n:0};}
+function totalCoverage(){let n=0,g=0; for(const s of LAY.slots){const c=slotCoverage(s); const a=(s.x1-s.x0)*(s.z1-s.z0); n+=a; g+=c.cov*a;} return n?g/n:0;}
+// ---- raycast onto the tray (sheet / bed / placed tiles) ----
+const _lrc=new THREE.Raycaster();
+function trayHit(){ if(!liftTray)return null; camera.updateMatrixWorld(); _lrc.setFromCamera(new THREE.Vector2(0,0),camera); _lrc.far=3.2; const objs=[liftTray]; for(const id in LAY.placed)objs.push(wTools[id]);
+  const h=_lrc.intersectObjects(objs,true).find(h=>h.object!==LAY.ghost&&h.object.name!=='LayOutline'); if(!h)return null; const p=liftTray.worldToLocal(h.point.clone()); let o=h.object, tile=null; while(o){if(LAY.placed[o.name]){tile=o.name;break;} o=o.parent;} return {p,tile,world:h.point.clone()};}
+function inInner(p){return p.x>-LAY.D/2+.004&&p.x<LAY.D/2&&Math.abs(p.z)<LAY.W/2-.004;}
+// ---- tools ----
+let LT={};
+_gl.load('laying_tools.glb',gl=>{ fixMats(gl.scene); const S=gl.scene; const take=n=>{const o=S.getObjectByName(n); o.removeFromParent(); o.position.set(0,0,0); o.rotation.set(0,0,0); return o;};
+  LT.clip=take('SVP_Clip'); LT.wedge=take('SVP_Wedge');
+  const ft=take('Trowel_Flat'); const blob=new THREE.Mesh(new THREE.SphereGeometry(1,14,8),new THREE.MeshLambertMaterial({color:0x8d8a84})); blob.scale.set(.05,.018,.07); blob.position.set(0,.012,.06); blob.visible=false; blob.name='TrowelLoad'; ft.add(blob); LAY.trowelBlob=blob;
+  regAdhTool('trowel',ft,'Шпатель-кельма 280×120',{axis:[0,0,1],up:[0,1,0],grasp:[0,.045,-.01],kind:'power'},[{t:'cyl',a:[0,.045,-.07],b:[0,.045,.05],r:.015}],HOLD_POSE._);
+  regAdhTool('comb',take('Trowel_Notched'),'Зубчатый шпатель 10×10',{axis:[0,0,1],up:[0,1,0],grasp:[0,.045,-.01],kind:'power'},[{t:'cyl',a:[0,.045,-.07],b:[0,.045,.05],r:.015}],HOLD_POSE._);
+  regAdhTool('mallet',take('Mallet'),'Киянка резиновая',{axis:[0,0,1],up:[0,1,0],grasp:[0,0,-.07],kind:'power'},[{t:'cyl',a:[0,0,-.15],b:[0,0,.15],r:.014}],HOLD_POSE._);
+  regAdhTool('svpPliers',take('SVP_Pliers'),'Клещи СВП',{axis:[0,0,1],up:[0,1,0],grasp:[0,0,-.16],kind:'power'},[{t:'cyl',a:[0,0,-.23],b:[0,0,-.06],r:.02}],HOLD_POSE._);
+  for(const [id,lab,col,txt] of [['svpClips','СВП зажимы 2 мм (100 шт)',0xd52020,'СВП ЗАЖИМ 2 мм'],['svpWedges','СВП клинья (100 шт)',0x2058d5,'СВП КЛИН']]){ const g=new THREE.Group(); const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const x=cv.getContext('2d'); x.fillStyle='#eef2f6'; x.fillRect(0,0,256,128); x.fillStyle='#'+col.toString(16).padStart(6,'0'); x.fillRect(0,0,256,30); x.fillStyle='#111'; x.font='bold 30px sans-serif'; x.fillText(txt,10,80); x.font='22px sans-serif'; x.fillText('100 шт',10,114);
+     const m=new THREE.Mesh(new THREE.BoxGeometry(.16,.05,.22),[new THREE.MeshLambertMaterial({color:0xdde3ea}),new THREE.MeshLambertMaterial({color:0xdde3ea}),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)}),new THREE.MeshLambertMaterial({color:0xdde3ea}),new THREE.MeshLambertMaterial({color:0xdde3ea}),new THREE.MeshLambertMaterial({color:0xdde3ea})]); m.position.y=.025; g.add(m);
+     regAdhTool(id,g,lab,{axis:[1,0,0],up:[0,1,0],grasp:[0,.03,0],kind:'power'},[{t:'cyl',a:[-.08,.025,0],b:[.08,.025,0],r:.025}],[0,-.30,-.50,.4,0,0]);}
+  for(const id of ['trowel','comb','mallet','svpPliers','svpClips','svpWedges'])layHome(id); LAY.glb=true; window.__layReady=true;});
+// tool stand between the lift station and the adhesive station
+const STAND=new THREE.Vector3(-4.0,0,-5.15), STAND_H=.75; {const g=new THREE.Group(); g.position.copy(STAND); g.name='LayToolStand'; scene.add(g); window.__layStand=g; const S=0x3b4552;
+  for(const sx of[-1,1])for(const sz of[-1,1])wbox(g,sx*.42,STAND_H/2,sz*.2,.04,STAND_H,.04,S); wbox(g,0,STAND_H-.012,0,.92,.024,.46,0xc89a62); wbox(g,0,.15,0,.88,.02,.42,0x8a6a44);
+  const cv=document.createElement('canvas'); cv.width=512; cv.height=64; const x=cv.getContext('2d'); x.fillStyle='#ffd400'; x.fillRect(0,0,512,64); x.fillStyle='#1d2330'; x.font='bold 30px sans-serif'; x.fillText('Укладка плитки: инструмент',12,44); const m=new THREE.Mesh(new THREE.PlaneGeometry(.8,.1),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); m.position.set(0,STAND_H-.07,-.232); m.rotation.y=Math.PI; g.add(m);
+  aimable('layStand',g,'Стол с инструментом для укладки'); window.__colBoxes.push({id:'laystand',x:STAND.x,z:STAND.z,hx:.48,hz:.25}); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(STAND.x-.47,0,STAND.z-.24),new THREE.Vector3(STAND.x+.47,STAND_H,STAND.z+.24)));}
+const LAY_HOME={trowel:[-.33,0,0],comb:[-.12,0,0],mallet:[.10,.014,.02,Math.PI/2],svpPliers:[.36,.02,.1],svpClips:[.28,0,-.1],svpWedges:[.37,0,-.1]};
+function layHome(id){const g=wTools[id]; if(!g)return; delete BODIES[id]; toolToScene(g); const h=LAY_HOME[id]; g.position.set(STAND.x+h[0],STAND_H+h[1],STAND.z+h[2]); g.rotation.set(0,h[3]||0,0); if(id==='svpPliers')g.rotation.set(Math.PI/2,0,0); g.userData.home=g.position.clone(); g.updateMatrixWorld(true);}
+const LAY_TOOLS=new Set(['trowel','comb','mallet','svpPliers','svpClips','svpWedges']);
+function layToolHeld(){return LAY_TOOLS.has(holdingW)||isTile(holdingW);}
+function nearLift(){return Math.hypot(playerPos.x-LIFT_POS.x,playerPos.y-LIFT_POS.y)<2.4||Math.hypot(playerPos.x-STAND.x,playerPos.y-STAND.z)<1.4;}
+// ---- dab / comb ----
+function dab(p){ const o=[], R=.09, s2=2*.035*.035; let W=0; for(let x=p.x-R;x<=p.x+R;x+=CELL)for(let z=p.z-R;z<=p.z+R;z+=CELL){const k=cellIdx(x,z); if(k<0||underTile(k))continue; const [cx,cz]=cellXZ(k); const r2=(cx-p.x)**2+(cz-p.z)**2; if(r2>R*R)continue; const w=Math.exp(-r2/s2); o.push([k,w]); W+=w;}
+  if(!W)return false; const kg=Math.min(DAB_KG,LAY.load); for(const [k,w] of o){LAY.cells[k]+=kg*w/W/(CELL*CELL); LAY.combed[k]=-9;} LAY.load-=kg;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(1,12,7,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:ADH.set?0x6a6862:0x8f8b84})); m.scale.set(.055,.024*kg/DAB_KG,.06); m.position.set(p.x,SHEET_Y,p.z); liftTray.add(m); LAY.dabs.push({mesh:m,x:p.x,z:p.z}); LAY.dirty=true; return true;}
+function combSweep(a,b){ const dx=b.x-a.x, dz=b.z-a.z, L=Math.hypot(dx,dz); if(L<.002)return; const ux=dx/L, uz=dz/L, ang=Math.atan2(dz,dx), HW=.14; const list=[];
+  const mnx=Math.min(a.x,b.x)-HW, mxx=Math.max(a.x,b.x)+HW, mnz=Math.min(a.z,b.z)-HW, mxz=Math.max(a.z,b.z)+HW;
+  for(let x=mnx;x<=mxx;x+=CELL)for(let z=mnz;z<=mxz;z+=CELL){const k=cellIdx(x,z); if(k<0)continue; const [cx,cz]=cellXZ(k); const t=(cx-a.x)*ux+(cz-a.z)*uz, d=Math.abs(-(cx-a.x)*uz+(cz-a.z)*ux); if(t<-CELL/2||t>L+CELL/2||d>HW)continue; if(underTile(k))continue; list.push([t,k]);}
+  list.sort((p,q)=>p[0]-q[0]); const seen=new Set(); const A=CELL*CELL;
+  for(const [,k] of list){ if(seen.has(k))continue; seen.add(k); const a0=LAY.cells[k]; if(a0>TGT){LAY.R+=(a0-TGT)*A; LAY.cells[k]=TGT;} else {const need=(TGT-a0)*A, g=Math.min(need,LAY.R); LAY.R-=g; LAY.cells[k]=a0+g/A;} if(LAY.cells[k]>.05)LAY.combed[k]=ang; }
+  for(let i=LAY.dabs.length-1;i>=0;i--){const d=LAY.dabs[i]; const t=(d.x-a.x)*ux+(d.z-a.z)*uz, dd=Math.abs(-(d.x-a.x)*uz+(d.z-a.z)*ux); if(t>-.03&&t<L+.03&&dd<HW){d.mesh.removeFromParent(); LAY.dabs.splice(i,1);}}
+  LAY.dirty=true;}
+function combRelease(){ if(LAY.R>1e-4&&LAY.comb){ const p=LAY.comb; const k=cellIdx(p.x,p.z); if(k>=0){LAY.cells[k]+=LAY.R/(CELL*CELL); LAY.combed[k]=-9;} } LAY.R=0; LAY.comb=null; LAY.dirty=true;}
+// ---- tiles on the tray ----
+function matchSlot(id,p){ const d=wTools[id].userData.tile; let best=null,bd=1e9; for(const s of LAY.slots){ if(s.tile)continue; let rot=null; if(Math.abs(d.sx-s.w)<=MATCH_TOL&&Math.abs(d.sz-s.h)<=MATCH_TOL)rot=false; else if(Math.abs(d.sz-s.w)<=MATCH_TOL&&Math.abs(d.sx-s.h)<=MATCH_TOL)rot=true; if(rot===null)continue; const dd=p?Math.hypot(p.x-s.cx,p.z-s.cz):0; if(dd<bd){bd=dd; best={s,rot};}} return best;}
+function tileExt(id,rot){const d=wTools[id].userData.tile; return rot?[d.sz,d.sx]:[d.sx,d.sz];}
+function overlapsPlaced(x,z,ex,ez,skip){for(const id in LAY.placed){if(id===skip)continue; const P=LAY.placed[id]; if(Math.abs(x-P.x)<(ex+P.ex)/2-.0004&&Math.abs(z-P.z)<(ez+P.ez)/2-.0004)return id;} return null;}
+function setTileY(id){const P=LAY.placed[id], t=wTools[id]; t.position.copy(liftTray.localToWorld(new THREE.Vector3(P.x,SHEET_Y+BED+P.dh/1000,P.z))); t.rotation.set(0,P.rot?Math.PI/2:0,0); t.updateMatrixWorld(true);}
+function placeTile(id,p){ const m=matchSlot(id,p); if(!m){toast('📐 Нет свободного места под такой размер — отрежь плитку на плиткорезе'); return false;} if(ADH.set){toast('⛔ Клей схватился — укладывать нельзя'); return false;}
+  const s=m.s, [ex,ez]=tileExt(id,m.rot); let x=p.x, z=p.z; const off=[(x-s.cx)*1000,(z-s.cz)*1000]; let snapped=false; if(Math.abs(off[0])<=SNAP*1000&&Math.abs(off[1])<=SNAP*1000){x=s.cx; z=s.cz; snapped=true;}
+  if(x-ex/2<-LAY.D/2+.002||x+ex/2>LAY.D/2+.003||Math.abs(z)+ez/2>LAY.W/2-.002){toast('⚠ Плитка не помещается — край упирается в борт'); return false;}
+  if(overlapsPlaced(x,z,ex,ez,id)){toast('⚠ Плитка наезжает на соседнюю — поставь точнее'); return false;}
+  const c=slotCoverage(s); const ratio=c.avg/TGT; const dh=THREE.MathUtils.clamp(1.2+1.5*(ratio-1)+lrand()*.6,.3,3), dhMin=c.cov<.3?-.8:THREE.MathUtils.clamp(1.5*(ratio-1),-.8,1.6);
+  toolToScene(wTools[id]); holdingW=null; delete BODIES[id]; s.tile=id; LAY.placed[id]={slot:s.id,x,z,ex,ez,rot:m.rot,dh,dhMin,cov:c.cov,avg:c.avg,misIn:off.map(v=>+v.toFixed(1)),snapped,taps:0}; setTileY(id); LAY.last=id; LAY.dirty=true;
+  toast(snapped?`✅ Плитка в ячейке ${s.id}: смещение ${Math.hypot(...off).toFixed(1)} мм → прижата к шву 2 мм • клей под ней ${Math.round(c.cov*100)}%`:`⚠ Поставлена со смещением ${off[0].toFixed(1)} / ${off[1].toFixed(1)} мм — подвинь кнопками ◀▶▲▼ (допуск ±${SNAP*1000} мм)`); updateHUDW(); return true;}
+function nudge(dx,dz){ const id=LAY.last; const P=id&&LAY.placed[id]; if(!P){toast('Нет уложенной плитки'); return;} if(clipsOf(id).length){toast('🔒 Плитка зажата СВП — двигать нельзя'); return;} const s=LAY.slots.find(q=>q.id===P.slot); let x=P.x+dx/1000, z=P.z+dz/1000;
+  if(overlapsPlaced(x,z,P.ex,P.ez,id)){toast('⚠ Упирается в соседнюю плитку'); return;} P.x=x; P.z=z; const off=[(x-s.cx)*1000,(z-s.cz)*1000]; if(!P.snapped&&Math.abs(off[0])<=SNAP*1000&&Math.abs(off[1])<=SNAP*1000){P.x=s.cx; P.z=s.cz; P.snapped=true; toast(`✅ В допуске — плитка встала по шву 2 мм`);} setTileY(id); LAY.stats=null;}
+function unplace(id){ const P=LAY.placed[id]; if(!P)return; if(clipsOf(id).length){toast('🔒 Сначала сними СВП'); return false;} const s=LAY.slots.find(q=>q.id===P.slot); if(s)s.tile=null; delete LAY.placed[id]; holdingW=id; wTools[id].userData.dropped=false; LAY.dirty=true; return true;}
+// ---- joints / SVP ----
+function joints(){ const J=[]; for(const s of LAY.slots){ if(!s.tile)continue; for(const [di,dj] of [[1,0],[0,1]]){ const n=slotAt(s.i+di,s.j+dj); if(!n||!n.tile)continue; const A=LAY.placed[s.tile], B=LAY.placed[n.tile];
+    if(di){ const gap=(B.x-B.ex/2)-(A.x+A.ex/2), za=Math.max(A.z-A.ez/2,B.z-B.ez/2), zb=Math.min(A.z+A.ez/2,B.z+B.ez/2), L=zb-za, xm=(A.x+A.ex/2+B.x-B.ex/2)/2; const cnt=Math.max(1,Math.round(L/.3)); const pts=[]; for(let k=0;k<cnt;k++)pts.push([xm,za+(k+.5)*L/cnt]); J.push({a:s.tile,b:n.tile,axis:'x',gap,pts,key:s.tile+'|'+n.tile});}
+    else { const gap=(B.z-B.ez/2)-(A.z+A.ez/2), xa=Math.max(A.x-A.ex/2,B.x-B.ex/2), xb=Math.min(A.x+A.ex/2,B.x+B.ex/2), L=xb-xa, zm=(A.z+A.ez/2+B.z-B.ez/2)/2; const cnt=Math.max(1,Math.round(L/.3)); const pts=[]; for(let k=0;k<cnt;k++)pts.push([xa+(k+.5)*L/cnt,zm]); J.push({a:s.tile,b:n.tile,axis:'z',gap,pts,key:s.tile+'|'+n.tile});} } } return J;}
+function clipsOf(id){return Object.values(LAY.clips).filter(c=>c.a===id||c.b===id);}
+function nearestClipPoint(p,free){ let best=null,bd=.07; for(const j of joints())j.pts.forEach((q,k)=>{const key=j.key+'#'+k; if(free&&LAY.clips[key])return; const d=Math.hypot(p.x-q[0],p.z-q[1]); if(d<bd){bd=d; best={j,k,key,q};}}); return best;}
+function nearestClip(p,pred){ let best=null,bd=.07; for(const key in LAY.clips){const c=LAY.clips[key]; if(pred&&!pred(c))continue; const d=Math.hypot(p.x-c.x,p.z-c.z); if(d<bd){bd=d; best=c;}} return best;}
+function insertClip(p){ const n=nearestClipPoint(p,true); if(!n){toast('🎯 Наведи на шов между двумя уложенными плитками (точка зажима)'); return;} const m=LT.clip.clone(true); m.position.set(n.q[0],SHEET_Y+BED,n.q[1]); m.rotation.y=n.j.axis==='x'?0:Math.PI/2; liftTray.add(m);
+  LAY.clips[n.key]={key:n.key,a:n.j.a,b:n.j.b,axis:n.j.axis,x:n.q[0],z:n.q[1],mesh:m,wedge:null,tight:0}; toast(`🔴 Зажим СВП 2 мм заведён под края плиток (${Object.keys(LAY.clips).length} шт)`); LAY.stats=null;}
+function insertWedge(p){ const c=nearestClip(p,c=>!c.wedge); if(!c){toast('🎯 Наведи на зажим СВП без клина'); return;} const w=LT.wedge.clone(true); c.mesh.add(w); c.wedge=w; posWedge(c); toast('🔵 Клин вставлен в окно зажима — затяни клещами СВП'); LAY.stats=null;}
+function tileTopY(){return BED+TILE_T;}
+function posWedge(c){ c.wedge.position.set(-.085+.055*c.tight,tileTopY(),0);} // tip enters the window, advances when tightened
+// ---- quality ----
+function jointLip(j){ const A=LAY.placed[j.a], B=LAY.placed[j.b]; const cl=j.pts.map((q,k)=>LAY.clips[j.key+'#'+k]); const f=cl.reduce((s,c)=>s+(c&&c.wedge?c.tight:0),0)/cl.length; return Math.abs(A.dh-B.dh)*(1-.85*f);}
+function layStats(){ const ids=Object.keys(LAY.placed); const J=joints(); const seams=J.map(j=>Math.abs(j.gap*1000-2)); const lips=J.map(jointLip); const cov=ids.length?ids.reduce((s,i)=>s+LAY.placed[i].cov,0)/ids.length:0;
+  const mis=ids.map(i=>{const P=LAY.placed[i], s=LAY.slots.find(q=>q.id===P.slot); return Math.hypot(P.x-s.cx,P.z-s.cz)*1000;}); const seamDev=seams.length?seams.reduce((a,b)=>a+b,0)/seams.length:0, lipMax=lips.length?Math.max(...lips):0;
+  const covQ=cov, seamQ=Math.max(0,1-seamDev/1.0), lipQ=Math.max(0,1-Math.max(0,lipMax-.3)/1.2), adhQ=ADH.q!=null?ADH.q:(ADH.mix>0?mixQuality(ADH.mix):1);
+  const nClips=Object.keys(LAY.clips).length, nPts=J.reduce((s,j)=>s+j.pts.length,0), nTight=Object.values(LAY.clips).filter(c=>c.wedge&&c.tight>=1).length;
+  return {placed:ids.length,slots:LAY.slots.length,coverage:+cov.toFixed(3),bedCoverage:+totalCoverage().toFixed(3),seamDevMm:+seamDev.toFixed(2),seams:seams.map(v=>+v.toFixed(2)),lipMaxMm:+lipMax.toFixed(2),lips:lips.map(v=>+v.toFixed(2)),misMm:mis.map(v=>+v.toFixed(1)),joints:J.length,clipPts:nPts,clips:nClips,tight:nTight,adhQ:+adhQ.toFixed(2),
+    Q:+(adhQ*(.4*covQ+.3*seamQ+.3*lipQ)).toFixed(3),covQ:+covQ.toFixed(2),seamQ:+seamQ.toFixed(2),lipQ:+lipQ.toFixed(2)};}
+// ---- ghost + dashed target outline ----
+function ensureGhost(){ if(!LAY.ghost){ LAY.ghost=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x40e070,transparent:true,opacity:.28,depthWrite:false})); LAY.ghost.name='LayGhost'; LAY.ghost.raycast=()=>{}; scene.add(LAY.ghost);
+  const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-.5,0,-.5),new THREE.Vector3(.5,0,-.5),new THREE.Vector3(.5,0,.5),new THREE.Vector3(-.5,0,.5),new THREE.Vector3(-.5,0,-.5)]); LAY.outline=new THREE.Line(g,new THREE.LineDashedMaterial({color:0xffd400,dashSize:.012,gapSize:.008,depthTest:false})); LAY.outline.name='LayOutline'; LAY.outline.renderOrder=6; LAY.outline.raycast=()=>{}; scene.add(LAY.outline);} }
+// ---- sound ----
+function thud(f,d){try{const C=window.__aC||(window.__aC=new (window.AudioContext||window.webkitAudioContext)()); const o=C.createOscillator(), g=C.createGain(); o.type='sine'; o.frequency.setValueAtTime(f,C.currentTime); o.frequency.exponentialRampToValueAtTime(f*.5,C.currentTime+d); g.gain.setValueAtTime(.12,C.currentTime); g.gain.exponentialRampToValueAtTime(.0001,C.currentTime+d); o.connect(g).connect(C.destination); o.start(); o.stop(C.currentTime+d+.02);}catch(e){}}
+// ---- panel ----
+{const el=document.createElement('div'); el.id='layPanel'; el.style.cssText='position:fixed;right:calc(12px + var(--sr,0px));top:calc(var(--st,0px) + 240px);z-index:5;display:none;width:178px;background:rgba(255,255,255,.86);border:2px solid #fff;border-radius:16px;padding:6px 8px;font-weight:800;color:#2b2f45;font-size:11.5px;line-height:1.3;box-shadow:0 4px 14px rgba(0,0,0,.18)';
+ el.innerHTML='<div id="layTxt"></div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:4px"><button data-l="L" style="min-width:0;padding:5px 9px;font-size:13px">◀</button><button data-l="U" style="min-width:0;padding:5px 9px;font-size:13px">▲</button><button data-l="D" style="min-width:0;padding:5px 9px;font-size:13px">▼</button><button data-l="R" style="min-width:0;padding:5px 9px;font-size:13px">▶</button><button data-l="map" style="min-width:0;padding:5px 8px;font-size:12px">🗺 Карта</button></div>';
+ document.body.appendChild(el); el.addEventListener('click',e=>{const b=e.target.closest('button'); if(b)layCmd(b.dataset.l);});}
+function layCmd(c){ // ◀▶ move along the tray length (x), ▲▼ across (z) — 1 mm
+  if(c==='L')nudge(-1,0); else if(c==='R')nudge(1,0); else if(c==='U')nudge(0,-1); else if(c==='D')nudge(0,1); else if(c==='map'){LAY.overlay=!LAY.overlay; LAY.dirty=true; toast(LAY.overlay?'🗺 Карта покрытия: зелёный — норма, жёлтый — тонко, синий — толсто, оранжевый — не разровнено, красный — нет клея':'🗺 Карта скрыта');}}
+window.__layCmd=layCmd;
+function layHint(){ const o=layOrder(); if(o.finish!=='tile')return `Заказ ${o.n}: рифлёнка — плитка не нужна`; const st=LAY.stats||(LAY.stats=layStats());
+  if(holdingW==='trowel')return LAY.load>0?`Кельма: ${LAY.load.toFixed(1)} кг — «Действие» по поддону: наляпать`:'Кельма пустая — набери клей из ведра А';
+  if(holdingW==='comb')return 'Зажми «Действие» и веди по поддону — гребёнка 10×10';
+  if(isTile(holdingW))return LAY.target?`Пунктир — место ${Math.round(LAY.target.s.w*1000)}×${Math.round(LAY.target.s.h*1000)} • смещение ${LAY.tOff}`:'Нет места под этот размер';
+  if(holdingW==='svpClips')return `Зажимы: ${st.clips}/${st.clipPts} точек — «Действие» на шов`;
+  if(holdingW==='svpWedges')return 'Клин — «Действие» на зажим';
+  if(holdingW==='svpPliers')return `Зажми «Действие» на клине — затянуть (${st.tight}/${st.clips})`;
+  if(holdingW==='mallet')return LAY.aimTile?`Δh: ${LAY.aimTxt||'—'} — «Действие»: простучать`:'Наведи на плитку — простучать';
+  return `Плитка ${st.placed}/${st.slots} • возьми инструмент со стола`;}
+function updLayPanel(near){ const el=document.getElementById('layPanel'); const show=mode==='workshop'&&near&&(layToolHeld()||Object.keys(LAY.placed).length>0||LAY.dabs.length>0); el.style.display=show?'block':'none'; if(!show)return; const st=LAY.stats||(LAY.stats=layStats());
+  const s=`<div>🧱 ${layHint()}</div><div>Клей на поддоне: ${Math.round(st.bedCoverage*100)}% • под плиткой ${Math.round(st.coverage*100)}%</div><div>Шов: откл. ${st.seamDevMm} мм • Перепад: ${st.lipMaxMm} мм</div><div>СВП: ${st.clips} зажимов, затянуто ${st.tight}</div><div>Ведро: ${ADH.kg.toFixed(1)} кг • ${ADH.set?'<span style="color:#c0182b">клей схватился</span>':ADH.started?'⏱ '+fmt(potLife()-ADH.potT):'не замешан'}</div><div style="font-size:13px">Качество: ${Math.round(st.Q*100)}%</div>`;
+  const t=document.getElementById('layTxt'); if(t._s!==s){t.innerHTML=s; t._s=s;}}
+// ---- per frame ----
+function updateLay(dt){ if(!LAY.glb||!liftTray)return; {const n=performance.now(); dt=LAY._t?Math.min(.25,(n-LAY._t)/1000):0; LAY._t=n;}
+  if(!LAY.cells||LAY.plane&&LAY.plane.parent!==liftTray)layReset();
+  const near=mode==='workshop'&&nearLift(); const hold=(keys[' ']||window.__rollHold)&&!wAnim&&mode==='workshop'; LAY.stT=(LAY.stT||0)-dt; if(LAY.stT<=0){LAY.stats=null; LAY.stT=.25;}
+  updLayPanel(near); if(LAY.trowelBlob){LAY.trowelBlob.visible=LAY.load>0; LAY.trowelBlob.scale.set(.05,.018*Math.max(.35,LAY.load/LOAD_KG),.07);}
+  const H=(near&&layToolHeld())?trayHit():null; LAY.hit=H;
+  // comb
+  if(holdingW==='comb'&&hold&&H&&!H.tile&&inInner(H.p)&&!ADH.set){ if(LAY.comb)combSweep(LAY.comb,H.p); LAY.comb=H.p.clone(); } else if(LAY.comb)combRelease();
+  // pliers: hold to tighten nearest wedge
+  if(holdingW==='svpPliers'&&hold&&H){ const c=nearestClip(H.p,c=>c.wedge&&c.tight<1); if(c){ c.tight=Math.min(1,c.tight+dt/.8); posWedge(c); if(c.tight>=1){thud(900,.05); toast('🔧 Клин затянут — края плиток стянуты в одну плоскость'); LAY.stats=null;} } }
+  // tile ghost + dashed target
+  ensureGhost(); const tId=isTile(holdingW)?holdingW:null; let gv=false;
+  if(tId&&H&&near){ const m=matchSlot(tId,H.p); LAY.target=m; if(m){ const [ex,ez]=tileExt(tId,m.rot), s=m.s; const offx=(H.p.x-s.cx)*1000, offz=(H.p.z-s.cz)*1000, ok=Math.abs(offx)<=SNAP*1000&&Math.abs(offz)<=SNAP*1000; LAY.tOff=`${offx.toFixed(0)}/${offz.toFixed(0)} мм`;
+      LAY.ghost.scale.set(ex,TILE_T,ez); LAY.ghost.position.copy(liftTray.localToWorld(new THREE.Vector3(H.p.x,SHEET_Y+BED+TILE_T/2+.002,H.p.z))); LAY.ghost.material.color.set(ok?0x40e070:0xff9a30); gv=true;
+      LAY.outline.scale.set(s.w,1,s.h); LAY.outline.position.copy(liftTray.localToWorld(new THREE.Vector3(s.cx,SHEET_Y+.012,s.cz))); LAY.outline.computeLineDistances(); } } else LAY.target=null;
+  LAY.ghost.visible=gv; LAY.outline.visible=gv;
+  // mallet aim: height deviation vs neighbours
+  LAY.aimTile=null; if(holdingW==='mallet'&&H&&H.tile){LAY.aimTile=H.tile; const P=LAY.placed[H.tile]; const J=joints().filter(j=>j.a===H.tile||j.b===H.tile); LAY.aimTxt=J.map(j=>{const o=j.a===H.tile?j.b:j.a; const d=P.dh-LAY.placed[o].dh; const ar=j.axis==='x'?(j.a===H.tile?'▶':'◀'):(j.a===H.tile?'▼':'▲'); return `${ar}${d>=0?'+':''}${d.toFixed(1)}`;}).join(' ')||'нет соседей';}
+  // joint markers (lippage colour) while holding mallet / pliers / clips
+  const showM=near&&(holdingW==='mallet'||holdingW==='svpPliers'||holdingW==='svpWedges'||holdingW==='svpClips'); const J=showM?joints():[]; let mi=0;
+  for(const j of J){ const lp=jointLip(j); for(const q of j.pts){ let mk=LAY.markers[mi]; if(!mk){mk=new THREE.Mesh(new THREE.SphereGeometry(.007,10,8),new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); mk.renderOrder=7; mk.raycast=()=>{}; liftTray.add(mk); LAY.markers.push(mk);} mk.visible=true; mk.position.set(q[0],SHEET_Y+BED+TILE_T+.045,q[1]); mk.material.color.set(lp<=.5?0x2bd46a:lp<=1?0xffc400:0xff3040); mi++;}}
+  for(;mi<LAY.markers.length;mi++)LAY.markers[mi].visible=false;
+  // bed redraw (throttled)
+  LAY._dt-=dt; if((LAY.dirty||LAY._ov!==(LAY.overlay&&layToolHeld()))&&LAY._dt<=0){LAY._ov=LAY.overlay&&layToolHeld(); drawBed(); LAY._dt=.15;}
+  // paste level in the bucket follows the remaining kg
+  paste.position.y=PASTE_Y+.014*Math.min(1,ADH.pour)-(1-ADH.kg/9.9)*.085; puddle.position.y=paste.position.y+.0015;
+}
+// ---- interaction ----
+let _lastLayAct=0;
+{const _dt=doTakeW; doTakeW=function(){ if(wAnim||mode!=='workshop'||!LAY.glb)return _dt(); const near=nearLift();
+   if(isTile(holdingW)&&near&&LAY.hit){ const o=layOrder(); if(o.finish!=='tile'){toast('Этот заказ — рифлёнка, плитка не нужна'); return;} placeTile(holdingW,LAY.hit.p); return;}
+   if(!holdingW&&wAim&&LAY.placed[wAim]){ if(unplace(wAim)){toast('✋ Снял плитку с поддона'); updateHUDW();} return;}
+   if(LAY_TOOLS.has(holdingW)&&wAim==='layStand'){ const id=holdingW; holdingW=null; layHome(id); toast('⬇ Положил на стол'); updateHUDW(); return;}
+   if(holdingW==='trowel'&&wAim==='pailA'){ return layScoop();}
+   return _dt();};}
+function layScoop(){ if(ADH.mixer==='inPail'){toast('🌀 Сначала вынь миксер'); return;} if(ADH.pour<1||ADH.mix<.3){toast('🧪 Клей не замешан'); return;} if(ADH.set){toast('⛔ Клей схватился — набирать нельзя'); return;} if(ADH.kg<.05){toast('🪣 Ведро пустое'); return;}
+  if(LAY.load>=LOAD_KG-.01){toast('Кельма уже полная'); return;} const k=Math.min(LOAD_KG-LAY.load,ADH.kg); LAY.load+=k; ADH.kg-=k; toast(`🧱 Набрал ${k.toFixed(1)} кг клея на кельму (в ведре ${ADH.kg.toFixed(1)} кг)`); thud(200,.08); updateHUDW();}
+{const _da=doActionW; doActionW=function(){ if(mode!=='workshop'||!LAY.glb)return _da(); const now=performance.now(); const H=LAY.hit;
+   if(holdingW==='trowel'){ if(wAim==='pailA')return layScoop(); if(now-_lastLayAct<250)return; _lastLayAct=now; if(!H||H.tile||!inInner(H.p)){toast('🎯 Наведи на поддон пола (свободное место)'); return;} if(LAY.load<=.01){toast('🧱 Кельма пустая — набери клей из ведра А'); return;} if(ADH.set){toast('⛔ Клей схватился'); return;} if(dab(H.p)){thud(140,.12); toast(`🧱 Наляпал ${DAB_KG} кг — разровняй зубчатым шпателем`);} return;}
+   if(holdingW==='comb'||holdingW==='svpPliers')return;
+   if(holdingW==='svpClips'){ if(now-_lastLayAct<250)return; _lastLayAct=now; if(!H){toast('🎯 Наведи на шов'); return;} insertClip(H.p); return;}
+   if(holdingW==='svpWedges'){ if(now-_lastLayAct<250)return; _lastLayAct=now; if(!H){toast('🎯 Наведи на зажим'); return;} insertWedge(H.p); return;}
+   if(holdingW==='mallet'){ if(now-_lastLayAct<220)return; _lastLayAct=now; const id=H&&H.tile; if(!id){toast('🎯 Наведи на уложенную плитку'); return;} const P=LAY.placed[id]; const was=P.dh; P.dh=Math.max(P.dhMin,P.dh-.3); P.taps++; setTileY(id); thud(110,.1); LAY.stats=null; toast(P.dh<was-1e-3?`🔨 Тук! осадка ${(was-P.dh).toFixed(1)} мм, высота +${P.dh.toFixed(1)} мм`:'🔨 Плитка села до упора (клей не даёт ниже)'); return;}
+   if(isTile(holdingW)&&nearLift()&&LAY.hit)return;
+   return _da();};}
+{const _uh=updateHUDW; updateHUDW=function(){_uh.apply(this,arguments); if(mode!=='workshop'||wAnim||!LAY.glb)return; const b=$('action'), tb=$('btnTake'); const near=nearLift();
+   if(holdingW==='trowel'){ b.disabled=false; b.textContent=wAim==='pailA'?'🧱 Набрать клей':(LAY.load>0?'🧱 Наляпать клей':'🧱 Набери клей в ведре А'); if(wAim==='pailA'){tb.disabled=false; tb.textContent='🧱 Набрать клей';}}
+   if(holdingW==='comb'){b.disabled=false; b.textContent='〰 Зажми — гребёнкой по клею';}
+   if(isTile(holdingW)&&near&&LAY.hit){tb.disabled=false; tb.textContent=LAY.target?'🧱 Уложить плитку':'📐 Нет места под размер';}
+   if(holdingW==='svpClips'){b.disabled=false; b.textContent='🔴 Вставить зажим в шов';}
+   if(holdingW==='svpWedges'){b.disabled=false; b.textContent='🔵 Вставить клин';}
+   if(holdingW==='svpPliers'){b.disabled=false; b.textContent='🔧 Зажми — затянуть клин';}
+   if(holdingW==='mallet'){b.disabled=false; b.textContent='🔨 Простучать плитку';}
+   if(LAY_TOOLS.has(holdingW)&&wAim==='layStand'){tb.disabled=false; tb.textContent='⬇ Положить на стол';}
+   if(!holdingW&&wAim&&LAY.placed[wAim]){tb.disabled=false; tb.textContent='✋ Снять плитку';}};}
+{const _ap=applyLiftOrder; applyLiftOrder=function(i){const r=_ap(i); if(typeof LAY!=='undefined'&&LAY.glb!==undefined){LAY.cells=null;} return r;};}
+// test hooks
+window.__layState=()=>({glb:LAY.glb,order:layOrder().n,slots:LAY.slots.map(s=>({id:s.id,w:+(s.w*1000).toFixed(1),h:+(s.h*1000).toFixed(1),cx:+s.cx.toFixed(4),cz:+s.cz.toFixed(4),need:s.need,feasible:s.feasible,tile:s.tile})),load:+LAY.load.toFixed(2),kg:+ADH.kg.toFixed(2),dabs:LAY.dabs.length,stats:layStats(),
+  placed:Object.fromEntries(Object.entries(LAY.placed).map(([k,P])=>[k,{slot:P.slot,x:+P.x.toFixed(4),z:+P.z.toFixed(4),dh:+P.dh.toFixed(2),dhMin:+P.dhMin.toFixed(2),cov:+P.cov.toFixed(2),misIn:P.misIn,snapped:P.snapped,taps:P.taps,y:+wTools[k].position.y.toFixed(4)}])),
+  joints:joints().map(j=>({a:j.a,b:j.b,axis:j.axis,gap:+(j.gap*1000).toFixed(2),pts:j.pts.map(q=>q.map(v=>+v.toFixed(4))),lip:+jointLip(j).toFixed(2)})),clipsList:Object.values(LAY.clips).map(c=>({key:c.key,x:c.x,z:c.z,wedge:!!c.wedge,tight:+c.tight.toFixed(2)})),hit:LAY.hit?[+LAY.hit.p.x.toFixed(3),+LAY.hit.p.z.toFixed(3),LAY.hit.tile]:null,target:LAY.target?LAY.target.s.id:null,holding:holdingW,aim:wAim,act:$('action').textContent,take:$('btnTake').textContent,panel:document.getElementById('layPanel').style.display,aimTxt:LAY.aimTxt||null});
+window.__layAim=(lx,lz,from)=>{ // stand at the tray side and look at a tray-local point (x along D, z along W); from: 'S' (south, -z side) default
+  const p=liftTray.localToWorld(new THREE.Vector3(lx,SHEET_Y,lz)); const d=from==='N'?1:-1; const W=LAY.W||1.1; playerPos.set(p.x,LIFT_POS.y+d*(W/2+.55)); const eye=camera.position.y; playerYaw=Math.atan2(p.x-playerPos.x,p.z-playerPos.y); playerPitch=Math.atan2(p.y-eye,Math.hypot(p.x-playerPos.x,p.z-playerPos.y)); return p.toArray();};
+window.__layStandAim=id=>{let p; if(id==='stand'){p=new THREE.Vector3(STAND.x+.05,STAND_H,STAND.z-.12);} else {const g=wTools[id]; g.updateMatrixWorld(true); p=new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3());} playerPos.set(p.x,p.z-.75); const eye=(window.demoCamY||1.62); playerYaw=Math.atan2(p.x-playerPos.x,p.z-playerPos.y); playerPitch=Math.atan2(p.y-eye,Math.hypot(p.x-playerPos.x,p.z-playerPos.y)); return p.toArray();};
+window.__mkTile=(w,h)=>{const id=makeTile(w/1000,h/1000,`Плитка ${w}×${h} мм`); holdingW=id; updateHUDW(); return id;};
+window.__layReset=()=>{layReset(); return true;};
+window.__adhQuick=()=>{ADH.lidA='open'; if(LIDA)LIDA.position.set(.02,.013,-.36); ADH.pour=1; ADH.cut=true; ADH.bag='onCrate'; ADH.started=true; ADH.mix=1.05; ADH.q=mixQuality(1.05); drawPaste(); return true;};
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
   let aim=opts.aim; if(!aim&&!opts.cond&&!opts.pull){ if(target===P_GOATS)aim=['part','goats']; else if(target===P_SUPPLY)aim=['gateA','supply']; else if(target===P_SHELF)aim=['shelf']; else if(target===P_OUT)aim=['output','gateB']; else if(target===P_BENCH)aim=null; }
@@ -1947,7 +2151,7 @@ function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=
   rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
   if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
   if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
-function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAdh(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAdh(dt); updateLay(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}
