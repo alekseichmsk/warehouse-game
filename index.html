@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.2 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.3 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -67,7 +67,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.2 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.3 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -1445,24 +1445,24 @@ applyLiftOrder(liftOrderIdx); window.__liftOrder=i=>applyLiftOrder(i-1);
  const lb=document.createElement('canvas'); lb.width=512; lb.height=64; const x=lb.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,512,64); x.fillStyle='#222'; x.font='bold 30px sans-serif'; x.fillText('Рифлёнка АМг2 1500×3000×3 «чечевица»',10,44); const m=new THREE.Mesh(new THREE.PlaneGeometry(.8,.1),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(lb)})); m.position.set(0,.05,.126); r.add(m);
  window.__colBoxes.push({id:'rack',x:LIFT_POS.x,z:LIFT_POS.y+1.45,hx:1.52,hz:.13});}
 
-// ===================== v7.0 STAGE 2: ЗУБР ЭП-250-1200С wet tile saw + porcelain tiles =====================
-// Blender lift/make_saw.py -> tile_saw_zubr.glb. Real: table 1060x468 (h 700), disc 250 (kerf 2.2), cut 1020, depth 52, 2950 rpm, moving head on the rail.
+// ===================== v7.3: SHIJING 9201A-1600 large-format wet tile saw (replaces ЗУБР ЭП-250-1200С) =====================
+// Blender lift/make_saw_shijing.py -> tile_saw_shijing.glb. Real: cut length 1600, table 1600x600 (h 700), disc 200 (kerf 2.0), depth 50/40, 4500 W brushless 3000-6000 rpm, laser, 2 side tables, 56 kg.
 // Operator: put tile on the table against the fence (упор со шкалой), set the fence (mm), switch on, HOLD action to push the head along the rail -> real split.
-const SAW_POS=new THREE.Vector3(-7.3,0,-4.55), KERF=.0022, CUT_L=1.02, TABLE_Y=.70;
+const SAW_POS=new THREE.Vector3(-7.3,0,-4.55), KERF=.0020, CUT_L=1.60, TABLE_Y=.70;
 const sawStation=new THREE.Group(); sawStation.name='TileSaw_ZUBR_EP-250-1200S'; sawStation.position.copy(SAW_POS); scene.add(sawStation); window.__sawStation=sawStation;
-const SAW={on:false,fence:150,tile:null,headX:-.56,cut:0,dirBack:false,pieces:[],cuts:0,glb:false,head:null,disc:null,fenceN:null,fence0:0,snd:null,water:0};
-_gl.load('tile_saw_zubr.glb',g=>{fixMats(g.scene); sawStation.add(g.scene); SAW.head=g.scene.getObjectByName('Saw_Head'); SAW.disc=g.scene.getObjectByName('Saw_Disc'); SAW.fenceN=g.scene.getObjectByName('Saw_Fence'); SAW.fence0=SAW.fenceN?SAW.fenceN.position.z:0; SAW.glb=true; setFence(SAW.fence); window.__sawReady=true;});
-{const hb=new THREE.Mesh(new THREE.BoxGeometry(1.10,.02,.50),new THREE.MeshBasicMaterial({visible:false})); hb.position.set(0,TABLE_Y-.011,-.066); hb.name='Hit_Saw'; sawStation.add(hb); aimable('saw',hb,'Плиткорез ЗУБР ЭП-250-1200С');
- // fence scale (0..300 mm from the blade line) on the back half
- const cv=document.createElement('canvas'); cv.width=64; cv.height=1024; const x=cv.getContext('2d'); x.fillStyle='#f4f4f0'; x.fillRect(0,0,64,1024); x.fillStyle='#111'; for(let mm=0;mm<=300;mm++){const y=mm/300*1024; const L=mm%10===0?34:mm%5===0?22:12; x.fillRect(0,y,L,mm%10===0?2:1);} x.font='bold 15px sans-serif'; for(let cm=0;cm<=30;cm+=2)x.fillText(String(cm*10),30,cm/30*1024+6);
- const sc=new THREE.Mesh(new THREE.PlaneGeometry(.03,.30),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); sc.rotation.x=-Math.PI/2; sc.position.set(.505,TABLE_Y+.0025,-.15); sawStation.add(sc);
+const SAW={on:false,fence:150,tile:null,headX:-.86,cut:0,dirBack:false,pieces:[],cuts:0,glb:false,head:null,disc:null,fenceN:null,fence0:0,snd:null,water:0};
+_gl.load('tile_saw_shijing.glb',g=>{fixMats(g.scene); sawStation.add(g.scene); SAW.head=g.scene.getObjectByName('Saw_Head'); SAW.disc=g.scene.getObjectByName('Saw_Disc'); SAW.fenceN=g.scene.getObjectByName('Saw_Fence'); SAW.fence0=SAW.fenceN?SAW.fenceN.position.z:0; SAW.glb=true; setFence(SAW.fence); window.__sawReady=true;});
+{const hb=new THREE.Mesh(new THREE.BoxGeometry(1.60,.02,.72),new THREE.MeshBasicMaterial({visible:false})); hb.position.set(0,TABLE_Y-.011,-.26); hb.name='Hit_Saw'; sawStation.add(hb); aimable('saw',hb,'Плиткорез SHIJING 9201A-1600');
+ // fence scale (0..600 mm from the blade line) on the back half
+ const cv=document.createElement('canvas'); cv.width=64; cv.height=1024; const x=cv.getContext('2d'); x.fillStyle='#f4f4f0'; x.fillRect(0,0,64,1024); x.fillStyle='#111'; for(let mm=0;mm<=600;mm++){const y=mm/600*1024; const L=mm%50===0?40:mm%10===0?26:mm%5===0?14:0; if(L)x.fillRect(0,y,L,mm%50===0?2:1);} x.font='bold 15px sans-serif'; for(let cm=0;cm<=60;cm+=5)x.fillText(String(cm*10),28,cm/60*1024+6);
+ const sc=new THREE.Mesh(new THREE.PlaneGeometry(.03,.60),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); sc.rotation.x=-Math.PI/2; sc.position.set(.73,TABLE_Y+.0025,-.31); sawStation.add(sc);
  SAW.kerfMesh=new THREE.Mesh(new THREE.BoxGeometry(1,.0095,KERF),new THREE.MeshBasicMaterial({color:0x3a3f45})); SAW.kerfMesh.visible=false; sawStation.add(SAW.kerfMesh);
- window.__colBoxes.push({id:'saw',x:SAW_POS.x,z:SAW_POS.z-.066,hx:.70,hz:.30});
- const L=.03; for(const sx of[-1,1])for(const sz of[-1,1]){const p=new THREE.Vector3(SAW_POS.x+sx*.55,0,SAW_POS.z+sz*.23-.066); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(p.x-L,0,p.z-L),new THREE.Vector3(p.x+L,TABLE_Y-.1,p.z+L)));}}
+ window.__colBoxes.push({id:'saw',x:SAW_POS.x,z:SAW_POS.z-.30,hx:.98,hz:.44});
+ const L=.03; for(const sx of[-1,1])for(const sz of[-1,1]){const p=new THREE.Vector3(SAW_POS.x+sx*.74,0,SAW_POS.z+sz*.32-.26); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(p.x-L,0,p.z-L),new THREE.Vector3(p.x+L,TABLE_Y-.1,p.z+L)));}}
 // water spray (pump -> guard nozzle) as simple droplets
 const WATER_N=LITE?30:70; const wGeo=new THREE.BufferGeometry(); wGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(WATER_N*3),3)); const wPts=new THREE.Points(wGeo,new THREE.PointsMaterial({color:0x9fd4ff,size:.012,transparent:true,opacity:.8})); wPts.visible=false; wPts.frustumCulled=false; sawStation.add(wPts);
 const wVel=[]; for(let i=0;i<WATER_N;i++)wVel.push(new THREE.Vector3(),0);
-function setFence(mm){SAW.fence=Math.round(THREE.MathUtils.clamp(mm,10,300)); if(SAW.fenceN)SAW.fenceN.position.z=SAW.fence0+(-SAW.fence/1000-(-.10)); if(SAW.tile&&wTools[SAW.tile])seatTile(); updSawPanel();}
+function setFence(mm){SAW.fence=Math.round(THREE.MathUtils.clamp(mm,5,600)); if(SAW.fenceN)SAW.fenceN.position.z=SAW.fence0+(-SAW.fence/1000-(-.10)); if(SAW.tile&&wTools[SAW.tile])seatTile(); updSawPanel();}
 // ---- porcelain tiles ----
 const TILE_T=.009; let tileSeq=0; const tileTex=(()=>{const cv=document.createElement('canvas'); cv.width=256; cv.height=256; const x=cv.getContext('2d'); x.fillStyle='#d9d4cb'; x.fillRect(0,0,256,256); for(let i=0;i<2600;i++){x.fillStyle=`rgba(${120+Math.random()*90|0},${115+Math.random()*80|0},${105+Math.random()*70|0},${.08+Math.random()*.15})`; x.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*2,1+Math.random()*2);} const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; return t;})();
 const TILE_M=LITE?new THREE.MeshLambertMaterial({map:tileTex}):new THREE.MeshStandardMaterial({map:tileTex,roughness:.35,metalness:0}); const TILE_EDGE=new THREE.MeshLambertMaterial({color:0xb7b0a5});
@@ -1514,10 +1514,10 @@ function updateSaw(dt){ const near=mode==='workshop'&&nearSaw(); const pn=docume
   if(SAW.tile&&(holdingW===SAW.tile||!wTools[SAW.tile])){SAW.tile=null; SAW.kerfMesh.visible=false;}
   if(SAW.disc&&SAW.on)SAW.disc.rotation.z-=dt*60;
   const hold=(keys[' ']||window.__rollHold)&&sawAimed()&&!holdingW&&!wAnim;
-  const X0=-.56, X1=X0+CUT_L+.06; let cutting=false;
+  const X0=-.86, X1=X0+CUT_L+.18; let cutting=false;
   if(hold&&!SAW.on){ if(!SAW._warn||performance.now()-SAW._warn>2500){toast('⏻ Сначала включи пилу (кнопка ⏻ / P)'); SAW._warn=performance.now();} }
-  else if(hold&&SAW.on&&!SAW.dirBack){ const t=SAW.tile&&wTools[SAW.tile]; if(t&&t.userData.ex>CUT_L+.001){ if(!SAW._warn||performance.now()-SAW._warn>2500){toast('⚠ Длина реза плиткореза 1020 мм — поверни плитку (⟲)'); SAW._warn=performance.now();} }
-    else { SAW.headX=Math.min(X1,SAW.headX+.16*dt); if(t){const xs=-t.userData.ex/2, xe=t.userData.ex/2, w=SAW.fence/1000; if(w<t.userData.ez-.003){ const L=THREE.MathUtils.clamp(SAW.headX+.11,xs,xe)-xs; if(L>0){cutting=true; SAW.kerfMesh.visible=true; SAW.kerfMesh.scale.x=L; SAW.kerfMesh.position.set(xs+L/2,TABLE_Y+TILE_T/2+.0006,0);} if(SAW.headX-.11>=xe)splitTile(); } } }
+  else if(hold&&SAW.on&&!SAW.dirBack){ const t=SAW.tile&&wTools[SAW.tile]; if(t&&t.userData.ex>CUT_L+.001){ if(!SAW._warn||performance.now()-SAW._warn>2500){toast('⚠ Длина реза плиткореза 1600 мм — поверни плитку (⟲)'); SAW._warn=performance.now();} }
+    else { SAW.headX=Math.min(X1,SAW.headX+.22*dt); if(t){const xs=-t.userData.ex/2, xe=t.userData.ex/2, w=SAW.fence/1000; if(w<t.userData.ez-.003){ const L=THREE.MathUtils.clamp(SAW.headX+.09,xs,xe)-xs; if(L>0){cutting=true; SAW.kerfMesh.visible=true; SAW.kerfMesh.scale.x=L; SAW.kerfMesh.position.set(xs+L/2,TABLE_Y+TILE_T/2+.0006,0);} if(SAW.headX-.09>=xe)splitTile(); } } }
     if(SAW.headX>=X1-1e-4)SAW.dirBack=true; }
   if(SAW.dirBack&&!hold){ SAW.headX=Math.max(X0,SAW.headX-.6*dt); if(SAW.headX<=X0)SAW.dirBack=false; }
   if(SAW.head)SAW.head.position.x=SAW.headX;
@@ -1694,8 +1694,8 @@ function lrand(){LAY.rng=(LAY.rng*16807)%2147483647; return LAY.rng/2147483647;}
 function layOrder(){return LIFT_ORDERS[liftOrderIdx];}
 function tileDimsOf(o){ if(o.finish!=='tile')return null; return o.tile==='300×300'?[.3,.3]:[1.2,.6];} // 1200x600 lengthwise (1200 along the cabin depth D = tray x)
 function splitSpan(span,t){ let n=Math.floor((span+SEAM)/(t+SEAM)); let r=span-n*t-n*SEAM; if(r<.0005)return Array(n).fill(t); if(r<.1&&n>0){n--; const p=(span-n*t-(n+1)*SEAM)/2; return [p,...Array(n).fill(t),p];} return [...Array(n).fill(t),r];}
-function sawFeasible(full,need){ // can the ЗУБР make a w x h piece from a full tile? part = fence-1.1 (fence 10..300), offcut = L-fence-1.1; cut length <= 1020
-  const [a,b]=full, K=.0011; const one=(L,cutLen,t)=>{ if(Math.abs(L-t)<.0005)return true; if(cutLen>CUT_L+.001)return false; return (t<=.300-K+.0005&&t>=.010-K)||(L-t-K<=.300&&L-t-K>=.010);};
+function sawFeasible(full,need){ // can the SHIJING make a w x h piece from a full tile? part = fence-1.0 (fence 5..600), offcut = L-fence-1.0; cut length <= 1600
+  const [a,b]=full, K=KERF/2; const one=(L,cutLen,t)=>{ if(Math.abs(L-t)<.0005)return true; if(cutLen>CUT_L+.001)return false; return (t<=.600-K+.0005&&t>=.005-K)||(L-t-K<=.600+.0005&&L-t-K>=.005-.0005);};
   const [w,h]=need; return (one(a,b,w)&&one(b,w,h))||(one(b,a,h)&&one(a,h,w));}
 function buildPlan(){ const o=layOrder(); const d=liftTray.userData.dims; LAY.D=d.D; LAY.W=d.W; LAY.nx=Math.ceil(d.D/CELL); LAY.nz=Math.ceil(d.W/CELL); LAY.cells=new Float32Array(LAY.nx*LAY.nz); LAY.combed=new Float32Array(LAY.nx*LAY.nz).fill(-9); LAY.slots=[];
   const T=tileDimsOf(o); if(!T)return; const x0=-d.D/2+.004, x1=d.D/2, z0=-d.W/2+.004, z1=d.W/2-.004; const xs=splitSpan(x1-x0,T[0]), zs=splitSpan(z1-z0,T[1]);
@@ -1885,6 +1885,7 @@ window.__layAim=(lx,lz,from)=>{ // stand at the tray side and look at a tray-loc
 window.__layStandAim=id=>{let p; if(id==='stand'){p=new THREE.Vector3(STAND.x+.05,STAND_H,STAND.z-.12);} else {const g=wTools[id]; g.updateMatrixWorld(true); p=new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3());} playerPos.set(p.x,p.z-.75); const eye=(window.demoCamY||1.62); playerYaw=Math.atan2(p.x-playerPos.x,p.z-playerPos.y); playerPitch=Math.atan2(p.y-eye,Math.hypot(p.x-playerPos.x,p.z-playerPos.y)); return p.toArray();};
 window.__mkTile=(w,h)=>{const id=makeTile(w/1000,h/1000,`Плитка ${w}×${h} мм`); holdingW=id; updateHUDW(); return id;};
 window.__layReset=()=>{layReset(); return true;};
+window.__layQuickBed=()=>{ for(const s of LAY.slots)for(let x=s.x0+CELL/2;x<s.x1;x+=CELL)for(let z=s.z0+CELL/2;z<s.z1;z+=CELL){const k=cellIdx(x,z); if(k>=0){LAY.cells[k]=TGT; LAY.combed[k]=0;}} LAY.dirty=true; LAY.stats=null; return totalCoverage();};
 window.__adhQuick=()=>{ADH.lidA='open'; if(LIDA)LIDA.position.set(.02,.013,-.36); ADH.pour=1; ADH.cut=true; ADH.bag='onCrate'; ADH.started=true; ADH.mix=1.05; ADH.q=mixQuality(1.05); drawPaste(); return true;};
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
