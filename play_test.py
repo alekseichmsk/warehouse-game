@@ -23,7 +23,7 @@ with sync_playwright() as pw:
         st=S(); key='actDis' if btn=='action' else 'takeDis'
         if st[key]: fails.append((st['title'],what,st['act'] if btn=='action' else st['take'],st['wAim'],st['holdingW'])); return False
         pg.evaluate(f"document.getElementById('{btn}').click()"); time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v63_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v64_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
@@ -53,7 +53,10 @@ with sync_playwright() as pw:
             press('btnTake','take bag')
         elif t.startswith('Вставь заклёпки'):
             for k,v in enumerate(S()['rivets']):
-                if v=='aim': aim('rivet',k); press('action',f'insert {k}')
+                if v=='aim':
+                    aim('rivet',k)
+                    if k==3 and 'hole' not in shots: shot('aim_hole'); shots.add('hole')
+                    press('action',f'insert {k}')
         elif t.startswith('Возьми пневмо'):
             if S()['holdingW']!='riveter':
                 free_hands('bench')
@@ -63,10 +66,21 @@ with sync_playwright() as pw:
                 if v=='in':
                     aim('rivet',k)
                     if k==2 and 'aim_rivet' not in shots: shot('aim_rivet'); shots.add('aim_rivet'); log.append(S()['aimLabel']+' | '+S()['act'])
+                    if k==4 and 'horiz' not in shots:
+                        pg.evaluate("document.getElementById('action').click()"); time.sleep(.5); log.append('nose '+json.dumps(pg.evaluate('__noseDiag()'))); shot('riveter_horizontal'); shots.add('horiz'); waitanim(); continue
                     press('action',f'rivet {k}')
         elif t.startswith('Переверни'): aim('part'); press('action','flip')
         elif t.startswith('Возьми лист Батопласта'):
-            free_hands(); aim('bato'); press('btnTake','take bato')
+            if S()['holdingW'] and seen==1:
+                aim('bato'); log.append('busy hint: '+S()['take']+' | '+S()['act'])
+            free_hands(); aim('bato'); pg.evaluate('__look(-0.2)'); pg.evaluate('__walk(0.55)'); time.sleep(.3)
+            pg.mouse.move(1000,150); pg.mouse.down(); yy=150
+            while yy<700:
+                yy+=12; pg.mouse.move(1000,yy); time.sleep(.05)
+                if S()['wAim']=='bato': break
+            pg.mouse.up(); time.sleep(.4); st2=S(); log.append(f"look-down to stack: pitch {st2['pos'][3]*57.2958:.1f} deg, aim {st2['wAim']}")
+            if 'down' not in shots: shot('look_down'); shots.add('down')
+            press('btnTake','take bato (looking down)')
             if 'bato_hands' not in shots: time.sleep(.3); shot('bato_hands'); shots.add('bato_hands')
         elif t.startswith('Наклей полосу'):
             n=int(t.split('шумки ')[1].split('/')[0]); x=-1.05+(n-1)*.6+min(.6,1.05-(-1.05+(n-1)*.6))/2

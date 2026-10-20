@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v6.3 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v6.4 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -26,7 +26,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 #btnTake{background:linear-gradient(135deg,#6ee7ff,#2979ff);box-shadow:0 7px 0 #1663d9,0 12px 22px rgba(40,110,255,.35)}
 #btnTake:active{box-shadow:0 2px 0 #1663d9}
 #btnTake.release{background:linear-gradient(135deg,#ffd166,#ff8c42);box-shadow:0 7px 0 #e07b24}
-#toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:4px solid #ff8ac2;border-radius:999px;padding:16px 26px;font-size:clamp(19px,4.5vw,32px);font-weight:800;color:#332a7a;display:none;text-align:center;z-index:6;max-width:92vw;box-shadow:0 16px 40px rgba(220,80,150,.3)}
+#toast{position:fixed;left:50%;top:max(118px,16vh);transform:translateX(-50%);background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border:2px solid #ff8ac2;border-radius:12px;padding:5px 11px;font-size:13px;line-height:1.3;font-weight:700;color:#332a7a;display:none;text-align:center;z-index:6;width:max-content;max-width:min(80vw,420px);box-shadow:0 6px 16px rgba(220,80,150,.18);pointer-events:none}
 #cross{position:fixed;left:50%;top:52%;transform:translate(-50%,-50%);font-size:22px;font-weight:800;color:#fff;opacity:.9;pointer-events:none;z-index:2;text-shadow:0 0 6px #7cc7ff,0 2px 4px rgba(50,80,160,.5)}
 #help{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);font-size:11px;font-weight:700;color:#43506e;background:rgba(255,255,255,.75);border:2px solid #fff;border-radius:999px;padding:3px 10px;white-space:nowrap;z-index:3}
 @media(max-width:1100px){#help{display:none}}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.3 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.4 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(52% + 18px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -366,6 +366,7 @@ function worldPose(obj,ox,oy,oz,yaw,rx=0){
 }
 function moveHand(hand,pose,dt,curl){
   const k=1-Math.exp(-dt*11);
+  if(hand===handR&&window.__handOverride){const sc=new THREE.Vector3(); window.__handOverride.decompose(hand.position,hand.quaternion,sc); hand.userData.curl=1; return;}
   hand.position.lerp(pose.p,k);
   hand.quaternion.slerp(pose.q,k);
   // curl easing stored on userData
@@ -398,7 +399,7 @@ const $=id=>document.getElementById(id);
 const dots=$('dots'); stages.forEach(()=>{const d=document.createElement('div');d.className='dot';dots.appendChild(d)});
 function angDiff(a,b){let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d}
 function dirOf(a){return new THREE.Vector2(Math.sin(a),Math.cos(a))}
-function toast(txt,ms=1600){const t=$('toast');t.textContent=txt;t.style.display='block';setTimeout(()=>t.style.display='none',ms)}
+let _toastT=0; function toast(txt,ms=2000){const t=$('toast');t.textContent=txt;t.style.display='block';clearTimeout(_toastT);_toastT=setTimeout(()=>t.style.display='none',ms)}
 function nextStage(txt){stage++;score+=100;if(txt)toast(txt);updateHUD()}
 function updateHUD(){
  $('stageTitle').textContent=finished?'🎉 Готово! Поддон упакован':stages[stage][0];
@@ -433,11 +434,11 @@ function endJoy(e){if(e.pointerId===joyId){joyId=null;joyVec.set(0,0);setStick(0
 joy.addEventListener('pointerup',endJoy); joy.addEventListener('pointercancel',endJoy);
 function moveJoy(e){const r=joy.getBoundingClientRect();let dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2);const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}joyVec.set(dx,dy);setStick(dx,dy);started=true}
 // swipe look on right half of canvas + mouse drag
-let lookId=null,lookX=0,lookY=0;
+let lookId=null,lookX=0,lookY=0; const PITCH_MIN=-85*Math.PI/180, PITCH_MAX=80*Math.PI/180; // v6.4
 canvas.addEventListener('pointerdown',e=>{if(e.clientX>innerWidth*.35){lookId=e.pointerId;lookX=e.clientX;lookY=e.clientY;canvas.setPointerCapture(e.pointerId)}});
 canvas.addEventListener('pointermove',e=>{if(e.pointerId!==lookId)return;const dx=e.clientX-lookX,dy=e.clientY-lookY;lookX=e.clientX;lookY=e.clientY;
  if(holding==='jack'||holding==='cart'){lookOffset=THREE.MathUtils.clamp(lookOffset-dx*.004,-.7,.7)} else playerYaw-=dx*.005;
- playerPitch=THREE.MathUtils.clamp(playerPitch-dy*.003,-.55,.35)});
+ playerPitch=THREE.MathUtils.clamp(playerPitch-dy*.003,PITCH_MIN,PITCH_MAX)});
 function endLook(e){if(e.pointerId===lookId)lookId=null}
 canvas.addEventListener('pointerup',endLook); canvas.addEventListener('pointercancel',endLook);
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ')e.preventDefault(); if(e.key===' ')(mode==='workshop'?doActionW:doAction)(); if(e.key.toLowerCase()==='e')(mode==='workshop'?doTakeW:doTake)(); if(e.key.toLowerCase()==='g'&&window.__dropW)window.__dropW(); if(e.key.toLowerCase()==='z')window.__rotStrip&&window.__rotStrip(-1); if(e.key.toLowerCase()==='x')window.__rotStrip&&window.__rotStrip(1);});
@@ -903,7 +904,7 @@ let curPart=null, rivetPts=[], insulMesh=null, riffleOnPart=null, monogalOnPart=
 function clearPart(){if(curPart){scene.remove(curPart);curPart=null;} rivetPts=[]; insulMesh=riffleOnPart=monogalOnPart=ledMesh=signMesh=null;}
 function basePart(w,h,d,c,name){clearPart(); curPart=new THREE.Group(); curPart.name=name; curPart.position.set(0,.86,0); scene.add(curPart);
   const m=wbox(curPart,0,0,0,w,h,d,c); m.name=name+'_Body'; return curPart;}
-const PROXY_MAT=new THREE.MeshBasicMaterial({visible:false}); const PROXY_GEO=new THREE.SphereGeometry(.035,8,6);
+const PROXY_MAT=new THREE.MeshBasicMaterial({visible:false}); const PROXY_GEO=new THREE.SphereGeometry(.045,8,6);
 function rivetPoint(g,x,y,z,r,h,color,axis){const p=cyl(g,x,y,z,r,h,color,axis,12); p.userData.state='aim'; p.userData.r=r; p.userData.c0=color;
   const px=new THREE.Mesh(PROXY_GEO,PROXY_MAT); px.position.set(x,y,z); px.userData.rivetIdx=rivetPts.length; px.name='RivetAimProxy'; g.add(px); rivetPts.push(p); return p;}
 function setRivetState(i,st){const p=rivetPts[i]; if(!p)return; p.userData.state=st;
@@ -1048,9 +1049,9 @@ function supplyV(){return new THREE.Vector2(supplyPallet.position.x,supplyPallet
 function palletNearGoats(){const d=rectDistGoats(supplyV()); return d<1.5&&d>0.05&&!supplyCarried;}
 function forksUnderSupply(){const fc=forkCenter(); const al=Math.abs(Math.sin(jackAng-supplyPallet.rotation.y)); return fc.distanceTo(supplyV())<.6&&al>.85;}
 // ---- v5.9 CROSSHAIR AIM: raycast from camera centre, range 2.5m, highlight + label ----
-const aimRay=new THREE.Raycaster(); aimRay.far=2.5; let wAim=null, wAimRoot=null, wAimIdx=-1;
+const aimRay=new THREE.Raycaster(); aimRay.far=3.0; let wAim=null, wAimRoot=null, wAimIdx=-1;
 const AIM={}; function aimable(id,obj,label){obj.userData.aimId=id; AIM[id]={obj,label}; return obj;}
-function aimRoots(){const a=Object.values(AIM).map(x=>x.obj).filter(o=>o&&o.visible&&o.parent); for(const o of [riffleSheet,monogalSheet,coverUnit,outputStack,insulPack]) if(o.visible)a.push(o); if(curPart&&curPart.visible)a.push(curPart); return a;}
+function aimRoots(){const a=Object.values(AIM).map(x=>x.obj).filter(o=>o&&o.visible&&o.parent); for(const o of [riffleSheet,monogalSheet,coverUnit,outputStack,insulPack]) if(o.visible)a.push(o); if(AIM_BATO_HB&&batoStack.visible)a.push(AIM_BATO_HB); if(curPart&&curPart.visible)a.push(curPart); return a;}
 function setGlow(root,on){if(window.noGlow)return;root.traverse(m=>{if(m.isMesh){ if(on&&!m.userData.ownMat){m.material=Array.isArray(m.material)?m.material.map(x=>x.clone()):m.material.clone(); m.userData.ownMat=true;} const ms=Array.isArray(m.material)?m.material:[m.material]; for(const mt of ms){if(!mt.emissive)continue; if(on){if(mt.userData.e0===undefined)mt.userData.e0=mt.emissive.getHex(); mt.emissive.setHex(0x4a6cff); mt.emissiveIntensity=.35;} else if(mt.userData.e0!==undefined){mt.emissive.setHex(mt.userData.e0); mt.emissiveIntensity=1;}}}});}
 function updateAim(){
   if(mode!=='workshop')return; camera.updateMatrixWorld();
@@ -1062,8 +1063,9 @@ function updateAim(){
   wAimRoot=found?found.root:null; wAim=found?found.id:null;
   const el=$('aimLabel'); if(el){ if(found){el.style.display='block'; el.textContent=found.id==='rivet'?`Заклёпка ${wAimIdx+1}/${rivetPts.length} — ${({aim:'отверстие',in:'вставлена',done:'проклёпана'})[rivetPts[wAimIdx].userData.state]}`:found.id==='part'?(curPart.name.includes('Shield')?'Щит на козлах':curPart.name.includes('Floor')?'Пол кабины':curPart.name.includes('Ceiling')?'Потолок':'Плафон'):AIM[found.id].label;} else el.style.display='none'; }
 }
-const AIM_BY_TARGET=new Map();
+const AIM_BY_TARGET=new Map(); let AIM_BATO_HB=null;
 aimable('jack',jack,'Рохля'); aimable('goats',goats,'Козлы'); aimable('bench',bench,'Верстак'); aimable('supply',supplyPallet,'Поддон с деталями');
+{const hb=new THREE.Mesh(new THREE.BoxGeometry(1.05,.42,1.0),new THREE.MeshBasicMaterial({visible:false})); hb.name='BatoHitbox'; hb.position.set(2.2,.21,-1.9); scene.add(hb); hb.userData.aimId='bato'; AIM_BATO_HB=hb;}
 aimable('output',outputPallet,'Выходной поддон'); aimable('bato',batoStack,'Лист шумки — Батопласт 600×600'); aimable('shelf',shelf,'Стеллаж'); aimable('roll',wRoll,'Рулон изолона');
 aimable('gateA',gateA.g,'Ворота А (приёмка)'); aimable('doorA',gateA.door,'Калитка ворот А'); aimable('doorB',gateB.door,'Калитка ворот Б'); aimable('gateB',gateB.g,'Ворота Б (отправка)');
 riffleSheet.userData.aimId='shelf'; monogalSheet.userData.aimId='shelf'; coverUnit.userData.aimId='shelf'; outputStack.userData.aimId='output'; insulPack.userData.aimId='bato';
@@ -1159,6 +1161,12 @@ window.__aimAt=function(what,idx){ // test helper: walk next to the target and t
     const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:1.1);}
   playerPos.copy(from); const eye=(window.demoCamY||1.62); const dx=p.x-from.x, dz=p.z-from.y; playerYaw=Math.atan2(dx,dz); playerPitch=Math.atan2(p.y-eye,Math.hypot(dx,dz)); return [p.x,p.y,p.z];};
 window.__look=(pt,dy)=>{playerPitch=pt; if(dy)playerYaw+=dy;};
+window.__runUntil=pre=>{demoFreeze=false; let g=0; while(curW()&&!curW().title.startsWith(pre)&&g++<400){const st=curW(); if(st.pull||st.takeOnly)advanceW(); else if(st.holds){st.run(()=>{}); advanceW();} else {st.run(()=>advanceW()); while(wAnim){const a=wAnim; a.fn(1); wAnim=null; a.done&&a.done();}}} holdingW=null; updateHUDW(); return curW().title;};
+window.__setHold=h=>{holdingW=h;};
+window.__walk=d=>{const f=dirOf(playerYaw); playerPos.x+=f.x*d; playerPos.y+=f.y*d;};
+window.__setupRivet=kind=>{const T={shield:'Проклепай все точки',floor:'Проклепай пол',ceiling:'Проклепай потолок',plafond:'Прикрути по углам'}[kind]; wIndex=WSteps.findIndex(x=>x.title.startsWith(T));
+  if(kind==='shield')partShield(); if(kind==='floor')partFloor(); if(kind==='ceiling')partCeiling(); if(kind==='plafond')partPlafond(); if(kind!=='plafond')insertRivets(); holdingW='riveter'; updateHUDW(); return curW().title;};
+window.__noseDiag=()=>{const t=wTools.riveter; const z=new THREE.Vector3(0,0,1).applyQuaternion(t.getWorldQuaternion(new THREE.Quaternion())); const p=rivetPts[0]; const {n}=rivetAxisWorld(p); return {nose:z.toArray().map(v=>+v.toFixed(3)),normal:n.toArray().map(v=>+v.toFixed(3)),alignDeg:+(Math.acos(Math.min(1,-z.dot(n)))*180/Math.PI).toFixed(1),handFollow:!!window.__handOverride,k:wAnim?+(wAnim.t/wAnim.dur).toFixed(2):null};};
 window.__teleportHaul=()=>{supplyPallet.position.set(0,0,-1.75); supplyPallet.rotation.y=0; supplyCarried=false; while(curW()&&/рохлю|Довези/.test(curW().title))advanceW(); return curW().title;};
 window.__wtestRun=function(){ // auto-run whole workshop cycle: each step's run() + finish animations instantly
   const log=[]; let guard=0; demoFreeze=true;
@@ -1283,9 +1291,19 @@ function doActionW(){
   if(st.perRivet){const i=wAimIdx, p=rivetPts[i]; if(wAim!=='rivet'||!p||p.userData.state!==st.perRivet.from)return;
     const fin=()=>{ if(rivetPts.every(q=>q.userData.state===st.perRivet.to))advanceW(); updateHUDW();};
     if(st.perRivet.to==='in'){setRivetState(i,'in'); toast(`🔩 Заклёпка ${i+1}/${rivetPts.length} вставлена`); fin(); return;}
-    const t=wTools.riveter, wp=p.getWorldPosition(new THREE.Vector3()); let p0=null;
-    wAnim={t:0,dur:.65,mode:'rivet',fn:k=>{ if(!p0)p0=t.getWorldPosition(new THREE.Vector3()); toolToScene(t); const nose=wp.clone().add(new THREE.Vector3(0,.0,0)); const q=k<.4?k/.4:k<.7?1:1-(k-.7)/.3; t.position.copy(p0).lerp(nose.clone().add(new THREE.Vector3(0,.26,0)),q*.85); if(k>.4&&k<.7&&p.userData.stem){p.userData.stem.position.y=.02+(k-.4)*.3;} },
-      done:()=>{setRivetState(i,'done'); toast(`💨 Пшик! Заклёпка ${i+1}/${rivetPts.length} проклёпана, стержень оторван`); fin();}};
+    const t=wTools.riveter; const {n,wp}=rivetAxisWorld(p); t.updateMatrixWorld(true); handR.updateMatrixWorld(true);
+    const Rel=handR.matrixWorld.clone().invert().multiply(t.matrixWorld); const M0=t.matrixWorld.clone();
+    // target frame: tool +Z (nose) = -n into the surface; tool +Y = world up projected (or toward the player for floors/ceilings)
+    const z=n.clone().negate(); let up=new THREE.Vector3(0,1,0); if(Math.abs(z.y)>.7){up=camera.position.clone().sub(wp); up.y=0; up.normalize(); if(z.y>0)up.negate();} up.addScaledVector(z,-up.dot(z)).normalize(); const x=new THREE.Vector3().crossVectors(up,z);
+    const qT=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,up,z)); const NOSE=new THREE.Vector3(0,.245,.171);
+    const posFor=d=>wp.clone().addScaledVector(n,d).sub(NOSE.clone().applyQuaternion(qT));
+    const p0=new THREE.Vector3(), q0=new THREE.Quaternion(), sc=new THREE.Vector3(); M0.decompose(p0,q0,sc); toolToScene(t);
+    wAnim={t:0,dur:.9,mode:'rivet',fn:k=>{ const a1=Math.min(1,k/.45), push=k<.45?0:k<.7?(k-.45)/.25:1-(k-.7)/.3*0.6;
+        const ap=posFor(.12); const pp=posFor(.004); const P=k<.45?p0.clone().lerp(ap,a1):ap.clone().lerp(pp,Math.min(1,push));
+        t.position.copy(P); t.quaternion.copy(q0).slerp(qT,a1); t.updateMatrixWorld(true);
+        window.__handOverride=t.matrixWorld.clone().multiply(Rel.clone().invert());
+        if(k>.6&&p.userData.stem){p.userData.stem.position.y=.02+(k-.6)*.4;} },
+      done:()=>{window.__handOverride=null; setRivetState(i,'done'); toast(`💨 Пшик! Заклёпка ${i+1}/${rivetPts.length}`); fin();}};
     return;}
   st.run(()=>{ if(st.need){holdingW=null;} advanceW();});
   updateHUDW();
@@ -1301,7 +1319,17 @@ function updateWorkshopPull(){
   wRollSpin.rotation.x=-wPullLen/.25;
   if(curW()&&curW().pull&&wPullLen>=1.0&&playerPos.distanceTo(P_OUT)<1.6){holdingW=null; wStrip.visible=false; score+=50; toast(`✅ Изолон отмотан вручную: ${wPullLen.toFixed(2)} м`); advanceW();}
 }
-function updateWorkshop(dt){ updateAim(); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+const rivRing=new THREE.Mesh(new THREE.TorusGeometry(.02,.0045,8,32),new THREE.MeshBasicMaterial({color:0x22ff88,depthTest:false,transparent:true})); rivRing.renderOrder=10; rivRing.visible=false; scene.add(rivRing);
+const rivGhost=new THREE.Mesh(new THREE.CylinderGeometry(.0024,.0024,.034,10),new THREE.MeshBasicMaterial({color:0x7dffc0,transparent:true,opacity:.55,depthTest:false})); rivGhost.renderOrder=10; rivGhost.visible=false; scene.add(rivGhost);
+function rivetAxisWorld(p){const n=new THREE.Vector3(0,1,0).transformDirection(p.matrixWorld).normalize(); const wp=p.getWorldPosition(new THREE.Vector3()); if(n.dot(camera.position.clone().sub(wp))<0)n.negate(); return {n,wp};}
+function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=false; if(!st||!st.perRivet){return;}
+  rivetPts.forEach((p,i)=>{const pend=p.userData.state===st.perRivet.from; const ms=p.material; if(ms&&ms.emissive&&i!==wAimIdx){ms.emissive.setHex(pend?0xffd400:0); ms.emissiveIntensity=pend?.25+.15*Math.sin(t*4):0;}}); // weak pulsing mark on unfinished
+  if(wAim!=='rivet'||wAimIdx<0)return; const p=rivetPts[wAimIdx]; if(!p)return; const ok=p.userData.state===st.perRivet.from; const {n,wp}=rivetAxisWorld(p);
+  rivRing.visible=true; rivRing.position.copy(wp).addScaledVector(n,.006); rivRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n); const ins=st.perRivet.to==='in';
+  rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
+  if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
+  if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
+function updateWorkshop(dt){ updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}
