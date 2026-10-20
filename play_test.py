@@ -24,7 +24,7 @@ with sync_playwright() as pw:
         st=S(); key='actDis' if btn=='action' else 'takeDis'
         if st[key]: fails.append((st['title'],what,st['act'] if btn=='action' else st['take'],st['wAim'],st['holdingW'])); return False
         pg.evaluate(f"document.getElementById('{btn}').click()"); time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v66_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v67_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
@@ -94,14 +94,16 @@ with sync_playwright() as pw:
             if n==4 and 'trough' not in shots: aim('trough',[0.4,0]); shot('bato_in_trough'); shots.add('trough')
         elif t.startswith('Прокатай шумку'):
             take('roller')
-            xs=[-1.0+i*0.04 for i in range(51)] if seen==1 else [-1.0+i*0.04 for i in range(40)]
-            pg.keyboard.down(' ')
-            for j,x in enumerate(xs):
-                for dz in ([-.09,.09] if j%2==0 else [.09,-.09]):
-                    pg.evaluate(f"__aimAt('trough',[{x},{dz}])"); time.sleep(.07)
-                if j==30 and 'roll' not in shots: shot('rolling_partial'); shots.add('roll')
-            pg.keyboard.up(' '); time.sleep(.3)
-            log.append('roll '+S()['take'])
+            xs=[-1.0+i*0.04 for i in range(51)]
+            for ps in range(8):  # v6.7: keep rolling (more passes) until >=60 % instead of leaving the step early (SwiftShader fps is low)
+                pg.keyboard.down(' ')
+                for j,x in enumerate(xs if ps%2==0 else xs[::-1]):
+                    for dz in ([-.09,.09] if j%2==0 else [.09,-.09]):
+                        pg.evaluate(f"__aimAt('trough',[{x},{dz}])"); time.sleep(.09)
+                    if j==30 and 'roll' not in shots: shot('rolling_partial'); shots.add('roll')
+                pg.keyboard.up(' '); time.sleep(.3)
+                log.append('roll '+S()['take'])
+                if not S()['takeDis']: break
             if not S()['takeDis']: press('btnTake','finish roll')
         elif t.startswith('Подпиши щит'):
             take('marker'); aim('trough',[0.6,0]); press('action','open sign')

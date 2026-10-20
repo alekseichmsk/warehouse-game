@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v6.6 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<title>Склад+Цех v6.7 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -27,16 +27,47 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 #btnTake:active{box-shadow:0 2px 0 #1663d9}
 #btnTake.release{background:linear-gradient(135deg,#ffd166,#ff8c42);box-shadow:0 7px 0 #e07b24}
 #toast{position:fixed;left:50%;top:max(118px,16vh);transform:translateX(-50%);background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border:2px solid #ff8ac2;border-radius:12px;padding:5px 11px;font-size:13px;line-height:1.3;font-weight:700;color:#332a7a;display:none;text-align:center;z-index:6;width:max-content;max-width:min(80vw,420px);box-shadow:0 6px 16px rgba(220,80,150,.18);pointer-events:none}
-#cross{position:fixed;left:50%;top:52%;transform:translate(-50%,-50%);font-size:22px;font-weight:800;color:#fff;opacity:.9;pointer-events:none;z-index:2;text-shadow:0 0 6px #7cc7ff,0 2px 4px rgba(50,80,160,.5)}
+#cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:800;color:#fff;opacity:.9;pointer-events:none;z-index:2;text-shadow:0 0 6px #7cc7ff,0 2px 4px rgba(50,80,160,.5)}
 #help{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);font-size:11px;font-weight:700;color:#43506e;background:rgba(255,255,255,.75);border:2px solid #fff;border-radius:999px;padding:3px 10px;white-space:nowrap;z-index:3}
 @media(max-width:1100px){#help{display:none}}
 @media(max-width:600px){#help{display:none}button{min-width:150px;font-size:14px;padding:13px 16px}#hud{left:6px;right:6px;top:6px;padding:10px 12px;border-radius:22px}}
+
+/* v6.7 phone layout: safe areas (notch / home bar), no overlaps, crosshair exactly at the aim ray (screen centre) */
+:root{--st:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-right,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px)}
+html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#c{position:fixed;left:0;top:0;width:100vw!important;height:100vh!important;height:100dvh!important;display:block}
+#hud{top:calc(10px + var(--st));left:calc(10px + var(--sl));right:calc(10px + var(--sr))}
+#btnShowHud{top:calc(10px + var(--st));right:calc(10px + var(--sr))}
+#joy{left:calc(16px + var(--sl));bottom:calc(20px + var(--sb))}
+#btns{right:calc(14px + var(--sr));bottom:calc(20px + var(--sb))}
+@media(max-width:600px){
+ #hud{top:calc(6px + var(--st));left:calc(6px + var(--sl));right:calc(6px + var(--sr));padding:8px 46px 8px 12px}
+ #btnHideHud{top:6px;right:6px;width:32px;height:32px}
+ #stageTitle{font-size:17px} #stageHint{font-size:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+ #meta{gap:5px;margin-top:5px} .pill{font-size:11px;padding:2px 8px} #dots{margin-top:5px}
+ #joy{width:120px;height:120px;left:calc(12px + var(--sl));bottom:calc(14px + var(--sb))} #stick{left:33px;top:33px}
+ #btns{right:calc(10px + var(--sr));bottom:calc(14px + var(--sb));max-width:calc(100vw - 150px - var(--sl) - var(--sr))}
+ #btns button{min-width:0;max-width:100%;white-space:normal;font-size:13px;line-height:1.2;padding:10px 12px}
+}
+@media(max-height:500px) and (orientation:landscape){
+ #hud{top:calc(6px + var(--st));left:calc(8px + var(--sl));right:auto;width:min(44vw,380px);padding:6px 40px 6px 10px;border-radius:18px;border-width:2px}
+ #btnHideHud{top:4px;right:4px;width:28px;height:28px;font-size:13px}
+ #stageTitle{font-size:14px;line-height:1.1} #stageHint{font-size:11px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ #meta{gap:4px;margin-top:4px;max-height:44px;overflow:hidden} .pill{font-size:10px;padding:1px 7px;border-width:1px} #dots{display:none}
+ #joy{width:104px;height:104px;left:calc(14px + var(--sl));bottom:calc(12px + var(--sb))} #stick{left:21px;top:21px}
+ #btns{right:calc(10px + var(--sr));bottom:calc(10px + var(--sb));gap:6px;max-width:min(40vw,330px)}
+ #btns button{min-width:0;max-width:100%;white-space:normal;font-size:12px;line-height:1.15;padding:8px 12px}
+ #rotBtns{top:calc(8px + var(--st))!important;bottom:auto!important;right:calc(10px + var(--sr))!important}
+ #rotBtns button{padding:7px!important;min-width:44px!important}
+ #toast{top:auto;bottom:calc(12px + var(--sb));max-width:min(40vw,360px);font-size:12px}
+ #help{display:none}
+}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.6 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.7 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
-<div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(52% + 18px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
+<div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
 <div id="btns"><button id="btnTake">✋ Взять</button><button id="btnLever" style="background:linear-gradient(135deg,#a78bfa,#6d28d9);box-shadow:0 7px 0 #5b21b6">Рычаг: НЕЙТРАЛЬ</button><button id="btnDrop" style="display:none;background:linear-gradient(135deg,#94a3b8,#475569);box-shadow:0 7px 0 #334155">⬇ Бросить (G)</button><button id="action">Действие</button></div>
 <div id="toast"></div><div id="help">Телефон: левый стик — ходьба/толкать, свайп справа — обзор • ПК: WASD — движение, мышь (зажать справа) — обзор, E — взять/отпустить, Space — действие</div>
@@ -59,7 +90,8 @@ scene.add(new THREE.HemisphereLight(0xd8f4ff,0xffe0ec,1.15));
 scene.add(new THREE.AmbientLight(0xfff6e8,.45));
 const sun=new THREE.DirectionalLight(0xfff1c9,1.75); sun.position.set(6,11,5); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.radius=4; sun.shadow.bias=-0.0004; scene.add(sun);
 const fill=new THREE.DirectionalLight(0xffc7e3,.45); fill.position.set(-6,5,-4); scene.add(fill);
-function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()} addEventListener('resize',resize); resize();
+function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()} addEventListener('resize',resize); addEventListener('orientationchange',()=>setTimeout(resize,250)); if(window.visualViewport)visualViewport.addEventListener('resize',resize); resize();
+{let fsTried=false; addEventListener('touchend',()=>{if(fsTried)return; fsTried=true; const d=document.documentElement; const f=d.requestFullscreen||d.webkitRequestFullscreen; if(f&&!document.fullscreenElement){try{const r=f.call(d,{navigationUI:'hide'}); if(r&&r.catch)r.catch(()=>{});}catch(e){}}},{passive:true});}
 
 const M={wood:0xe0aa67,wood2:0xc98d4b,teal:0x00c2d1,dark:0x3a4452,blue:0x2979ff,orange:0xff7a1a,grey:0xc3cedb,white:0xffffff,yellow:0xffd400,black:0x2b3442,red:0xff3d71,skin:0xf2c49b,skin2:0xeab98d};
 function mat(c,r=.7){return new THREE.MeshPhysicalMaterial({color:c,roughness:Math.max(.12,r*.5),metalness:.02,clearcoat:.75,clearcoatRoughness:.28,envMapIntensity:.7})}
@@ -430,7 +462,7 @@ function updateHUD(){
 // ---------- Input ----------
 let joyVec=new THREE.Vector2(), keys={};
 const joy=$('joy'), stick=$('stick'); let joyId=null;
-function setStick(dx,dy){stick.style.left=(41+dx*38)+'px';stick.style.top=(41+dy*38)+'px'}
+function setStick(dx,dy){const c=(joy.clientWidth-stick.offsetWidth)/2, R=joy.clientWidth*.28; stick.style.left=(c+dx*R)+'px';stick.style.top=(c+dy*R)+'px'}
 joy.addEventListener('pointerdown',e=>{joyId=e.pointerId;joy.setPointerCapture(e.pointerId);moveJoy(e)});
 joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)moveJoy(e)});
 function endJoy(e){if(e.pointerId===joyId){joyId=null;joyVec.set(0,0);setStick(0,0)}}
@@ -828,6 +860,9 @@ if(/[?&]wbns/.test(location.search)||(matchMedia('(pointer:coarse)').matches&&!/
      const sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3()); const hb=new THREE.Mesh(new THREE.BoxGeometry(sz.x+.004,sz.y+.004,sz.z+.004),new THREE.MeshBasicMaterial({visible:false}));
      n.add(hb); hb.position.copy(n.worldToLocal(c.clone())); hb.name='Hit_'+name; hb.userData.aimId='wb:'+name; WB_PARTS[name].hit=hb;
      AIM['wb:'+name]={obj:hb,label:'Открыть'}; }
+   {const hn=[]; m.traverse(o=>{if(o.isMesh&&/Hose_Blue_PU/.test(o.name+(o.parent?o.parent.name:'')))hn.push(o);}); const pts=[]; const v=new THREE.Vector3();
+    for(const o of hn){const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld); pts.push([v.x,v.y,v.z]);}}
+    window.__bluePts=pts; window.__blueN=hn.map(o=>o.name);}
    WB_READY=true; window.__wbParts=()=>Object.keys(WB_PARTS);},undefined,e=>console.warn('workbench.glb',e));}
 function WB_LABEL(n){return n.startsWith('Tray')?(n.includes('Left')?'Поворотная полка (левая)':'Поворотная полка (правая)'):n==='Drawer_Deep_Front'?'Глубокий ящик':n.startsWith('Drawer_Side')?(n.includes('Left')?'Боковой ящик (левый, с защёлкой)':'Боковой ящик (правый, с защёлкой)'):'Ящик '+n.split('_')[1];}
 function wbToggle(name){const P=WB_PARTS[name]; if(!P)return; P.target=P.target?0:1; if(AIM['wb:'+name])AIM['wb:'+name].label=P.target?'Закрыть':'Открыть';}
@@ -905,23 +940,28 @@ const CMP_OUT=new THREE.Vector3(-.20,.40,.12); // quick coupler (model frame)
 const _gl=new GLTFLoader(); _gl.setMeshoptDecoder(MeshoptDecoder);
 function fixMats(m,cast=true){m.traverse(o=>{if(o.isMesh){o.castShadow=cast&&!LITE; o.receiveShadow=false; const mt=o.material; if(mt&&mt.metalness>.5){mt.metalness=.35; mt.roughness=Math.max(.3,mt.roughness);} if(LITE&&mt){o.material=new THREE.MeshLambertMaterial({color:mt.color,emissive:mt.emissive});}}});}
 _gl.load('compressor_fubag.glb',g=>{fixMats(g.scene); compressor.add(g.scene); window.__cmpReady=true;});
-// --- rigid air line: steel pipe D22 along the north wall at 3.0 m, drop to an outlet with regulator + quick coupler on the bench (back-right)
-const AIR_OUT=new THREE.Vector3(benchPos.x-1.10,BENCH_TOP+.16,benchPos.y+.93); // front-left corner, toward the trestles (hose must reach the rivets)
+// --- v6.7: rigid air line from the compressor along the north wall (3.0 m) and down into the bench PORTAL top; the coiled hose hangs from
+//     the end of the left BLUE overhead PU drop of the user's workbench model (lowest point measured from workbench.glb: x=bench-0.48, y=1.47, z=bench+1.0)
+const BLUE_DROP=new THREE.Vector3(benchPos.x-.48,1.47,benchPos.y+1.0);
+const PORTAL_IN=new THREE.Vector3(benchPos.x-.08,1.97,benchPos.y+.95);
+const AIR_OUT=BLUE_DROP; // kept name for compatibility
 {const cw=compressor.localToWorld(CMP_OUT.clone()); const Y=3.0, ZW=-7.80;
- const P=[cw,new THREE.Vector3(cw.x,cw.y,ZW),new THREE.Vector3(cw.x,Y,ZW),new THREE.Vector3(AIR_OUT.x,Y,ZW),new THREE.Vector3(AIR_OUT.x,Y,AIR_OUT.z),new THREE.Vector3(AIR_OUT.x,AIR_OUT.y+.06,AIR_OUT.z)];
+ const P=[cw,new THREE.Vector3(cw.x,cw.y,ZW),new THREE.Vector3(cw.x,Y,ZW),new THREE.Vector3(PORTAL_IN.x,Y,ZW),new THREE.Vector3(PORTAL_IN.x,Y,PORTAL_IN.z),PORTAL_IN.clone()];
  const pipeM=new THREE.MeshLambertMaterial({color:0x9aa6b2}), brM=new THREE.MeshLambertMaterial({color:0x3b4552});
  const air=new THREE.Group(); air.name='AirLine'; WG.add(air);
  for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],d=b.clone().sub(a),L=d.length(); if(L<1e-3)continue; const m=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,L,10),pipeM); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()); air.add(m);
-   const n=Math.floor(L/1.2); for(let k=1;k<=n;k++){const c=a.clone().lerp(b,k/(n+1)); const br=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.05),brM); br.position.copy(c); air.add(br);} // pipe clamps
+   const n=Math.floor(L/1.2); for(let k=1;k<=n;k++){const c=a.clone().lerp(b,k/(n+1)); const br=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.05),brM); br.position.copy(c); air.add(br);}
    if(i>0){const el=new THREE.Mesh(new THREE.SphereGeometry(.016,10,8),pipeM); el.position.copy(a); air.add(el);}}
- // outlet unit: bracket on the portal post, filter-regulator (red knob, gauge) and quick coupler pointing forward
- const u=new THREE.Group(); u.position.copy(AIR_OUT); air.add(u);
- wbox(u,0,.04,-.03,.09,.16,.012,0x3b4552); cyl(u,0,.09,0,.022,.06,0xd0d6dc,'y',14); cyl(u,0,.135,0,.02,.03,0xe0242b,'y',14); cyl(u,0,.035,0,.018,.05,0xcfd6dd,'y',12);
- cyl(u,.032,.075,0,.016,.012,0x22262b,'x',16); cyl(u,.039,.075,0,.013,.002,0xf4f4f4,'x',16); cyl(u,0,.0,.028,.009,.04,0xd7dde2,'z',12);
+ // filter-regulator on the portal top where the pipe enters (feeds the blue PU drops)
+ const u=new THREE.Group(); u.position.copy(PORTAL_IN).add(new THREE.Vector3(0,.10,0)); air.add(u);
+ cyl(u,0,0,0,.022,.06,0xd0d6dc,'y',14); cyl(u,0,.045,0,.02,.03,0xe0242b,'y',14); cyl(u,0,-.05,0,.018,.05,0xcfd6dd,'y',12); cyl(u,.032,0,0,.016,.012,0x22262b,'x',16); cyl(u,.039,0,0,.013,.002,0xf4f4f4,'x',16);
+ // quick coupler (brass socket + steel sleeve) at the end of the blue drop
+ const q=new THREE.Group(); q.position.copy(BLUE_DROP); air.add(q);
+ cyl(q,0,-.012,0,.0075,.025,0xc89a3a,'y',12); cyl(q,0,-.04,0,.011,.032,0xd7dde2,'y',14); cyl(q,0,-.06,0,.007,.012,0xc89a3a,'y',12);
  window.__airLine=P.map(v=>v.toArray().map(x=>+x.toFixed(2)));}
-const hoseAnchor=AIR_OUT.clone().add(new THREE.Vector3(0,0,.03));
+const hoseAnchor=BLUE_DROP.clone().add(new THREE.Vector3(0,-.066,0));
 // --- coiled (recoil) PU hose 8x5, yellow: coil retracted ~1.0 m, stretches up to 4.5 m
-const HOSE_L=5.0, HOSE_L0=1.0, HOSE_N=LITE?16:24, HOSE_TURNS=LITE?60:80, HOSE_PT=LITE?5:7, HOSE_CR=.02, HOSE_WR=.0042;
+const HOSE_L=5.5, HOSE_L0=1.0, HOSE_N=LITE?16:24, HOSE_TURNS=LITE?60:80, HOSE_PT=LITE?5:7, HOSE_CR=.02, HOSE_WR=.0042;
 const lmax=HOSE_L/(HOSE_N-1), l0=HOSE_L0/(HOSE_N-1);
 const hoseP=[],hoseQ=[]; for(let i=0;i<HOSE_N;i++){hoseP.push(new THREE.Vector3());hoseQ.push(new THREE.Vector3());}
 const HOSE_PIECES=HOSE_TURNS*HOSE_PT;

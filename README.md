@@ -133,3 +133,9 @@ cd warehouse_game && python3 -m http.server 8765
 - Клёпка: заклёпочник подходит к точке и встаёт носиком по нормали поверхности, рука следует за инструментом. Отклонение 0° на щите (борт вертикальный → ось инструмента горизонтальна), полу, потолке и плафоне (ось вертикальна).
 - Сообщения: 13 px, компактная плашка под шапкой (центр экрана свободен), автоскрытие через 2 с.
 - Тесты: логический прогон 298/298 шагов. `play_test.py` — 2 щита реальными действиями, 0 ошибок, включая взятие шумки взглядом сверху вниз (мышью). `mobile_test.py` — 390×844 с сенсором: свайп до −85°/+80°, «руки заняты», бросок, взятие шумки при взгляде вниз −85°.
+
+## v6.7 Bubble
+- Coiled yellow PU hose now hangs from the end of the left **blue overhead PU drop** on the bench portal (brass quick-coupler); the FUBAG air line runs along the north wall at 3.0 m and drops into the **portal top** (filter-regulator). Spring physics, pull-back, snag and walk limit are measured from the overhead attach point; hose 5.5 m (needed to reach the trestles from the portal).
+- Phone layout: `viewport-fit=cover` + safe-area insets (notch/home bar), compact HUD in landscape, action buttons no longer overlap the joystick, crosshair exactly at screen centre (= aim ray), joystick stick scales with pad size, resize on orientation/visualViewport change, fullscreen on first touch.
+- play_test: roller step keeps rolling until ≥60 % (no more NO ADVANCE).
+
