@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.4 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.5 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -67,7 +67,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.4 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.5 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -1201,7 +1201,7 @@ function tapeCast(){ // works on ANY object: raycast every visible mesh (even on
     if(o.isInstancedMesh){o.raycast(_trc,out);} else _MR.call(o,_trc,out);});
   out.sort((a,b)=>a.distance-b.distance); let h=out.find(h=>h.distance>.08);
   if(!h){const r=_trc.ray; if(r.direction.y<-1e-3){const t=-r.origin.y/r.direction.y; if(t<_trc.far)h={point:r.origin.clone().addScaledVector(r.direction,t),face:{normal:new THREE.Vector3(0,1,0)},object:null,distance:t};}}
-  if(h){let n=h.face?h.face.normal.clone():new THREE.Vector3(0,1,0); if(h.object)n.transformDirection(h.object.matrixWorld); if(n.dot(_trc.ray.direction)>0)n.negate(); return {p:h.point.clone(),n,obj:h.object?h.object.name:'floor'};}
+  if(h){let n=h.face?h.face.normal.clone():new THREE.Vector3(0,1,0); if(h.object)n.transformDirection(h.object.matrixWorld); if(n.dot(_trc.ray.direction)>0)n.negate(); return {p:h.point.clone(),n,obj:h.object?h.object.name:'floor',o3:h.object};}
   return null;}
 function ribbon(m,a,b,up){const d=b.clone().sub(a), L=d.length(); if(L<1e-4){m.visible=false;return;} m.visible=true; m.position.copy(a).add(b).multiplyScalar(.5);
   const x=d.normalize(); let z=up.clone().addScaledVector(x,-up.dot(x)); if(z.lengthSq()<1e-6)z=new THREE.Vector3(0,1,0).addScaledVector(x,-x.y); z.normalize(); const y=new THREE.Vector3().crossVectors(z,x);
@@ -1499,7 +1499,7 @@ function sawSound(on){ try{ if(on&&!SAW.snd){const C=new (window.AudioContext||w
 {const el=document.createElement('div'); el.id='sawPanel'; el.style.cssText='position:fixed;right:calc(12px + var(--sr));top:calc(var(--st) + 240px);z-index:5;display:none;gap:5px;flex-wrap:wrap;justify-content:center;width:178px;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:16px;padding:6px 8px;font-weight:800;color:#332a7a;font-size:13px;align-items:center';
  el.innerHTML='<span id="sawFenceLbl">Упор: 150 мм</span><button data-s="pow" style="min-width:0;padding:6px 10px;font-size:13px">⏻ Пила</button><button data-s="-10" style="min-width:0;padding:6px 9px;font-size:13px">−10</button><button data-s="-1" style="min-width:0;padding:6px 9px;font-size:13px">−1</button><button data-s="+1" style="min-width:0;padding:6px 9px;font-size:13px">+1</button><button data-s="+10" style="min-width:0;padding:6px 9px;font-size:13px">+10</button><button data-s="tape" style="min-width:0;padding:6px 9px;font-size:13px">📏 = замер</button><button data-s="rot" style="min-width:0;padding:6px 9px;font-size:13px">⟲ Плитку</button>';
  document.body.appendChild(el); el.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; sawCmd(b.dataset.s);});}
-function sawCmd(s){ if(s==='pow'){SAW.on=!SAW.on; sawSound(SAW.on); toast(SAW.on?'⏻ Пила включена: диск 2950 об/мин, вода подаётся':'⏻ Пила выключена');}
+function sawCmd(s){ if(s==='pow'){SAW.on=!SAW.on; sawSound(SAW.on); toast(SAW.on?'⏻ Пила включена: диск 3000–6000 об/мин, вода подаётся':'⏻ Пила выключена');}
   else if(s==='tape'){const L=window.__tapeLast; if(!L){toast('📏 Сначала сделай замер рулеткой');} else setFence(L.mm);}
   else if(s==='rot'){ if(SAW.tile){const t=wTools[SAW.tile]; t.userData.rot=!t.userData.rot; seatTile(); toast('⟲ Плитка повернута на 90°');} }
   else if(/^[+-]\d+$/.test(s)) setFence(SAW.fence+ +s);
@@ -2463,6 +2463,140 @@ else if(demo==='turn'){
   jack.position.set(jackPos.x,0,jackPos.y); jack.rotation.y=jackAng; steerGroup.rotation.y=steer; jack.updateMatrixWorld(true);
   const pl=gripPose(jackGrip,-.115),pr=gripPose(jackGrip,.115); handL.position.copy(pl.p);handL.quaternion.copy(pl.q);handR.position.copy(pr.p);handR.quaternion.copy(pr.q); setCurl(handL,1);setCurl(handR,1);
 }
+// ===================== v7.5 DESKTOP MODE: pointer lock, WASD, mouse buttons, rebindable keys, settings, key hints; tape edge snapping =====================
+const PC_DEF={forward:['KeyW'],back:['KeyS'],left:['KeyA'],right:['KeyD'],run:['ShiftLeft'],action:['Mouse0','Space'],secondary:['Mouse2'],take:['KeyE'],drop:['KeyG','KeyQ'],rotate:['KeyR'],flip:['KeyF'],pay:['Tab'],
+  sp1:['Digit1','KeyP'],sp2:['Digit2'],sp3:['Digit3'],sp4:['Digit4'],sp5:['Digit5'],sp6:['Digit6'],sp7:['Digit7','KeyZ'],sp8:['Digit8','KeyX'],sp9:['Digit9'],nudgeL:['BracketLeft'],nudgeR:['BracketRight'],nudgeU:['Minus'],nudgeD:['Equal']};
+const PC_LABEL={forward:'Вперёд',back:'Назад',left:'Влево',right:'Вправо',run:'Бег',action:'Действие (зажать — непрерывно)',secondary:'Вращать предмет (зажать + мышь)',take:'Взять / положить',drop:'Бросить',rotate:'Повернуть ⟳ (на пиле — плитку)',flip:'Повернуть ⟲ обратно',pay:'Окно оплаты',
+  sp1:'Пила: питание ⏻',sp2:'Пила: упор = замер рулетки',sp3:'Пила: повернуть плитку',sp4:'Укладка: карта клея 🗺',sp5:'Рохля: рычаг',sp6:'Скрыть / показать панель',sp7:'Полоса ⟲',sp8:'Полоса ⟳',sp9:'Лифт: следующий заказ',
+  nudgeL:'Пила −1 / плитка ◀ 1 мм',nudgeR:'Пила +1 / плитка ▶ 1 мм',nudgeU:'Плитка ▲ 1 мм',nudgeD:'Плитка ▼ 1 мм'};
+const PCS={binds:null,sens:1,invY:false,fov:68,mode:'auto'};
+(function(){try{const j=JSON.parse(localStorage.getItem('wg_pc')||'{}'); Object.assign(PCS,j);}catch(e){} PCS.binds=Object.assign(JSON.parse(JSON.stringify(PC_DEF)),PCS.binds||{});})();
+function pcSave(){localStorage.setItem('wg_pc',JSON.stringify(PCS));}
+const _pcq=new URLSearchParams(location.search);
+const IS_PC=_pcq.has('pc')?true:_pcq.has('mobile')?false:PCS.mode==='pc'?true:PCS.mode==='mobile'?false:(matchMedia('(pointer:fine)').matches&&matchMedia('(hover:hover)').matches&&!(navigator.maxTouchPoints>0&&'ontouchstart' in window));
+const PC={locked:false,emu:_pcq.has('plemu'),menu:false,rebind:null,sec:false,lx:null,ly:null,secAcc:0,down:{}};
+function keyName(c){ if(!c)return '—'; if(c.startsWith('Mouse'))return ['ЛКМ','СКМ','ПКМ','Мышь4','Мышь5'][+c.slice(5)]||c; if(c.startsWith('Key'))return c.slice(3); if(c.startsWith('Digit'))return c.slice(5);
+  return {ShiftLeft:'Shift',ShiftRight:'R-Shift',ControlLeft:'Ctrl',ControlRight:'R-Ctrl',AltLeft:'Alt',Space:'Пробел',Tab:'Tab',BracketLeft:'[',BracketRight:']',Minus:'-',Equal:'=',Enter:'Enter',Backquote:'`',WheelUp:'Колесо↑',WheelDown:'Колесо↓'}[c]||c;}
+function bindName(a){return keyName((PCS.binds[a]||[])[0]);}
+window.__pcKey=bindName;
+function actOf(code){for(const a in PCS.binds)if((PCS.binds[a]||[]).includes(code))return a; return null;}
+const MOVEK={forward:'w',back:'s',left:'a',right:'d'};
+function W(){return mode==='workshop';}
+function pcAction(a,down){ // every phone button has an equivalent here
+  if(MOVEK[a]){keys[MOVEK[a]]=down; return;}
+  if(a==='run'){PC.run=down; return;}
+  if(a==='action'){ keys[' ']=down; if(down)(W()?doActionW:doAction)(); return;}
+  if(a==='secondary'){ PC.sec=down; if(down)PC.secAcc=0; return;}
+  if(!down)return;
+  const near=typeof nearSaw==='function'&&W()&&nearSaw();
+  switch(a){
+    case 'take': (W()?doTakeW:doTake)(); break;
+    case 'drop': if(W()&&window.__dropW)window.__dropW(); else if(!W()&&holding){doTake();} break;
+    case 'rotate': if(near&&SAW.tile)sawCmd('rot'); else window.__rotStrip&&window.__rotStrip(1); break;
+    case 'flip': window.__rotStrip&&window.__rotStrip(-1); break;
+    case 'pay': {const el=$('payWin'); if(el&&el.style.display==='block')el.style.display='none'; else showPay();} break;
+    case 'sp1': if(W())sawCmd('pow'); break; case 'sp2': if(W())sawCmd('tape'); break; case 'sp3': if(W())sawCmd('rot'); break; case 'sp4': if(W())layCmd('map'); break;
+    case 'sp5': {const b=$('btnLever'); b&&b.click();} break;
+    case 'sp6': {const h=$('btnHideHud'), s=$('btnShowHud'); if(getComputedStyle($('hud')).display==='none')s.click(); else h.click();} break;
+    case 'sp7': window.__rotStrip&&window.__rotStrip(-1); break; case 'sp8': window.__rotStrip&&window.__rotStrip(1); break;
+    case 'sp9': if(W()&&typeof applyLiftOrder==='function'){applyLiftOrder(liftOrderIdx+1); toast('🧾 Следующий заказ лифта'); updateHUDW();} break;
+    case 'nudgeL': case 'nudgeR': case 'nudgeU': case 'nudgeD': pcNudge(a,1); break;
+  }
+  if(W())updateHUDW();}
+function layPanelOn(){const e=$('layPanel'); return e&&e.style.display==='block';}
+function pcNudge(a,mul){ const near=W()&&nearSaw(); if(near&&(a==='nudgeL'||a==='nudgeR')){sawCmd((a==='nudgeR'?'+':'-')+mul); return;} if(W()&&layPanelOn()){layCmd({nudgeL:'L',nudgeR:'R',nudgeU:'U',nudgeD:'D'}[a]);}}
+// ---- UI: hide on-screen controls, prompt bar, settings menu ----
+{const st=document.createElement('style'); st.textContent=`body.pc #joy,body.pc #btns,body.pc #rotBtns,body.pc #btnShowHud,body.pc #btnHideHud,body.pc #sawPanel button,body.pc #layPanel button{display:none!important}
+#pcPrompt{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:6;display:none;gap:8px;flex-wrap:wrap;justify-content:center;max-width:90vw;pointer-events:none}
+body.pc #pcPrompt{display:flex} #pcPrompt span{background:rgba(255,255,255,.82);border-radius:12px;padding:5px 10px;font:600 13px system-ui;color:#26324a;box-shadow:0 4px 14px rgba(40,60,140,.18)}
+#pcPrompt b{display:inline-block;min-width:16px;padding:1px 6px;margin-right:5px;border-radius:6px;background:#26324a;color:#fff;font-size:12px}
+#pcLock{position:fixed;left:50%;top:56%;transform:translate(-50%,0);z-index:6;display:none;background:rgba(38,50,74,.78);color:#fff;border-radius:12px;padding:8px 14px;font:600 14px system-ui;pointer-events:none}
+#pcMenu{position:fixed;inset:5% 12%;z-index:30;background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(40,60,140,.35);padding:16px 22px;overflow:auto;font:14px system-ui;color:#26324a;display:none}
+#pcMenu table{border-collapse:collapse;width:100%} #pcMenu td{padding:3px 6px;border-top:1px solid #eef1f7} #pcMenu .kb{min-width:90px;padding:4px 10px;border-radius:8px;border:1px solid #c5cde0;background:#f4f7ff;font:600 13px system-ui;cursor:pointer;box-shadow:none;color:#26324a}
+#pcMenu .kb.wait{background:#ffd400} #pcMenu .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0} #pcGear{cursor:pointer}`; document.head.appendChild(st);
+ const pp=document.createElement('div'); pp.id='pcPrompt'; document.body.appendChild(pp); const pl=document.createElement('div'); pl.id='pcLock'; pl.textContent='🖱 Клик — захватить мышь • Esc — меню'; document.body.appendChild(pl);
+ const m=document.createElement('div'); m.id='pcMenu'; document.body.appendChild(m);
+ const g=document.createElement('span'); g.className='pill'; g.id='pcGear'; g.textContent='⚙ Настройки'; g.onclick=()=>pcMenu(true); const meta=$('meta'); if(meta)meta.appendChild(g);
+ if(IS_PC)document.body.classList.add('pc');}
+function pcMenu(open){ PC.menu=open; const m=$('pcMenu'); if(!open){m.style.display='none'; PC.rebind=null; return;}
+  if(document.pointerLockElement)document.exitPointerLock(); for(const k in keys)keys[k]=false;
+  const rows=Object.keys(PC_DEF).map(a=>`<tr><td>${PC_LABEL[a]}</td><td><button class="kb" data-a="${a}" data-i="0">${keyName(PCS.binds[a][0])}</button> <button class="kb" data-a="${a}" data-i="1">${keyName(PCS.binds[a][1])}</button></td></tr>`).join('');
+  m.innerHTML=`<h2 style="margin:0 0 6px">⚙ Пауза / настройки</h2>
+  <div class="row"><label>Режим управления: <select id="pcMode"><option value="auto">авто (${IS_PC?'ПК':'телефон'} сейчас)</option><option value="pc">ПК (мышь + клавиатура)</option><option value="mobile">Телефон (кнопки)</option></select></label></div>
+  <div class="row"><label>Чувствительность мыши <input id="pcSens" type="range" min="0.2" max="3" step="0.05" value="${PCS.sens}"> <span id="pcSensV">${(+PCS.sens).toFixed(2)}</span></label>
+  <label><input id="pcInv" type="checkbox" ${PCS.invY?'checked':''}> Инверсия Y</label>
+  <label>FOV <input id="pcFov" type="range" min="50" max="100" step="1" value="${PCS.fov}"> <span id="pcFovV">${PCS.fov}°</span></label></div>
+  <div style="color:#5b6785;margin:4px 0">Клик по полю → нажми клавишу или кнопку мыши (Esc — отмена, Backspace — очистить). Колесо: упор пилы ±1 мм (Shift ±10), плитка ◀▶ (Shift ▲▼). Alt — без привязки рулетки к кромке.</div>
+  <table>${rows}</table>
+  <div class="row" style="justify-content:flex-end;margin-top:10px"><button id="pcReset">Сбросить по умолчанию</button><button id="pcClose">▶ Продолжить</button></div>`;
+  m.style.display='block'; $('pcMode').value=PCS.mode;
+  $('pcMode').onchange=e=>{PCS.mode=e.target.value; pcSave(); location.reload();};
+  $('pcSens').oninput=e=>{PCS.sens=+e.target.value; $('pcSensV').textContent=PCS.sens.toFixed(2); pcSave();};
+  $('pcInv').onchange=e=>{PCS.invY=e.target.checked; pcSave();};
+  $('pcFov').oninput=e=>{PCS.fov=+e.target.value; $('pcFovV').textContent=PCS.fov+'°'; pcApplyFov(); pcSave();};
+  $('pcReset').onclick=()=>{PCS.binds=JSON.parse(JSON.stringify(PC_DEF)); PCS.sens=1; PCS.invY=false; PCS.fov=68; pcSave(); pcApplyFov(); pcMenu(true);};
+  $('pcClose').onclick=()=>{pcMenu(false); pcLock();};
+  m.querySelectorAll('.kb').forEach(b=>b.onclick=e=>{e.stopPropagation(); m.querySelectorAll('.kb').forEach(x=>x.classList.remove('wait')); b.classList.add('wait'); b.textContent='нажми…'; PC.rebind={a:b.dataset.a,i:+b.dataset.i,btn:b};});}
+function pcSetBind(code){ const r=PC.rebind; PC.rebind=null; if(code==='Escape'){pcMenu(true); return;} const arr=PCS.binds[r.a].slice(); if(code==='Backspace')arr.splice(r.i,1); else { for(const a in PCS.binds)PCS.binds[a]=PCS.binds[a].filter(c=>c!==code); arr[r.i]=code; } PCS.binds[r.a]=arr.filter(Boolean); pcSave(); pcMenu(true);}
+function pcApplyFov(){ if(IS_PC){camera.fov=PCS.fov; camera.updateProjectionMatrix();}}
+function pcLock(){ if(!IS_PC||PC.emu)return; try{canvas.requestPointerLock();}catch(e){} }
+document.addEventListener('pointerlockchange',()=>{ PC.locked=document.pointerLockElement===canvas; if(!PC.locked&&IS_PC&&!PC.menu&&!PC.noMenu){ for(const k in keys)keys[k]=false; pcMenu(true);} PC.noMenu=false;});
+function overlayOpen(){ const s=$('signCv'); return !!(s&&s.offsetParent);}
+// ---- keyboard (capture: replaces the old letter handlers on PC) ----
+addEventListener('keydown',e=>{ if(PC.rebind){e.preventDefault(); e.stopImmediatePropagation(); pcSetBind(e.code); return;}
+  if(!IS_PC)return; if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'))return;
+  if(e.code==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); if(PC.menu){pcMenu(false); pcLock();} else pcMenu(true); return;}
+  if(PC.menu){e.stopImmediatePropagation(); return;}
+  if(e.key==='Alt'||e.code==='AltLeft'){keys['alt']=true; e.preventDefault();}
+  const a=actOf(e.code); e.stopImmediatePropagation(); if(!a)return; e.preventDefault(); if(e.repeat&&!MOVEK[a])return; pcAction(a,true);},true);
+addEventListener('keyup',e=>{ if(!IS_PC)return; if(e.code==='AltLeft')keys['alt']=false; const a=actOf(e.code); e.stopImmediatePropagation(); if(a)pcAction(a,false);},true);
+addEventListener('blur',()=>{ if(IS_PC)for(const k in keys)keys[k]=false;});
+// ---- mouse ----
+addEventListener('pointerdown',e=>{ if(PC.rebind&&e.target.closest&&!e.target.closest('#pcMenu .kb')){e.preventDefault(); e.stopImmediatePropagation(); pcSetBind('Mouse'+e.button); return;}
+  if(PC.rebind&&e.target.closest&&e.target.closest('#pcMenu .kb')&&e.button!==0){e.preventDefault(); e.stopImmediatePropagation(); pcSetBind('Mouse'+e.button); return;}
+  if(!IS_PC||e.target!==canvas||PC.menu)return; e.stopImmediatePropagation(); e.preventDefault();
+  if(!PC.locked&&!PC.emu){pcLock(); return;}
+  const a=actOf('Mouse'+e.button); if(a){PC.down[e.button]=a; pcAction(a,true);} },true);
+addEventListener('pointerup',e=>{ if(!IS_PC)return; const a=PC.down[e.button]; if(a){delete PC.down[e.button]; pcAction(a,false);} },true);
+addEventListener('mousedown',e=>{ if(!IS_PC||e.target!==canvas)return; if(e.button!==0){ const a=actOf('Mouse'+e.button); if(a&&!PC.down[e.button]&&(PC.locked||PC.emu)){PC.down[e.button]=a; pcAction(a,true);} } },true);
+addEventListener('mouseup',e=>{ if(!IS_PC)return; const a=PC.down[e.button]; if(a&&e.button!==0){delete PC.down[e.button]; pcAction(a,false);} },true);
+canvas.addEventListener('contextmenu',e=>{ if(IS_PC)e.preventDefault();});
+addEventListener('mousemove',e=>{ if(!IS_PC||PC.menu)return; let dx,dy; if(PC.locked){dx=e.movementX; dy=e.movementY;} else if(PC.emu){ if(!window.__plLook){PC.lx=e.clientX; PC.ly=e.clientY; return;} if(PC.lx==null){PC.lx=e.clientX; PC.ly=e.clientY;} dx=e.clientX-PC.lx; dy=e.clientY-PC.ly; PC.lx=e.clientX; PC.ly=e.clientY;} else return;
+  if(!dx&&!dy)return;
+  if(PC.sec){ PC.secAcc+=dx; while(Math.abs(PC.secAcc)>=10){ const s=Math.sign(PC.secAcc); window.__rotStrip&&window.__rotStrip(s); PC.secAcc-=s*10;} return;}
+  const k=.0024*PCS.sens; if(holding==='jack'||holding==='cart'){lookOffset=THREE.MathUtils.clamp(lookOffset-dx*k*.8,-.7,.7);} else playerYaw-=dx*k;
+  playerPitch=THREE.MathUtils.clamp(playerPitch-(PCS.invY?-1:1)*dy*k*.9,PITCH_MIN,PITCH_MAX);},true);
+addEventListener('wheel',e=>{ if(!IS_PC||PC.menu||e.target!==canvas)return; e.preventDefault(); const up=e.deltaY<0; const sh=e.shiftKey||keys['shift'];
+  if(W()&&nearSaw()){sawCmd((up?'+':'-')+(sh?10:1)); return;}
+  if(W()&&layPanelOn()){layCmd(sh?(up?'U':'D'):(up?'R':'L')); return;}
+  window.__rotStrip&&window.__rotStrip(up?1:-1);},{passive:false,capture:true});
+// run: Shift scales the walk input
+{const _ri=rawInput; rawInput=function(){const v=_ri(); if(IS_PC&&PC.run&&v.length()>0)v.multiplyScalar(1.75); return v;};}
+// ---- prompt bar with current bindings ----
+function pcPrompt(){ if(!IS_PC)return; const pp=$('pcPrompt'); const out=[]; const b=$('action'), t=$('btnTake'); const clean=s=>s.replace(/^[^\wА-Яа-яЁё]+/u,'').trim();
+  if(b&&!b.disabled&&b.offsetParent!==null||b&&!b.disabled)out.push(`<span><b>${bindName('action')}</b>${b.textContent}</span>`);
+  if(t&&!t.disabled)out.push(`<span><b>${bindName('take')}</b>${t.textContent}</span>`);
+  if(W()&&holdingW&&wTools[holdingW])out.push(`<span><b>${bindName('drop')}</b>⬇ Бросить</span>`);
+  if(!W()&&$('btnLever')&&getComputedStyle($('btnLever')).display!=='none')out.push(`<span><b>${bindName('sp5')}</b>${$('btnLever').textContent}</span>`);
+  if(W()&&nearSaw())out.push(`<span><b>${bindName('sp1')}</b>⏻ Пила</span><span><b>${bindName('sp2')}</b>📏 Упор = замер</span><span><b>${bindName('sp3')}</b>${bindName('rotate')} ⟲ Плитку</span><span><b>Колесо</b>упор ±1 (Shift ±10)</span>`);
+  if(W()&&layPanelOn())out.push(`<span><b>Колесо</b>◀▶ 1 мм (Shift ▲▼)</span><span><b>${bindName('sp4')}</b>🗺 Карта</span>`);
+  if(W()&&holdingW==='tape')out.push(`<span><b>Alt</b>без привязки к кромке</span>`);
+  out.push(`<span><b>${bindName('pay')}</b>💰</span><span><b>Esc</b>Меню</span>`);
+  const h=out.join(''); if(pp._h!==h){pp.innerHTML=h; pp._h=h;}
+  $('pcLock').style.display=(!PC.locked&&!PC.emu&&!PC.menu&&!overlayOpen())?'block':'none';}
+setInterval(pcPrompt,150); pcApplyFov();
+if(IS_PC){const hp=$('help'); if(hp)hp.textContent=`ПК: ${['forward','left','back','right'].map(bindName).join('')} — ходьба, ${bindName('run')} — бег, мышь — обзор (клик — захват), ${bindName('action')} — действие (зажать — непрерывно), ${bindName('take')} — взять, ${bindName('drop')} — бросить, ${bindName('rotate')}/${bindName('flip')} — поворот, колесо — точно, 1–9 — спец. кнопки, ${bindName('pay')} — оплата, Esc — меню`;}
+// ---- tape: hook catches mesh edges/corners within 15 mm (object-space bounding box edges of the hit mesh); Alt disables ----
+const SNAP_TAPE=.015; const tapeSnapMk=new THREE.Mesh(new THREE.TorusGeometry(.009,.0018,8,20),new THREE.MeshBasicMaterial({color:0xff2d75,depthTest:false})); tapeSnapMk.renderOrder=12; tapeSnapMk.visible=false; tapeSnapMk.raycast=()=>{}; scene.add(tapeSnapMk);
+function edgeSnap(h){ if(!h||!h.o3||!h.o3.geometry||keys['alt'])return h; const o=h.o3, g=o.geometry; if(!g.boundingBox)g.computeBoundingBox(); const bb=g.boundingBox; o.updateMatrixWorld();
+  const lp=o.worldToLocal(h.p.clone()); const mn=bb.min, mx=bb.max; const size=bb.getSize(new THREE.Vector3()); if(size.length()>12)return h;
+  const P=new THREE.Vector3(); let best=null,bd=SNAP_TAPE, corner=false; const ax=['x','y','z'];
+  for(const [cx,cy,cz] of [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]){ P.set(cx?mx.x:mn.x,cy?mx.y:mn.y,cz?mx.z:mn.z); const w=o.localToWorld(P.clone()); const d=w.distanceTo(h.p); if(d<bd){bd=d; best=w; corner=true;}}
+  if(!best) for(let free=0;free<3;free++){ const f1=ax[(free+1)%3], f2=ax[(free+2)%3]; for(const a1 of[mn[f1],mx[f1]])for(const a2 of[mn[f2],mx[f2]]){ P.copy(lp); P[f1]=a1; P[f2]=a2; P[ax[free]]=THREE.MathUtils.clamp(lp[ax[free]],mn[ax[free]],mx[ax[free]]); const w=o.localToWorld(P.clone()); const d=w.distanceTo(h.p); if(d<bd){bd=d; best=w;}}}
+  if(!best)return h; return Object.assign({},h,{p:best,snap:corner?'corner':'edge',raw:h.p});}
+{const _tc=tapeCast; tapeCast=function(){ tapeSnapMk.visible=false; const h=edgeSnap(_tc()); if(h&&h.snap&&holdingW==='tape'){tapeSnapMk.visible=true; tapeSnapMk.position.copy(h.p); tapeSnapMk.lookAt(camera.position); tapeSnapMk.material.color.set(h.snap==='corner'?0xffb000:0xff2d75);} else tapeSnapMk.visible=false; window.__tapeSnap=h&&h.snap||null; return h;};}
+// test hooks
+window.__pc={isPC:IS_PC,settings:()=>JSON.parse(JSON.stringify(PCS)),state:()=>({isPC:IS_PC,locked:PC.locked,emu:PC.emu,menu:PC.menu,rebind:PC.rebind&&PC.rebind.a,yaw:+playerYaw.toFixed(4),pitch:+playerPitch.toFixed(4),fov:camera.fov,keys:Object.keys(keys).filter(k=>keys[k]),prompt:$('pcPrompt').innerText,joyVisible:getComputedStyle($('joy')).display!=='none',btnsVisible:getComputedStyle($('btns')).display!=='none',snap:window.__tapeSnap}),menu:pcMenu};
 // ---------- Main loop ----------
 const clock=new THREE.Clock();
 function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),.05);
