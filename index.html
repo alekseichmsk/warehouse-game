@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v6.5 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v6.6 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.5 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.6 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(52% + 18px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -368,8 +368,10 @@ function worldPose(obj,ox,oy,oz,yaw,rx=0){
 function moveHand(hand,pose,dt,curl){
   const k=1-Math.exp(-dt*11);
   if(hand===handR&&window.__handOverride){const sc=new THREE.Vector3(); window.__handOverride.decompose(hand.position,hand.quaternion,sc); hand.userData.curl=1; return;}
-  hand.position.lerp(pose.p,k);
-  hand.quaternion.slerp(pose.q,k);
+  if(!isFinite(pose.p.x+pose.p.y+pose.p.z+pose.q.x+pose.q.w)){window.__poseNaN=(window.__poseNaN||0)+1; if(!window.__poseNaNInfo)window.__poseNaNInfo=[hand.name,JSON.stringify(pose.p),JSON.stringify(pose.q),new Error().stack.slice(0,400)]; return;} // v6.6 guard: never let a bad pose poison the hand
+  if(!isFinite(hand.position.x+hand.quaternion.w)){hand.position.copy(pose.p); hand.quaternion.copy(pose.q);}
+  hand.position.lerp(pose.p,isFinite(k)?k:1);
+  hand.quaternion.slerp(pose.q,isFinite(k)?k:1);
   // curl easing stored on userData
   hand.userData.curl=THREE.MathUtils.lerp(hand.userData.curl?? .2,curl,k);
   setCurl(hand,hand.userData.curl);
@@ -568,13 +570,15 @@ function checkStages(){ checkPull();
 function updateWalk(dt,inp){
  // look only via swipe/mouse drag (no on-screen arrows)
  lookOffset=THREE.MathUtils.lerp(lookOffset,0,1-Math.exp(-dt*2));
+ const _ppv=playerPos.clone();
  if(inp.length()>.1){
    const f=dirOf(playerYaw), r=new THREE.Vector2(-f.y,f.x);
    const move=new THREE.Vector2().addScaledVector(f,-inp.y).addScaledVector(r,inp.x);
    if(move.length()>0){move.normalize(); playerPos.addScaledVector(move,2.3*dt*inp.length())}
  }
  playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-9.3,8.5);
- if(typeof mode!=='undefined'&&mode==='workshop'&&typeof benchPos!=='undefined'){const R_=.28, hx=BENCH_W/2+R_, hz=BENCH_D/2+R_; const dx=playerPos.x-benchPos.x, dz=playerPos.y-benchPos.y; if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx), pz=hz-Math.abs(dz); if(px<pz)playerPos.x=benchPos.x+Math.sign(dx||1)*hx; else playerPos.y=benchPos.y+Math.sign(dz||1)*hz;}} // v6.5 bench collision // v5.5 north entry side is playable
+ if(typeof mode!=='undefined'&&mode==='workshop'&&typeof benchPos!=='undefined'){const R_=.28, hx=BENCH_W/2+R_, hz=BENCH_D/2+R_; const dx=playerPos.x-benchPos.x, dz=playerPos.y-benchPos.y; if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx), pz=hz-Math.abs(dz); if(px<pz)playerPos.x=benchPos.x+Math.sign(dx||1)*hx; else playerPos.y=benchPos.y+Math.sign(dz||1)*hz;}} // v6.5 bench collision
+ if(typeof hoseLimit==='function')hoseLimit(_ppv); // v6.6 hose reach // v5.5 north entry side is playable
  // v5.7: pallet is a LOW 0.14m step, NOT a solid trap. Old code pushed the player onto a
  // fixed 0.95m circle around pallet centre; stepping onto/into that circle from a corner
  // latched the player (push direction != entry direction, no way up or off).
@@ -823,10 +827,10 @@ if(/[?&]wbns/.test(location.search)||(matchMedia('(pointer:coarse)').matches&&!/
      if(e.latchOf||bb.isEmpty())continue;
      const sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3()); const hb=new THREE.Mesh(new THREE.BoxGeometry(sz.x+.004,sz.y+.004,sz.z+.004),new THREE.MeshBasicMaterial({visible:false}));
      n.add(hb); hb.position.copy(n.worldToLocal(c.clone())); hb.name='Hit_'+name; hb.userData.aimId='wb:'+name; WB_PARTS[name].hit=hb;
-     AIM['wb:'+name]={obj:hb,label:WB_LABEL(name)}; }
+     AIM['wb:'+name]={obj:hb,label:'Открыть'}; }
    WB_READY=true; window.__wbParts=()=>Object.keys(WB_PARTS);},undefined,e=>console.warn('workbench.glb',e));}
 function WB_LABEL(n){return n.startsWith('Tray')?(n.includes('Left')?'Поворотная полка (левая)':'Поворотная полка (правая)'):n==='Drawer_Deep_Front'?'Глубокий ящик':n.startsWith('Drawer_Side')?(n.includes('Left')?'Боковой ящик (левый, с защёлкой)':'Боковой ящик (правый, с защёлкой)'):'Ящик '+n.split('_')[1];}
-function wbToggle(name){const P=WB_PARTS[name]; if(!P)return; P.target=P.target?0:1; const L=WB_PARTS[name+'_Latch_Bolt']; toast((P.target?'📂 Открываю: ':'📁 Закрываю: ')+WB_LABEL(name)+(L?' (защёлка)':''));}
+function wbToggle(name){const P=WB_PARTS[name]; if(!P)return; P.target=P.target?0:1; if(AIM['wb:'+name])AIM['wb:'+name].label=P.target?'Закрыть':'Открыть';}
 let _wbT=0; function updateWB(){ const now=performance.now()/1000; const dt=Math.min(.1,_wbT?now-_wbT:0); _wbT=now; for(const name in WB_PARTS){const P=WB_PARTS[name]; if(P.e.latchOf)continue; const L=WB_PARTS[name+'_Latch_Bolt'];
    let can=true; if(L){ if(Math.abs(P.k-P.target)>1e-3){L.target=1; can=L.k>=.95;} else L.target=0; const sl=6*dt; L.k+=THREE.MathUtils.clamp(L.target-L.k,-sl,sl); L.node.position.set(L.pos0.x+L.e.d[0]*L.k,L.pos0.y+L.e.d[1]*L.k,L.pos0.z+L.e.d[2]*L.k);}
    if(can){const sp=2.2*dt; P.k+=THREE.MathUtils.clamp(P.target-P.k,-sp,sp);}
@@ -893,17 +897,171 @@ for(let i=0;i<30;i++){const sh=batoSheet(.6,.6); sh.position.set(i%2?.31:-.31,Ma
 {const lbl=wbox(batoStack,0,.08,.31,.5,.06,.005,M.yellow);}
 const compressor=new THREE.Group(); compressor.position.set(5.2,0,-4.4); scene.add(compressor);
 wbox(compressor,0,.45,0,.8,.9,.6,0xff6b35); cyl(compressor,0,.98,0,.18,.25,M.dark,'y',14);
-// air hose: 10 cylinder segments riveter -> compressor
-const hoseSegs=[]; for(let i=0;i<10;i++){const s=cyl(scene,0,-5,0,.006,1,0x222222,'y',8); hoseSegs.push(s);} // v6.3 air hose D12
-function updateHose(){
-  const a=new THREE.Vector3(); (holdingW==='riveter'?wTools.riveter.position.clone():wTools.riveter.position.clone()).copy(a);
-  const rp=wTools.riveter.localToWorld(wTools.riveter.userData.fitting.clone());
-  const b=new THREE.Vector3(5.2,1.0,-4.4); const pts=[];
-  for(let i=0;i<=10;i++){const k=i/10; const p=rp.clone().lerp(b,k); p.y=Math.max(.012,p.y-Math.sin(k*Math.PI)*1.6); pts.push(p);} // v6.3: hose hangs DOWN to the floor
-  {}
-  for(let i=0;i<10;i++){const p=pts[i],q=pts[i+1],mid=p.clone().add(q).multiplyScalar(.5),d=q.clone().sub(p),len=d.length();
-    hoseSegs[i].position.copy(mid); hoseSegs[i].scale.set(1,len,1); hoseSegs[i].quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());}
-}
+// ===== v6.6: FUBAG compressor in the corner, rigid air line to the bench, coiled PU hose to the RX-800, drop physics, containers =====
+const LITE=matchMedia('(pointer:coarse)').matches&&!/[?&]wbfull/.test(location.search);
+// --- compressor FUBAG Free Air 240/24/2.0 S (Blender model compressor_fubag.glb, 520x250x560) in the NE corner
+compressor.position.set(10.9,0,-7.35); compressor.rotation.y=Math.PI; compressor.clear();
+const CMP_OUT=new THREE.Vector3(-.20,.40,.12); // quick coupler (model frame)
+const _gl=new GLTFLoader(); _gl.setMeshoptDecoder(MeshoptDecoder);
+function fixMats(m,cast=true){m.traverse(o=>{if(o.isMesh){o.castShadow=cast&&!LITE; o.receiveShadow=false; const mt=o.material; if(mt&&mt.metalness>.5){mt.metalness=.35; mt.roughness=Math.max(.3,mt.roughness);} if(LITE&&mt){o.material=new THREE.MeshLambertMaterial({color:mt.color,emissive:mt.emissive});}}});}
+_gl.load('compressor_fubag.glb',g=>{fixMats(g.scene); compressor.add(g.scene); window.__cmpReady=true;});
+// --- rigid air line: steel pipe D22 along the north wall at 3.0 m, drop to an outlet with regulator + quick coupler on the bench (back-right)
+const AIR_OUT=new THREE.Vector3(benchPos.x-1.10,BENCH_TOP+.16,benchPos.y+.93); // front-left corner, toward the trestles (hose must reach the rivets)
+{const cw=compressor.localToWorld(CMP_OUT.clone()); const Y=3.0, ZW=-7.80;
+ const P=[cw,new THREE.Vector3(cw.x,cw.y,ZW),new THREE.Vector3(cw.x,Y,ZW),new THREE.Vector3(AIR_OUT.x,Y,ZW),new THREE.Vector3(AIR_OUT.x,Y,AIR_OUT.z),new THREE.Vector3(AIR_OUT.x,AIR_OUT.y+.06,AIR_OUT.z)];
+ const pipeM=new THREE.MeshLambertMaterial({color:0x9aa6b2}), brM=new THREE.MeshLambertMaterial({color:0x3b4552});
+ const air=new THREE.Group(); air.name='AirLine'; WG.add(air);
+ for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],d=b.clone().sub(a),L=d.length(); if(L<1e-3)continue; const m=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,L,10),pipeM); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()); air.add(m);
+   const n=Math.floor(L/1.2); for(let k=1;k<=n;k++){const c=a.clone().lerp(b,k/(n+1)); const br=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.05),brM); br.position.copy(c); air.add(br);} // pipe clamps
+   if(i>0){const el=new THREE.Mesh(new THREE.SphereGeometry(.016,10,8),pipeM); el.position.copy(a); air.add(el);}}
+ // outlet unit: bracket on the portal post, filter-regulator (red knob, gauge) and quick coupler pointing forward
+ const u=new THREE.Group(); u.position.copy(AIR_OUT); air.add(u);
+ wbox(u,0,.04,-.03,.09,.16,.012,0x3b4552); cyl(u,0,.09,0,.022,.06,0xd0d6dc,'y',14); cyl(u,0,.135,0,.02,.03,0xe0242b,'y',14); cyl(u,0,.035,0,.018,.05,0xcfd6dd,'y',12);
+ cyl(u,.032,.075,0,.016,.012,0x22262b,'x',16); cyl(u,.039,.075,0,.013,.002,0xf4f4f4,'x',16); cyl(u,0,.0,.028,.009,.04,0xd7dde2,'z',12);
+ window.__airLine=P.map(v=>v.toArray().map(x=>+x.toFixed(2)));}
+const hoseAnchor=AIR_OUT.clone().add(new THREE.Vector3(0,0,.03));
+// --- coiled (recoil) PU hose 8x5, yellow: coil retracted ~1.0 m, stretches up to 4.5 m
+const HOSE_L=5.0, HOSE_L0=1.0, HOSE_N=LITE?16:24, HOSE_TURNS=LITE?60:80, HOSE_PT=LITE?5:7, HOSE_CR=.02, HOSE_WR=.0042;
+const lmax=HOSE_L/(HOSE_N-1), l0=HOSE_L0/(HOSE_N-1);
+const hoseP=[],hoseQ=[]; for(let i=0;i<HOSE_N;i++){hoseP.push(new THREE.Vector3());hoseQ.push(new THREE.Vector3());}
+const HOSE_PIECES=HOSE_TURNS*HOSE_PT;
+const hoseMesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(HOSE_WR,HOSE_WR,1,LITE?5:7,1,true),new THREE.MeshLambertMaterial({color:0xf2c200}),HOSE_PIECES+2);
+hoseMesh.castShadow=!LITE; hoseMesh.frustumCulled=false; hoseMesh.name='CoilHose'; scene.add(hoseMesh);
+let hoseInit=false, hoseT=0, hoseAcc=0; const _hm=new THREE.Matrix4(), _hq=new THREE.Quaternion(), _hs=new THREE.Vector3(), _hy=new THREE.Vector3(0,1,0), _hd=new THREE.Vector3();
+function hoseEnd(){const t=wTools.riveter; t.updateMatrixWorld(true); return t.localToWorld(t.userData.fitting.clone());}
+function hoseStep(h){const a=hoseAnchor, b=hoseEnd(); const topY=BENCH_TOP+HOSE_CR, bx=BENCH_W/2, bz=BENCH_D/2;
+  for(let i=1;i<HOSE_N-1;i++){const p=hoseP[i],q=hoseQ[i]; const vx=(p.x-q.x)*.97, vy=(p.y-q.y)*.97, vz=(p.z-q.z)*.97; q.copy(p); p.x+=vx; p.y+=vy-9.8*h*h; p.z+=vz;}
+  hoseP[0].copy(a); hoseP[HOSE_N-1].copy(b);
+  for(let it=0;it<(LITE?8:12);it++){
+    for(let i=0;i<HOSE_N-1;i++){const p=hoseP[i],q=hoseP[i+1]; _hd.subVectors(q,p); const d=_hd.length()||1e-6; let k=0;
+      if(d>lmax)k=(d-lmax)/d; else if(d>l0)k=.06*(d-l0)/d; else if(d<l0*.5)k=(d-l0*.5)/d; // recoil spring + hard max + no collapse
+      if(!k)continue; const wa=i===0?0:(i+1===HOSE_N-1?1:.5), wb=i===0?1:(i+1===HOSE_N-1?0:.5); p.addScaledVector(_hd,k*wa); q.addScaledVector(_hd,-k*wb);}
+    for(let i=1;i<HOSE_N-1;i++){const p=hoseP[i]; if(p.y<HOSE_CR){p.y=HOSE_CR; hoseQ[i].x=THREE.MathUtils.lerp(hoseQ[i].x,p.x,.6); hoseQ[i].z=THREE.MathUtils.lerp(hoseQ[i].z,p.z,.6);}
+      if(it%2===0&&pushOutXZ(p,HOSE_CR,p.y-HOSE_CR,p.y+HOSE_CR)){hoseWrap=performance.now();hoseQ[i].x=THREE.MathUtils.lerp(hoseQ[i].x,p.x,.5); hoseQ[i].z=THREE.MathUtils.lerp(hoseQ[i].z,p.z,.5);}
+      if(Math.abs(p.x-benchPos.x)<bx&&Math.abs(p.z-benchPos.y)<bz&&p.y<topY&&p.y>topY-.12){p.y=topY; hoseQ[i].x=THREE.MathUtils.lerp(hoseQ[i].x,p.x,.6); hoseQ[i].z=THREE.MathUtils.lerp(hoseQ[i].z,p.z,.6);}}
+  }}
+const _cum=new Float32Array(HOSE_N); const _c=new THREE.Vector3(), _c2=new THREE.Vector3(), _tg=new THREE.Vector3(), _nn=new THREE.Vector3(), _bb=new THREE.Vector3(), _hp=[]; for(let i=0;i<=HOSE_PIECES;i++)_hp.push(new THREE.Vector3());
+function centerAt(s,out,tan){let i=1; while(i<HOSE_N-1&&_cum[i]<s)i++; const a=hoseP[i-1],b=hoseP[i]; const seg=Math.max(1e-6,_cum[i]-_cum[i-1]); const k=THREE.MathUtils.clamp((s-_cum[i-1])/seg,0,1); out.lerpVectors(a,b,k); tan.subVectors(b,a).normalize();}
+window.__rivMax=0; function updateHose(){ updateBodies(); if(holdingW==='riveter'){const d=Math.hypot(playerPos.x-hoseAnchor.x,playerPos.y-hoseAnchor.z); if(d>window.__rivMax)window.__rivMax=d;} if(!wTools.riveter||!wTools.riveter.userData.fitting)return; hoseMesh.visible=mode==='workshop'; if(!hoseMesh.visible)return;
+  const now=performance.now()/1000; let dt=hoseT?Math.min(.1,now-hoseT):0; hoseT=now;
+  if(!hoseInit){const b=hoseEnd(); for(let i=0;i<HOSE_N;i++){const k=i/(HOSE_N-1); hoseP[i].lerpVectors(hoseAnchor,b,k); hoseP[i].y-=Math.sin(k*Math.PI)*.3; hoseQ[i].copy(hoseP[i]);} hoseInit=true; for(let n=0;n<240;n++)hoseStep(1/60);}
+  hoseAcc+=dt; let n=0; while(hoseAcc>=1/60&&n<3){hoseStep(1/60); hoseAcc-=1/60; n++;} if(n===3)hoseAcc=0;
+  _cum[0]=0; for(let i=1;i<HOSE_N;i++)_cum[i]=_cum[i-1]+hoseP[i].distanceTo(hoseP[i-1]); const L=_cum[HOSE_N-1];
+  // helix around the centre line: parallel-transported frame, fixed number of turns (coil stretches = pitch grows)
+  centerAt(0,_c,_tg); _nn.set(0,1,0); if(Math.abs(_nn.dot(_tg))>.9)_nn.set(1,0,0); _nn.sub(_tg.clone().multiplyScalar(_nn.dot(_tg))).normalize();
+  const cr=HOSE_CR*THREE.MathUtils.clamp(1.15-.25*(L-HOSE_L0)/(HOSE_L-HOSE_L0),.75,1.1);
+  for(let j=0;j<=HOSE_PIECES;j++){const s=L*(j/HOSE_PIECES); centerAt(s,_c,_tg); _nn.sub(_c2.copy(_tg).multiplyScalar(_nn.dot(_tg))).normalize(); _bb.crossVectors(_tg,_nn); const th=2*Math.PI*j/HOSE_PT; const e=(j<HOSE_PT*2||j>HOSE_PIECES-HOSE_PT*2)?0:1;
+    _hp[j].copy(_c).addScaledVector(_nn,Math.cos(th)*cr*e).addScaledVector(_bb,Math.sin(th)*cr*e);}
+  for(let j=0;j<HOSE_PIECES;j++){const p=_hp[j],q=_hp[j+1]; _hd.subVectors(q,p); const len=_hd.length()||1e-4; _hq.setFromUnitVectors(_hy,_hd.multiplyScalar(1/len)); _hm.compose(_c.addVectors(p,q).multiplyScalar(.5),_hq,_hs.set(1,len*1.08,1)); hoseMesh.setMatrixAt(j,_hm);}
+  // straight tails into the coupler and the riveter inlet
+  for(const [k,a,b] of [[HOSE_PIECES,hoseAnchor,_hp[0]],[HOSE_PIECES+1,_hp[HOSE_PIECES],hoseEnd()]]){_hd.subVectors(b,a); const len=_hd.length()||1e-4; _hq.setFromUnitVectors(_hy,_hd.multiplyScalar(1/len)); _hm.compose(_c.addVectors(a,b).multiplyScalar(.5),_hq,_hs.set(1.2,len,1.2)); hoseMesh.setMatrixAt(k,_hm);}
+  hoseMesh.instanceMatrix.needsUpdate=true; }
+window.__hoseSettle=(steps=300)=>{for(let i=0;i<steps;i++){updateBodies(1/60); hoseStep(1/60);} updateHose(); return 1;};
+window.__hoseInfo=()=>({anchor:hoseAnchor.toArray().map(v=>+v.toFixed(3)),end:hoseEnd().toArray().map(v=>+v.toFixed(3)),dist:+hoseAnchor.distanceTo(hoseEnd()).toFixed(3),Lmax:HOSE_L,L0:HOSE_L0,n:HOSE_N,pieces:HOSE_PIECES,minY:+Math.min(...hoseP.map(p=>p.y)).toFixed(3),len:+hoseP.reduce((a,p,i)=>i?a+p.distanceTo(hoseP[i-1]):0,0).toFixed(3)});
+const HOSE_REACH=HOSE_L-.35; let hoseToastT=0;
+function hoseReach(){return Math.sqrt(Math.max(.1,HOSE_REACH*HOSE_REACH-Math.pow(hoseAnchor.y-1.0,2)));}
+function hoseLimit(prev){ if(mode!=='workshop'||holdingW!=='riveter')return; const d=Math.hypot(playerPos.x-hoseAnchor.x,playerPos.y-hoseAnchor.z), d0=Math.hypot(prev.x-hoseAnchor.x,prev.y-hoseAnchor.z); if(d>hoseReach()&&d>d0){playerPos.copy(prev); const t=performance.now(); if(t-hoseToastT>2500){hoseToastT=t; toast('🔗 Шланг растянут до '+HOSE_L.toFixed(1)+' м — дальше с заклёпочником не пройти');}}}
+window.__hoseReach=hoseReach;
+
+// ===== v6.6 obstacles for the hose and dropped tools (static AABBs): bench legs, trestles, pallets, walls
+let OBST=null, hoseWrap=0; function obstacles(){ if(OBST)return OBST; OBST=[]; const L=.035;
+  for(const sx of[-1,1])for(const sz of[-1,1]){const x=benchPos.x+sx*(BENCH_W/2-.06), z=benchPos.y+sz*(BENCH_D/2-.06); OBST.push(new THREE.Box3(new THREE.Vector3(x-L,0,z-L),new THREE.Vector3(x+L,BENCH_TOP-.02,z+L)));}
+  goats.updateMatrixWorld(true); goats.traverse(o=>{if(o.isMesh){const b=new THREE.Box3().setFromObject(o); if(!b.isEmpty()&&b.max.y-b.min.y>.15)OBST.push(b);}});
+  for(const g of[supplyPallet,outputPallet]){if(g){g.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(g); if(!b.isEmpty())OBST.push(b);}}
+  OBST.push(new THREE.Box3(new THREE.Vector3(-13,0,-9),new THREE.Vector3(13,8,-7.87)),new THREE.Box3(new THREE.Vector3(-13,0,7.87),new THREE.Vector3(13,8,9)));
+  window.__obst=()=>OBST.length; return OBST;}
+function pushOutXZ(p,r,ylo,yhi){let hit=null; for(const b of obstacles()){ if(yhi<b.min.y||ylo>b.max.y)continue; if(p.x>b.min.x-r&&p.x<b.max.x+r&&p.z>b.min.z-r&&p.z<b.max.z+r){const dx1=p.x-(b.min.x-r), dx2=(b.max.x+r)-p.x, dz1=p.z-(b.min.z-r), dz2=(b.max.z+r)-p.z; const m=Math.min(dx1,dx2,dz1,dz2); if(m===dx1)p.x-=dx1; else if(m===dx2)p.x+=dx2; else if(m===dz1)p.z-=dz1; else p.z+=dz2; hit=b;}} return hit;}
+function hoseTension(){ // recoil spring ~6 N/m over the coiled length; direction = along the last hose segment
+  let L=0; for(let i=1;i<HOSE_N;i++)L+=hoseP[i].distanceTo(hoseP[i-1]); const T=Math.max(0,6*(L-HOSE_L0-.3)); const d=hoseP[HOSE_N-2].clone().sub(hoseP[HOSE_N-1]); d.y=0; if(d.lengthSq()<1e-8)return new THREE.Vector3(); return d.normalize().multiplyScalar(T);}
+window.__hoseTension=()=>+hoseTension().length().toFixed(2);
+function visBox(o){o.updateMatrixWorld(true); const b=new THREE.Box3(), g=new THREE.Box3(); o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.visible===false)){if(!m.geometry.boundingBox)m.geometry.computeBoundingBox(); if(m.isInstancedMesh){m.computeBoundingBox&&m.computeBoundingBox(); g.copy(m.boundingBox||m.geometry.boundingBox);} else g.copy(m.geometry.boundingBox); b.union(g.applyMatrix4(m.matrixWorld));}}); return b;}
+// ===== drop physics: light own rigid bodies (box vs supports), containers = drawers / swing trays =====
+const BODIES={}; window.__bodies=BODIES; let physT=0, physAcc=0;
+const _dr=new THREE.Raycaster(); _dr.far=2.5; const _dn=new THREE.Vector3(0,-1,0);
+function containers(){const r=[]; for(const n in WB_PARTS){const P=WB_PARTS[n]; if(!P.hit||P.e.latchOf)continue; const b=new THREE.Box3().setFromObject(P.hit); r.push({n,P,b,open:P.k>.6,inner:{x0:b.min.x+.018,x1:b.max.x-.018,z0:b.min.z+.018,z1:b.max.z-.018,y:b.min.y+.012,rim:b.max.y}});} return r;}
+function supportBelow(x,z,yTop,B){ // highest upward surface below yTop at (x,z); returns {y,cont}
+  let best={y:0,cont:null};
+  const inTop=Math.abs(x-benchPos.x)<BENCH_W/2&&Math.abs(z-benchPos.y)<BENCH_D/2;
+  for(const c of B.conts){const I=c.inner; if(x>I.x0&&x<I.x1&&z>I.z0&&z<I.z1&&I.y<=yTop+.002&&I.y>best.y&&(c.P.k>.02||B.host===c.n)){ if(inTop&&!c.open&&B.host!==c.n)continue; best={y:I.y,cont:c};}}
+  if(inTop&&BENCH_TOP<=yTop+.002&&BENCH_TOP>best.y)best={y:BENCH_TOP,cont:null};
+  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack].filter(o=>o&&o.visible&&o.parent);
+  _dr.set(new THREE.Vector3(x,yTop+.002,z),_dn); _dr.far=yTop+.002-best.y; if(_dr.far>0){for(const h of _dr.intersectObjects(objs,true)){if(!h.face||!isShown(h.object))continue; const nY=h.face.normal.clone().transformDirection(h.object.matrixWorld).y; if(nY>.5){if(h.point.y>best.y)best={y:h.point.y,cont:null}; break;}}}
+  return best;}
+function restQuat(t,yaw){return new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0)).multiply(t.userData.homeQ||new THREE.Quaternion());}
+function physDrop(id,t,p0,target){
+  const yaw=playerYaw; const qr=restQuat(t,yaw); const q0=t.quaternion.clone(); t.quaternion.copy(qr); t.position.set(0,0,0); t.updateMatrixWorld(true);
+  const bb=visBox(t); const off=-bb.min.y, hx=(bb.max.x-bb.min.x)/2, hz=(bb.max.z-bb.min.z)/2, cx=(bb.max.x+bb.min.x)/2, cz=(bb.max.z+bb.min.z)/2;
+  t.quaternion.copy(q0); t.position.copy(p0);
+  const T=THREE.MathUtils.clamp(.25+.12*p0.distanceTo(target),.3,.6), v=new THREE.Vector3((target.x-p0.x)/T,(target.y+off-p0.y)/T+4.905*T,(target.z-p0.z)/T);
+  BODIES[id]={id,t,v,off,hx,hz,cx,cz,qr,spin:new THREE.Vector3(Math.random()-.5,0,Math.random()-.5).normalize(),sleep:0,asleep:false,host:null,local:null,last:p0.clone(),bounces:0,landedOn:null};}
+function stepBody(B,h){const t=B.t;
+  if(B.asleep&&B.id==='riveter'&&!B.host){const fm=hoseTension().length()*(performance.now()-hoseWrap<300?.3:1); if(B.sleepT===undefined)B.sleepT=fm; if(fm>Math.max(.45*1.6*9.81,B.sleepT+2)){B.asleep=false; B.sleep=0; B.sleepT=undefined;}}
+  if(B.asleep){ if(B.host){const P=WB_PARTS[B.host]; t.position.copy(P.node.localToWorld(B.local.clone())); t.quaternion.copy(P.node.getWorldQuaternion(new THREE.Quaternion()).multiply(B.lq)); B.last.copy(t.position);
+      const c=B.conts.find(c=>c.n===B.host); } return;}
+  if(B.id==='riveter'){const F=hoseTension(); const wrapped=performance.now()-hoseWrap<300; if(wrapped){F.multiplyScalar(.3); B.snag=true;} /* capstan: hose wrapped around a leg/obstacle holds most of the pull */ const sup=t.position.y-B.off<.002||B.landedOn; const fr=sup?.45*1.6*9.81:0; const fm=F.length(); if(fm>fr){B.v.addScaledVector(F,(1-fr/fm)/1.6*h);} B.tension=+fm.toFixed(2);}
+  B.v.y-=9.81*h; t.position.addScaledVector(B.v,h);
+  {const c=new THREE.Vector3(t.position.x+B.cx,0,t.position.z+B.cz); const hit=pushOutXZ(c,Math.max(B.hx,B.hz)*.8,t.position.y-B.off+.005,t.position.y-B.off+.1); if(hit){const nx=c.x-B.cx-t.position.x, nz=c.z-B.cz-t.position.z; t.position.x=c.x-B.cx; t.position.z=c.z-B.cz; B.v.x*=.1; B.v.z*=.1; B.snag=true; if(B.id==='riveter'){const F=hoseTension(); const wrapped=performance.now()-hoseWrap<300; if(wrapped){F.multiplyScalar(.3); B.snag=true;} /* capstan: hose wrapped around a leg/obstacle holds most of the pull */ const nl=Math.hypot(nx,nz)||1; if((F.x*nx+F.z*nz)/nl/(F.length()||1)<-.3){B.v.set(0,Math.min(0,B.v.y),0); if(t.position.y-B.off<.003){B.asleep=true; B.sleep=0; B.sleepT=F.length(); t.quaternion.copy(B.qr);}}}} }
+  const bx=t.position.x+B.cx, bz=t.position.z+B.cz; const bottom=t.position.y-B.off;
+  const s=supportBelow(bx,bz,bottom+Math.max(.03,-B.v.y*h*2),B);
+  // container walls: keep the body inside an open drawer/tray once it is below the rim
+  for(const c of B.conts){const I=c.inner; if(bx>I.x0-.03&&bx<I.x1+.03&&bz>I.z0-.03&&bz<I.z1+.03&&bottom<c.inner.rim-.005&&bottom>I.y-.02){const mx=Math.max(0,(I.x1-I.x0)/2-B.hx), mz=Math.max(0,(I.z1-I.z0)/2-B.hz), ccx=(I.x0+I.x1)/2, ccz=(I.z0+I.z1)/2; const nx=THREE.MathUtils.clamp(bx,ccx-mx,ccx+mx), nz=THREE.MathUtils.clamp(bz,ccz-mz,ccz+mz); if(nx!==bx){t.position.x+=nx-bx; B.v.x*=-.2;} if(nz!==bz){t.position.z+=nz-bz; B.v.z*=-.2;}}}
+  if(t.position.y-B.off<=s.y){ t.position.y=s.y+B.off; B.landedOn=s.cont?s.cont.n:(s.y>=BENCH_TOP-.001&&s.y<=BENCH_TOP+.001?'bench':s.y<.001?'floor':'object');
+    const fr=B.v.y<-1.0?.45:.72; if(B.v.y<-1.0&&B.bounces<3){B.v.y=-B.v.y*.22; B.bounces++;} else B.v.y=0; B.v.x*=fr; B.v.z*=fr; t.quaternion.slerp(B.qr,.35);
+    if(B.v.lengthSq()<.0025){ if(++B.sleep>12){B.asleep=true; B.sleepT=B.id==='riveter'?hoseTension().length():undefined; t.quaternion.copy(B.qr); B.v.set(0,0,0); if(s.cont){B.host=s.cont.n; const P=WB_PARTS[B.host]; P.node.updateMatrixWorld(true); B.local=P.node.worldToLocal(t.position.clone()); B.lq=P.node.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(t.quaternion);} }} else B.sleep=0;
+  } else { const ax=new THREE.Quaternion().setFromAxisAngle(B.spin,h*3.5); t.quaternion.premultiply(ax); B.sleep=0; }
+  B.last.copy(t.position);}
+function updateBodies(fixed){ const now=performance.now()/1000; let dt=fixed||(physT?Math.min(.1,now-physT):0); if(!fixed)physT=now;
+  const ids=Object.keys(BODIES); if(!ids.length)return; const conts=containers();
+  for(const id of ids){const B=BODIES[id]; if(holdingW===id||!wTools[id]||B.t.position.distanceTo(B.last)>.03){delete BODIES[id]; continue;} B.conts=conts;}
+  if(fixed){for(const id in BODIES)stepBody(BODIES[id],fixed); return;}
+  physAcc+=dt; let n=0; while(physAcc>=1/90&&n<6){for(const id in BODIES)stepBody(BODIES[id],1/90); physAcc-=1/90; n++;} if(n===6)physAcc=0;
+  for(const id in BODIES){const B=BODIES[id]; if(B.asleep&&B.host)stepBody(B,0);} }
+function dropTarget(t){ camera.updateMatrixWorld(); aimRay.setFromCamera(new THREE.Vector2(0,0),camera);
+  const skip=new Set(); t.traverse(o=>skip.add(o));
+  const roots=aimRoots().filter(o=>o!==t);
+  for(const h of aimRay.intersectObjects(roots,true)){ if(skip.has(h.object))continue; let o=h.object; while(o&&!o.userData.aimId)o=o.parent; const id=o&&o.userData.aimId;
+    if(id&&id.startsWith('wb:')){const c=containers().find(c=>'wb:'+c.n===id); if(c&&c.P.k>.6){const I=c.inner; return {p:new THREE.Vector3(THREE.MathUtils.clamp(h.point.x,I.x0+.04,I.x1-.04),I.y+.05,THREE.MathUtils.clamp(h.point.z,I.z0+.04,I.z1-.04)),on:'в ящик'};} continue;}
+    if(h.object===benchHit)return {p:h.point.clone().setY(BENCH_TOP),on:'на верстак'};
+    if(id&&wTools[id])continue;
+    return {p:h.point.clone(),on:AIM[id]?AIM[id].label:'на поверхность'};}
+  const rc=new THREE.Raycaster(); rc.far=4; rc.setFromCamera(new THREE.Vector2(0,0),camera); const pl=rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),new THREE.Vector3());
+  const f=dirOf(playerYaw); const p=pl&&Math.hypot(pl.x-playerPos.x,pl.z-playerPos.y)<3.5?pl:new THREE.Vector3(playerPos.x+f.x*.8,0,playerPos.y+f.y*.8); return {p,on:'на пол'};}
+window.__dropAt=(x,y,z,id,place)=>{id=id||holdingW; const t=wTools[id]; if(!t)return null; if(holdingW===id)holdingW=null; t.updateMatrixWorld(true); const p0=place?new THREE.Vector3(x,y+.12,z):t.getWorldPosition(new THREE.Vector3()); toolToScene(t); t.position.copy(p0); physDrop(id,t,p0,new THREE.Vector3(x,y,z)); if(place)BODIES[id].v.set(0,0,0); updateHUDW(); return id;};
+window.__bodyState=id=>{const B=BODIES[id], t=wTools[id]; return {tension:B?B.tension:null,snag:B?!!B.snag:null,pos:t.position.toArray().map(v=>+v.toFixed(3)),body:!!B,asleep:B?B.asleep:null,host:B?B.host:null,landedOn:B?B.landedOn:null,bottom:B?+(t.position.y-B.off).toFixed(4):null};};
+window.__goatLegs=()=>obstacles().filter(b=>b.max.y-b.min.y>.4&&Math.abs(b.getCenter(new THREE.Vector3()).x)<3&&Math.abs(b.getCenter(new THREE.Vector3()).z)<3).map(b=>[b.min.toArray(),b.max.toArray()]);
+window.__camAt=(x,y,z,tx,ty,tz)=>{playerPos.set(x,z); window.demoCamY=y; const dx=tx-x,dz=tz-z; playerYaw=Math.atan2(dx,dz); playerPitch=Math.atan2(ty-y,Math.hypot(dx,dz)); return 1;};
+window.__hst=()=>[typeof holding!=='undefined'?holding:null, anim?anim.mode:null, camera.matrixWorld.elements.slice(12,15)];
+window.__hr=()=>[handR.position.toArray(),handL.position.toArray(),camera.position.toArray(),camera.quaternion.toArray()].map(a=>a.map(v=>+(+v).toFixed(3)));
+window.__gripDbg=()=>{const t=wTools.riveter; const r=[]; for(let o=t;o;o=o.parent)r.push([o.name||o.type,o.position.toArray().map(v=>+(+v).toFixed(3)),o.quaternion.toArray().map(v=>+(+v).toFixed(3)),o.scale.x]); return r;};
+window.__benchDims=()=>({x:benchPos.x,z:benchPos.y,W:BENCH_W,D:BENCH_D,top:BENCH_TOP});
+window.__wbCont=()=>containers().map(c=>({n:c.n,k:+c.P.k.toFixed(2),inner:c.inner}));
+
+// ===== Blender tools: pliers 180, screwdriver PH2, hammer 500 g (same local frames as the grip specs) + soft zip bag of blind rivets =====
+for(const [id,f] of [['pliers','pliers_180.glb'],['screwdriver','screwdriver_ph2.glb'],['hammer','hammer_500g.glb']]){
+  _gl.load(f,g=>{const t=wTools[id]; const keep=t.children.filter(c=>c.userData.keep); t.clear(); keep.forEach(c=>t.add(c)); fixMats(g.scene); g.scene.name=id+'_model'; t.add(g.scene); window['__'+id+'GLB']=true; benchLayout();});}
+{const g=wTools.rivetbag; g.clear(); const W=.20,D=.15;
+ const geo=new THREE.BoxGeometry(W,.03,D,12,2,10); const pa=geo.attributes.position; for(let i=0;i<pa.count;i++){let x=pa.getX(i),y=pa.getY(i),z=pa.getZ(i); const nx=x/(W/2), nz=z/(D/2); const r=Math.min(1,Math.max(Math.abs(nx),Math.abs(nz))); if(y>0){y=.003+.024*(1-Math.pow(r,3))*(1-.25*Math.abs(nx));} else y=0; x*=1-.04*(1-Math.abs(nz)); pa.setXYZ(i,x,y,z);} geo.computeVertexNormals();
+ const bagM=LITE?new THREE.MeshLambertMaterial({color:0xdde9f3,transparent:true,opacity:.55,depthWrite:false}):new THREE.MeshPhysicalMaterial({color:0xdde9f3,transparent:true,opacity:.55,roughness:.18,clearcoat:1,depthWrite:false,side:THREE.DoubleSide});
+ const bag=new THREE.Mesh(geo,bagM); bag.renderOrder=2; bag.name='ZipBag'; g.add(bag);
+ for(const [z,c] of [[-D/2+.012,0x2f6fd6],[-D/2+.018,0xd84a4a]]){const zp=new THREE.Mesh(new THREE.BoxGeometry(W*.98,.0022,.0035),new THREE.MeshLambertMaterial({color:c})); zp.position.set(0,.0045,z); g.add(zp);} // zip strip (blue/red tracks)
+ {const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const x=cv.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,256,128); x.strokeStyle='#d33'; x.lineWidth=6; x.strokeRect(5,5,246,118); x.fillStyle='#111'; x.font='bold 30px sans-serif'; x.fillText('Заклепка',22,48); x.font='bold 36px sans-serif'; x.fillText('4,8×12',22,92); x.font='16px sans-serif'; x.fillText('ал/ст • 250 шт',22,116);
+  const lb=new THREE.Mesh(new THREE.PlaneGeometry(.085,.0425),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); lb.rotation.x=-Math.PI/2; lb.rotation.z=.08; lb.position.set(.03,.0285,.02); lb.renderOrder=3; g.add(lb);}
+ // blind rivets 4.8x12 with mandrels: one lathe geometry, instanced
+ const prof=[[0,-.007],[.0016,-.0068],[.0013,-.006],[.0013,0],[.0024,0],[.0024,.012],[.0048,.012],[.0048,.0135],[.0013,.0135],[.0013,.034],[0,.0345]].map(v=>new THREE.Vector2(v[0],v[1]));
+ const rg=new THREE.LatheGeometry(prof,LITE?6:8); const rim=new THREE.InstancedMesh(rg,new THREE.MeshLambertMaterial({color:0xc9d0d6}),LITE?28:44); rim.name='BlindRivets';
+ const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(); let seed=7; const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+ for(let i=0;i<rim.count;i++){const nx=(rnd()-.5)*1.5, nz=(rnd()-.5)*1.5; const h=.003+.024*(1-Math.pow(Math.min(1,Math.max(Math.abs(nx),Math.abs(nz))),3))*.55; e.set(Math.PI/2+(rnd()-.5)*.5,rnd()*6.28,0,'YXZ'); q.setFromEuler(e); m4.compose(new THREE.Vector3(nx*W/2*.85,.006+h*rnd(),nz*D/2*.85),q,new THREE.Vector3(1,1,1)); rim.setMatrixAt(i,m4);}
+ g.add(rim); g.userData.shapes=[{t:'cyl',a:[-.09,.012,0],b:[.09,.012,0],r:.016}]; }
+// ===== bench layout: every tool rests on the tabletop (bottom = 0.80 m), proper side down, no overlaps =====
+const LAYOUT={hammer:[-.80,-.20,[0,0,Math.PI/2]],rivetbag:[-.56,-.10,[0,.15,0]],riveter:[-.30,.16,[0,0,0]],pliers:[.05,-.22,[0,.3,0]],roller:[.40,.17,[-Math.PI/2,0,0]],marker:[.66,-.16,[0,-.2,0]],screwdriver:[.88,.12,[0,.25,0]]};
+function benchLayout(){ const placed=[]; for(const id in wTools){const t=wTools[id]; if(t.children.some(c=>c.name==='AimBox_'+id))continue; if(['pliers','screwdriver','hammer'].includes(id)&&!window['__'+id+'GLB'])continue; const q=t.quaternion.clone(), p=t.position.clone(); t.quaternion.identity(); t.position.set(0,0,0); const bb=visBox(t); t.quaternion.copy(q); t.position.copy(p); t.updateMatrixWorld(true); if(bb.isEmpty())continue; const sz=bb.getSize(new THREE.Vector3()); const hb=new THREE.Mesh(new THREE.BoxGeometry(sz.x+.01,sz.y+.01,sz.z+.01),new THREE.MeshBasicMaterial({visible:false})); hb.position.copy(bb.getCenter(new THREE.Vector3())); hb.name='AimBox_'+id; hb.userData.keep=true; t.add(hb);}
+  for(const id in LAYOUT){const t=wTools[id]; if(!t)continue; if(holdingW===id||BODIES[id])continue; if(t.userData.home&&t.position.distanceTo(t.userData.home)>.05)continue; const [x,z,r]=LAYOUT[id];
+    t.rotation.set(r[0],r[1],r[2]); t.userData.homeQ=t.quaternion.clone(); t.position.copy(toolHome(x,z)); t.updateMatrixWorld(true);
+    let bb=visBox(t);
+    for(let k=0;k<8;k++){const hit=placed.find(b=>b.min.x<bb.max.x+.01&&b.max.x>bb.min.x-.01&&b.min.z<bb.max.z+.01&&b.max.z>bb.min.z-.01); if(!hit)break; t.position.z+=(bb.getCenter(new THREE.Vector3()).z>hit.getCenter(new THREE.Vector3()).z?1:-1)*.04; t.updateMatrixWorld(true); bb=visBox(t);}
+    t.position.y+=BENCH_TOP+.0005-bb.min.y; t.updateMatrixWorld(true); bb=visBox(t); placed.push(bb); t.userData.home=t.position.clone();}
+  window.__benchLayout=()=>Object.keys(LAYOUT).map(id=>{const b=visBox(wTools[id]); return [id,+b.min.y.toFixed(4),[+b.min.x.toFixed(3),+b.max.x.toFixed(3)],[+b.min.z.toFixed(3),+b.max.z.toFixed(3)]];});}
+benchLayout();
 // shelf/rack with cabin extras
 const shelfPos=new THREE.Vector2(-3,-6.6);
 const shelf=new THREE.Group(); shelf.position.set(shelfPos.x,0,shelfPos.y); WG.add(shelf);
@@ -1083,6 +1241,7 @@ function updateAim(){
   aimRay.setFromCamera(new THREE.Vector2(0,0),camera);
   const hits=aimRay.intersectObjects(aimRoots(),true);
   if(hits.length>1&&hits[0].object===benchHit&&hits[0].face&&hits[0].face.normal.y<.5){const j=hits.findIndex(h=>h.object.userData.aimId&&h.object.userData.aimId.startsWith('wb:')); if(j>0&&hits[j].distance-hits[0].distance<.25)hits.splice(0,j);} // ray enters the top slab through its edge face → the drawer/tray below wins
+  {const j=hits.findIndex(h=>{let o=h.object; while(o&&!o.userData.aimId)o=o.parent; return o&&wTools[o.userData.aimId]&&BODIES[o.userData.aimId]&&BODIES[o.userData.aimId].host;}); if(j>0&&hits[j].distance-hits[0].distance<.7)hits.splice(0,j);}
   let found=null; wAimIdx=-1; for(const h of hits){ if(h.object.userData.rivetIdx!==undefined&&rivetPts[h.object.userData.rivetIdx]){wAimIdx=h.object.userData.rivetIdx; found={id:'rivet',root:rivetPts[wAimIdx]}; break;} let o=h.object; while(o&&!(o.userData.aimId||o===curPart))o=o.parent; if(!o)continue; const id=o===curPart?'part':o.userData.aimId; if(holdingW&&id===holdingW)continue; if(holding==='jack'&&id==='jack')continue; found={id,root:o}; break;}
   if(wAimRoot&&(!found||found.root!==wAimRoot))setGlow(wAimRoot,false);
   const _cs=curW(); const noGl=found&&found.id==='part'&&_cs&&_cs.aim&&_cs.aim.includes('trough'); if(found&&found.root!==wAimRoot&&!noGl)setGlow(found.root,true);
@@ -1184,7 +1343,7 @@ window.__aimAt=function(what,idx){ // test helper: walk next to the target and t
   else if(what==='rivet'){p=rivetPts[idx].getWorldPosition(v.clone()); const c=curPart.getWorldPosition(v.clone()); const n=new THREE.Vector2(p.x-c.x,p.z-c.z); if(Math.abs(n.y)<.05)n.set(0,p.z>=c.z?1:-1); n.set(0,Math.sign(n.y)||1); from=new THREE.Vector2(p.x,p.z).addScaledVector(n,1.05);}
   else { const o=what==='supply'?supplyPallet.children[supplyPallet.children.length-1]:what==='part'?curPart:what==='goats'?goats:what==='bato'?batoStack:what==='output'?outputPallet:what==='floorTool'?wTools[idx]:wTools[what]||AIM[what].obj;
     const bb=new THREE.Box3().setFromObject(o); p=bb.getCenter(v.clone()); if(what==='part'||what==='goats'||what==='bato'||what==='output'){p.y=bb.max.y-.01;}
-    const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(wTools[what]||what==='floorTool'&&wTools[idx]&&wTools[idx].position.distanceTo(wTools[idx].userData.home)<.05||what==='bench'){ if(what==='bench'){p.set(benchPos.x,BENCH_TOP,benchPos.y+BENCH_D/2-.15);} d.set(0,1);} if(what.startsWith&&what.startsWith('wb:')){const P=WB_PARTS[what.slice(3)]; if(P&&P.hit){P.hit.getWorldPosition(p); const c=new THREE.Vector2(p.x-benchPos.x,p.z-benchPos.y); d.copy(Math.abs(c.x)/BENCH_W>Math.abs(c.y)/BENCH_D?new THREE.Vector2(Math.sign(c.x),0):new THREE.Vector2(0,Math.sign(c.y)||1)); const hb=new THREE.Box3().setFromObject(P.hit); if(what.includes('Tray')){d.set(0,1); p.z=hb.max.z; p.y=hb.min.y+.03;} else { if(d.x)p.x=d.x>0?hb.max.x:hb.min.x; else p.z=d.y>0?hb.max.z:hb.min.z; p.y=Math.min(p.y,BENCH_TOP-.12);}}} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:(what.startsWith&&what.startsWith('wb:'))?(what.includes('Tray')?0.6:0.75):1.1);}
+    const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(wTools[what]&&wTools[what].userData.home&&wTools[what].position.distanceTo(wTools[what].userData.home)<.05||what==='floorTool'&&wTools[idx]&&wTools[idx].position.distanceTo(wTools[idx].userData.home)<.05||what==='bench'){ if(what==='bench'){p.set(benchPos.x,BENCH_TOP,benchPos.y+BENCH_D/2-.15);} d.set(0,1);} if(what.startsWith&&what.startsWith('wb:')){const P=WB_PARTS[what.slice(3)]; if(P&&P.hit){P.hit.getWorldPosition(p); const c=new THREE.Vector2(p.x-benchPos.x,p.z-benchPos.y); d.copy(Math.abs(c.x)/BENCH_W>Math.abs(c.y)/BENCH_D?new THREE.Vector2(Math.sign(c.x),0):new THREE.Vector2(0,Math.sign(c.y)||1)); const hb=new THREE.Box3().setFromObject(P.hit); if(what.includes('Tray')){d.set(0,1); p.z=hb.max.z; p.y=hb.min.y+.03;} else { if(d.x)p.x=d.x>0?hb.max.x:hb.min.x; else p.z=d.y>0?hb.max.z:hb.min.z; p.y=Math.min(p.y,BENCH_TOP-.12);}}} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:(what.startsWith&&what.startsWith('wb:'))?(what.includes('Tray')?0.6:0.75):1.1);}
   playerPos.copy(from); const eye=(window.demoCamY||1.62); const dx=p.x-from.x, dz=p.z-from.y; playerYaw=Math.atan2(dx,dz); playerPitch=Math.atan2(p.y-eye,Math.hypot(dx,dz)); return [p.x,p.y,p.z];};
 window.__rayDbg=()=>{camera.updateMatrixWorld(); aimRay.setFromCamera(new THREE.Vector2(0,0),camera); return aimRay.intersectObjects(aimRoots(),true).slice(0,4).map(h=>[h.object.name,+h.distance.toFixed(2)]).concat([[camera.position.toArray()]]);};
 window.__rinfo=()=>({calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries});
@@ -1248,21 +1407,15 @@ function dropW(){
   if(mode!=='workshop'||wAnim||!holdingW)return;
   if(holdingW==='edgeW'){doTakeW();return;}
   if(!wTools[holdingW]){toast('👐 Это кладут на место прицелом: '+(HELD_LABEL[holdingW]||holdingW)); return;}
-  const id=holdingW, t=wTools[id]; holdingW=null; toolToScene(t);
-  camera.updateMatrixWorld(); const rc=new THREE.Raycaster(); rc.far=3; rc.setFromCamera(new THREE.Vector2(0,0),camera);
-  const skip=new Set(); t.traverse(o=>skip.add(o)); handL.traverse(o=>skip.add(o)); handR.traverse(o=>skip.add(o)); carryShield.traverse(o=>skip.add(o));
-  let pt=null, onWhat='пол'; for(const h of rc.intersectObjects(scene.children,true)){ if(skip.has(h.object)||!isShown(h.object)||!h.face)continue; const n=h.face.normal.clone().transformDirection(h.object.matrixWorld); if(n.y>.6){pt=h.point.clone(); let o=h.object; while(o&&!o.userData.aimId)o=o.parent; onWhat=o?(AIM[o.userData.aimId]?AIM[o.userData.aimId].label:'поверхность'):(h.object.name||'поверхность'); break;} }
-  const f=dirOf(playerYaw); if(!pt){pt=new THREE.Vector3(playerPos.x+f.x*.7,0,playerPos.y+f.y*.7); onWhat='пол';}
-  t.position.copy(pt); t.rotation.set(0,playerYaw,0); if(id==='roller')t.rotation.set(Math.PI/2,0,playerYaw); if(id==='riveter')t.rotation.set(0,playerYaw,0);
-  t.updateMatrixWorld(true); const bb=new THREE.Box3().setFromObject(t); t.position.y+=pt.y-bb.min.y+.001; t.userData.dropped=true;
-  toast(`⬇ ${TOOL_LABELS[id]||id} брошен: ${onWhat}. Возьмёшь снова прицелом.`); updateHUDW();}
+  const id=holdingW, t=wTools[id]; t.updateMatrixWorld(true); const p0=t.getWorldPosition(new THREE.Vector3()); holdingW=null; toolToScene(t); t.position.copy(p0);
+  const tg=dropTarget(t); physDrop(id,t,p0,tg.p); toast(`⬇ ${TOOL_LABELS[id]||id} → ${tg.on}`); updateHUDW();}
 window.__dropW=dropW; window.__rotStrip=d=>{stripRot=THREE.MathUtils.clamp(stripRot+d*Math.PI/180,-.26,.26);};
 function nearWInteract(){
   if(mode!=='workshop'||holdingW||wAnim||wFinished)return null;
   // v5.9: ONLY the object under the crosshair (raycast 2.5m) can be taken
   const st0=curW(); if(holding) return null; if(!wAim) return null;
   if(wAim==='jack') return {id:'jack',label:'✋ Взять рохлю'};
-  if(wAim&&wAim.startsWith('wb:')){const n=wAim.slice(3); return {id:wAim,label:(WB_PARTS[n]&&WB_PARTS[n].target?'📁 Закрыть: ':'📂 Открыть: ')+WB_LABEL(n)};}
+  if(wAim&&wAim.startsWith('wb:')){const n=wAim.slice(3); return {id:wAim,label:(WB_PARTS[n]&&WB_PARTS[n].target?'📁 Закрыть':'📂 Открыть')};}
   if(wAim==='doorA'||wAim==='doorB'){const gt=wAim==='doorA'?gateA:gateB; return {id:wAim,label:gt.g.userData.doorOpen?'🚪 Закрыть калитку':'🚪 Открыть калитку'};}
   if(wTools[wAim]) return {id:wAim,label:'✋ Взять: '+AIM[wAim].label};
   if(wAim==='roll'&&st0&&st0.pull) return {id:'edgeW',label:'✋ Взять край изолона'};
@@ -1384,7 +1537,7 @@ function setWorkshopMode(){
   updateHUDW();
 }
 if(mode==='workshop'){ WG.visible=true; setWorkshopMode(); }
-else { WG.visible=false; stacker.visible=false; supplyPallet.visible=false; outputPallet.visible=false; goats.visible=false; bench.visible=false; insulPack.visible=false; batoStack.visible=false; compressor.visible=false; riffleSheet.visible=false; monogalSheet.visible=false; coverUnit.visible=false; wRoll.visible=false; for(const id in wTools)wTools[id].visible=false; hoseSegs.forEach(s=>s.visible=false);}
+else { WG.visible=false; stacker.visible=false; supplyPallet.visible=false; outputPallet.visible=false; goats.visible=false; bench.visible=false; insulPack.visible=false; batoStack.visible=false; compressor.visible=false; riffleSheet.visible=false; monogalSheet.visible=false; coverUnit.visible=false; wRoll.visible=false; for(const id in wTools)wTools[id].visible=false; hoseMesh.visible=false;}
 // mode chooser overlay
 {const ov=document.createElement('div'); ov.id='modeChooser';
  ov.style.cssText='position:fixed;inset:auto 10px 64px 10px;z-index:9;display:flex;gap:10px;justify-content:center;pointer-events:none';

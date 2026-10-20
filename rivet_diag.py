@@ -11,5 +11,5 @@ with sync_playwright() as pw:
             time.sleep(.2); d=pg.evaluate('__noseDiag()')
             if d['k'] and d['k']>=.55: break
         pg.evaluate("document.getElementById('toast').style.display='none'")
-        pg.screenshot(path=f'/workspace/warehouse_game/game_v64_riveter_{kind}.png'); print(kind,json.dumps(d)); pg.close()
+        pg.screenshot(path=f'/workspace/warehouse_game/game_v66_riveter_{kind}.png'); print(kind,json.dumps(d)); pg.close()
     b.close()
