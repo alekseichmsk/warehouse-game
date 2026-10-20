@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.3 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.4 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -67,7 +67,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.3 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.4 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -1887,6 +1887,195 @@ window.__mkTile=(w,h)=>{const id=makeTile(w/1000,h/1000,`Плитка ${w}×${h}
 window.__layReset=()=>{layReset(); return true;};
 window.__layQuickBed=()=>{ for(const s of LAY.slots)for(let x=s.x0+CELL/2;x<s.x1;x+=CELL)for(let z=s.z0+CELL/2;z<s.z1;z+=CELL){const k=cellIdx(x,z); if(k>=0){LAY.cells[k]=TGT; LAY.combed[k]=0;}} LAY.dirty=true; LAY.stats=null; return totalCoverage();};
 window.__adhQuick=()=>{ADH.lidA='open'; if(LIDA)LIDA.position.set(.02,.013,-.36); ADH.pour=1; ADH.cut=true; ADH.bag='onCrate'; ADH.started=true; ADH.mix=1.05; ADH.q=mixQuality(1.05); drawPaste(); return true;};
+// ===================== v7.4 STAGE 5: drying -> SVP removal -> grout (затирка) -> wipe -> carry to output pallet -> wrap -> pay =====================
+// Blender lift/make_grout.py -> grout_kit.glb: grout bag 2 kg (0.64 l water / 2 kg = 0.32), clean 10 l pail, 10 l canister, rubber float 240x100, sponge 190x130x70.
+const GR_POS=new THREE.Vector3(-2.75,0,-5.2), CRATE_H=.40, DRY_S=45, GR_RATIO=.32, GR_BAG=2.0, FLOAT_LOAD=1.0, FLOAT_R=.12, SPONGE_R=.10, T_NORM_F=300, SHIELD_A=2.1*.32;
+const GR={glb:false,phase:'lay',dryT:0,layQ:null,layStat:null,debris:[],pieces:0,collected:0,kicks:0,taps:0,powder:0,water:0,bagKg:GR_BAG,mix:0,mixerIn:false,lumps:false,load:0,segs:[],haze:null,mask:null,nMask:0,wet:0,t0:0,
+  groutQ:null,mixQ:null,fillQ:0,hazeQ:1,stroke:null,wipe:null,inst:null,hz:null,hzCv:null,hzTex:null,floor:null,pal:0,recs:[],stream:null,_ht:0,dirtySeg:false,dirtyHaze:false,_init:false};
+window.__floorRecs=GR.recs;
+const grStation=new THREE.Group(); grStation.position.copy(GR_POS); grStation.name='GroutStation'; scene.add(grStation);
+// upturned crate for bag/float/sponge
+{const W=0xc9a46a; wbox(grStation,-.35,CRATE_H/2,0,.50,CRATE_H,.40,W); wbox(grStation,-.35,CRATE_H-.01,0,.52,.02,.42,0xb8925a);
+ const hb=new THREE.Mesh(new THREE.BoxGeometry(.52,.04,.42),new THREE.MeshBasicMaterial({visible:false})); hb.position.set(-.35,CRATE_H-.01,0); grStation.add(hb); aimable('groutCrate',hb,'Ящик: затирка, тёрка, губка');
+ window.__colBoxes.push({id:'grout',x:GR_POS.x+.05,z:GR_POS.z,hx:.65,hz:.25}); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(GR_POS.x-.6,0,GR_POS.z-.2),new THREE.Vector3(GR_POS.x+.62,CRATE_H,GR_POS.z+.2)));}
+const GR_HOME={groutBag:[-.47,CRATE_H,-.02,0],gFloat:[-.24,CRATE_H,.10,0],sponge:[-.24,CRATE_H,-.10,0],canister:[.48,0,0,Math.PI/2]};
+const GR_TOOLS=new Set(['groutBag','gFloat','sponge','canister']);
+function grHome(id){const g=wTools[id]; if(!g)return; delete BODIES[id]; toolToScene(g); const h=GR_HOME[id]; g.position.copy(grStation.localToWorld(new THREE.Vector3(h[0],h[1],h[2]))); g.rotation.set(0,h[3],0); g.updateMatrixWorld(true);}
+let GB=null, grContent=null; const GB_LOC=new THREE.Vector3(.08,0,0);
+// floor output pallet (2 euro pallets turned 90°) next to the lift station
+const FLOOR_PAL=new THREE.Vector3(-1.55,0,-3.6); const floorPallet=new THREE.Group(); floorPallet.position.copy(FLOOR_PAL); floorPallet.name='FloorOutputPallet'; scene.add(floorPallet);
+for(const dx of[-.48,.48]){const p=makePallet(); p.rotation.y=Math.PI/2; p.position.x=dx; floorPallet.add(p);}
+{const cv=document.createElement('canvas'); cv.width=512; cv.height=96; const c=cv.getContext('2d'); c.fillStyle='#2bd46a'; c.fillRect(0,0,512,96); c.fillStyle='#fff'; c.font='bold 40px sans-serif'; c.fillText('ГОТОВЫЕ ПОЛЫ → ОТГРУЗКА',14,62);
+ const sg=new THREE.Mesh(new THREE.PlaneGeometry(.9,.17),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); sg.position.set(0,.09,.73); floorPallet.add(sg);
+ const hb=new THREE.Mesh(new THREE.BoxGeometry(1.9,.06,1.45),new THREE.MeshBasicMaterial({visible:false})); hb.position.y=.15; floorPallet.add(hb); aimable('floorPallet',hb,'Поддон готовых полов');
+ window.__colBoxes.push({id:'floorpal',x:FLOOR_PAL.x,z:FLOOR_PAL.z,hx:.95,hz:.72});}
+_gl.load('grout_kit.glb',gl=>{ fixMats(gl.scene); const S=gl.scene; const take=n=>{const o=S.getObjectByName(n); o.removeFromParent(); o.position.set(0,0,0); o.rotation.set(0,0,0); return o;};
+  GB=take('Grout_Bucket'); GB.position.copy(GB_LOC); grStation.add(GB); aimable('groutBucket',GB,'Чистое ведро 10 л для затирки');
+  grContent=new THREE.Mesh(new THREE.CircleGeometry(1,40),new THREE.MeshBasicMaterial({color:0x7fb7e0})); grContent.rotation.x=-Math.PI/2; grContent.visible=false; grContent.name='GroutContent'; GB.add(grContent);
+  const bag=take('Grout_Bag'); {const cv=document.createElement('canvas'); cv.width=256; cv.height=384; const c=cv.getContext('2d'); c.fillStyle='#e9e7e1'; c.fillRect(0,0,256,384); c.fillStyle='#c81e1e'; c.fillRect(0,0,256,70); c.fillStyle='#fff'; c.font='bold 34px sans-serif'; c.fillText('ЗАТИРКА',30,48); c.fillStyle='#222'; c.font='bold 30px sans-serif'; c.fillText('цементная',30,120); c.fillText('серая, шов 1–6',20,165); c.font='bold 64px sans-serif'; c.fillText('2 кг',50,260); c.font='24px sans-serif'; c.fillText('вода 0,64 л / 2 кг',20,330);
+    const lab=new THREE.Mesh(new THREE.PlaneGeometry(.19,.28),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); lab.rotation.x=-Math.PI/2; lab.position.y=.0605; bag.add(lab);}
+  regAdhTool('groutBag',bag,'Затирка цементная 2 кг',{axis:[1,0,0],up:[0,1,0],grasp:[0,.03,0],kind:'power'},[{t:'cyl',a:[-.1,.03,0],b:[.1,.03,0],r:.03}],[0,-.30,-.50,.4,0,0]);
+  regAdhTool('canister',take('Water_Canister'),'Канистра с водой 10 л',{axis:[1,0,0],up:[0,1,0],grasp:[-.03,.335,0],kind:'power'},[{t:'cyl',a:[0,.02,0],b:[0,.31,0],r:.09}],[0,-.38,-.50,0,0,0]);
+  regAdhTool('gFloat',take('Rubber_Float'),'Тёрка резиновая 240×100',{axis:[1,0,0],up:[0,1,0],grasp:[0,.065,0],kind:'power'},[{t:'cyl',a:[-.12,.01,0],b:[.12,.01,0],r:.05}],HOLD_POSE._);
+  regAdhTool('sponge',take('Grout_Sponge'),'Губка 190×130 для затирки',{axis:[1,0,0],up:[0,1,0],grasp:[0,.035,0],kind:'power'},[{t:'cyl',a:[-.09,.035,0],b:[.09,.035,0],r:.05}],HOLD_POSE._);
+  for(const id of GR_TOOLS)grHome(id);
+  GR.stream=new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,1,8),new THREE.MeshBasicMaterial({color:0x7fb7e0,transparent:true,opacity:.8})); GR.stream.visible=false; GR.stream.raycast=()=>{}; scene.add(GR.stream);
+  GR.glb=true; window.__grReady=true;});
+function grInit(){ if(GR._init)return; GR._init=true; CARRY2.add('floorW'); HELD_LABEL.floorW='готовый пол кабины'; }
+function tileCellsMask(){ const m=new Uint8Array(LAY.nx*LAY.nz); let n=0; for(let k=0;k<m.length;k++)if(underTile(k)){m[k]=1;n++;} GR.mask=m; GR.nMask=n; GR.haze=new Float32Array(m.length);}
+function grBuildSegs(){ GR.segs=[]; for(const j of joints()){ const A=LAY.placed[j.a], B=LAY.placed[j.b];
+    if(j.axis==='x'){ const za=Math.max(A.z-A.ez/2,B.z-B.ez/2), zb=Math.min(A.z+A.ez/2,B.z+B.ez/2), xm=(A.x+A.ex/2+B.x-B.ex/2)/2; for(let z=za;z<zb-1e-4;z+=CELL){const L=Math.min(CELL,zb-z); GR.segs.push({x:xm,z:z+L/2,L,axis:'x',gap:Math.max(.0012,j.gap),fill:0});}}
+    else { const xa=Math.max(A.x-A.ex/2,B.x-B.ex/2), xb=Math.min(A.x+A.ex/2,B.x+B.ex/2), zm=(A.z+A.ez/2+B.z-B.ez/2)/2; for(let x=xa;x<xb-1e-4;x+=CELL){const L=Math.min(CELL,xb-x); GR.segs.push({x:x+L/2,z:zm,L,axis:'z',gap:Math.max(.0012,j.gap),fill:0});}} }
+  if(GR.inst)GR.inst.removeFromParent(); GR.inst=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0x8a8c90}),Math.max(1,GR.segs.length)); GR.inst.name='GroutSeams'; GR.inst.raycast=()=>{}; liftTray.add(GR.inst); GR.dirtySeg=true;
+  // cement haze layer above the tiles
+  tileCellsMask(); const cv=document.createElement('canvas'); cv.width=LAY.nx; cv.height=LAY.nz; GR.hzCv=cv; GR.hzCtx=cv.getContext('2d'); GR.hzImg=GR.hzCtx.createImageData(cv.width,cv.height); GR.hzTex=new THREE.CanvasTexture(cv); GR.hzTex.colorSpace=THREE.SRGBColorSpace;
+  if(GR.hz)GR.hz.removeFromParent(); GR.hz=new THREE.Mesh(new THREE.PlaneGeometry(LAY.D,LAY.W),new THREE.MeshBasicMaterial({map:GR.hzTex,transparent:true,depthWrite:false})); GR.hz.rotation.x=-Math.PI/2; GR.hz.position.y=SHEET_Y+BED+TILE_T+.0035; GR.hz.renderOrder=3; GR.hz.name='GroutHaze'; GR.hz.raycast=()=>{}; liftTray.add(GR.hz); GR.dirtyHaze=true;}
+function grDrawSegs(){ if(!GR.inst)return; const M=new THREE.Matrix4(), Q=new THREE.Quaternion(), P=new THREE.Vector3(), Sc=new THREE.Vector3(); GR.segs.forEach((s,i)=>{ const h=Math.max(1e-4,s.fill*TILE_T*.92); P.set(s.x,SHEET_Y+BED+h/2,s.z); if(s.axis==='x')Sc.set(s.gap*.98,h,s.L); else Sc.set(s.L,h,s.gap*.98); M.compose(P,Q,Sc); GR.inst.setMatrixAt(i,M);}); GR.inst.count=GR.segs.length; GR.inst.instanceMatrix.needsUpdate=true; GR.dirtySeg=false;}
+function grDrawHaze(){ if(!GR.hzImg)return; const I=GR.hzImg.data; for(let k=0;k<GR.haze.length;k++){const a=GR.mask[k]?GR.haze[k]:0; const o=k*4; I[o]=196; I[o+1]=196; I[o+2]=190; I[o+3]=Math.round(Math.min(1,a)*205);} GR.hzCtx.putImageData(GR.hzImg,0,0); GR.hzTex.needsUpdate=true; GR.dirtyHaze=false;}
+function grFill(){ return GR.segs.length?GR.segs.reduce((a,s)=>a+Math.min(1,s.fill),0)/GR.segs.length:0;}
+function grHazeAvg(){ if(!GR.haze||!GR.nMask)return 0; let s=0; for(let k=0;k<GR.haze.length;k++)if(GR.mask[k])s+=GR.haze[k]; return s/GR.nMask;}
+function grRatio(){ return GR.powder>0?GR.water/GR.powder:0;}
+function grMixQ(){ if(GR.powder<=0)return 0; const r=grRatio(); let q=Math.max(0,Math.min(1,1-Math.max(0,Math.abs(r-GR_RATIO)-.02)/.06)); if(GR.lumps)q*=.9; return q*Math.min(1,GR.mix);}
+function grConsist(){ const r=grRatio(); if(GR.powder<=0)return GR.water>0?'только вода':'пусто'; if(r>GR_RATIO+.03)return 'слишком жидко'; if(r<GR_RATIO-.03)return 'слишком густо'; return 'норма (как густая сметана)';}
+function grKg(){return GR.powder+GR.water;}
+function grDebrisAt(p){ let best=null,bd=.09; for(const d of GR.debris){const q=Math.hypot(p.x-d.x,p.z-d.z); if(q<bd){bd=q; best=d;}} return best;}
+function breakClip(c,how){ // real SVP: the clip base stays under the tiles; the upper tab breaks off along the seam (blow across the joint line)
+  const deb=new THREE.Group(); const tab=c.mesh.clone(true); tab.traverse(o=>{if(o.name&&/SVP_Clip_Base/.test(o.name))o.visible=false;}); tab.position.set(0,0,0); tab.rotation.set(0,0,Math.PI/2); deb.add(tab);
+  if(c.wedge){const w=c.wedge.clone(true); w.position.set(.0,.0,.03); w.rotation.set(0,0,0); deb.add(w);}
+  const dx=(c.axis==='x'?.05:0)+(lrand()-.5)*.02, dz=(c.axis==='z'?.05:0)+(lrand()-.5)*.02; deb.position.set(c.x+dx,SHEET_Y+BED+TILE_T+.006,c.z+dz); deb.rotation.y=lrand()*6.28; deb.name='SVP_Debris'; liftTray.add(deb);
+  c.mesh.removeFromParent(); delete LAY.clips[c.key]; GR.debris.push({x:deb.position.x,z:deb.position.z,mesh:deb}); GR.pieces++; if(how==='kick')GR.kicks++; else GR.taps++;
+  thud(how==='kick'?160:420,.07); toast(`${how==='kick'?'👟 Удар ногой поперёк шва':'🔨 Удар киянкой'} — язычок СВП отломился (осталось ${Object.keys(LAY.clips).length}). Собери обломки`); LAY.stats=null; updateHUDW();}
+function grStartDry(){ GR.phase='dry'; GR.dryT=DRY_S; toast(`⏱ Все плитки уложены — клей сохнет (ускорено: ${DRY_S} с). СВП пока не трогай`); updateHUDW();}
+function grDryDone(){ GR.layStat=layStats(); GR.layQ=GR.layStat.Q; const n=Object.keys(LAY.clips).length; GR.phase=n?'svp':'grout'; if(!n)grBuildSegs();
+  toast(n?`✅ Клей высох. Отбей язычки СВП (${n} шт) киянкой или ногой поперёк шва и собери обломки`:'✅ Клей высох. Можно затирать швы'); updateHUDW();}
+function grFloorDone(){ GR.fillQ=grFill(); GR.hazeQ=1-grHazeAvg(); GR.mixQ=grMixQ(); GR.groutQ=+(GR.mixQ*(.6*GR.fillQ+.4*GR.hazeQ)).toFixed(3); return GR.groutQ;}
+function payFloor(r){ const kA=r.area/SHIELD_A, Tn=T_NORM_F*r.area; const kt=THREE.MathUtils.clamp(Tn/Math.max(1,r.t),.7,1.3); const Q=.45*r.layQ+.35*r.groutQ+.10*r.svpQ+.10*(r.wrapped?1:0); return {kA,Tn,kt,Q,sum:Math.round(PAY_BASE*kA*kt*Q)};}
+function grState(){ const o=layOrder(); return {phase:GR.phase,dryLeft:+Math.max(0,GR.dryT).toFixed(1),clips:Object.keys(LAY.clips).length,pieces:GR.pieces,debris:GR.debris.length,collected:GR.collected,kicks:GR.kicks,taps:GR.taps,powder:+GR.powder.toFixed(3),water:+GR.water.toFixed(3),ratio:+grRatio().toFixed(3),consist:grConsist(),mix:+GR.mix.toFixed(2),mixerIn:GR.mixerIn,lumps:GR.lumps,mixQ:+grMixQ().toFixed(2),bucketKg:+grKg().toFixed(2),load:+GR.load.toFixed(2),segs:GR.segs.length,fill:+grFill().toFixed(3),haze:+grHazeAvg().toFixed(3),wet:+GR.wet.toFixed(2),layQ:GR.layQ,groutQ:GR.groutQ,holding:holdingW,aim:wAim,act:$('action').textContent,take:$('btnTake').textContent,hit:GR.hit?[+GR.hit.p.x.toFixed(3),+GR.hit.p.z.toFixed(3),GR.hit.tile]:null,order:o.n,recs:GR.recs,pal:GR.pal,trayParent:liftTray&&liftTray.parent?liftTray.parent.name:null};}
+function floatStep(A,P,dt){ const H={p:P}; const dx=P.x-A.x, dz=P.z-A.z, d=Math.hypot(dx,dz); if(!(d>.002&&d<.3))return; if(GR.load<=0){ if(!GR._lw){toast('🪣 Тёрка пустая — набери затирку из ведра'); GR._lw=1;} }
+      else { const ang=Math.atan2(dz,dx); let used=d*.05, effS=0, nS=0; for(const s of GR.segs){ if(Math.hypot(s.x-H.p.x,s.z-H.p.z)>FLOAT_R||s.fill>=1)continue; const seamAng=s.axis==='x'?Math.PI/2:0; const eff=.2+.8*Math.abs(Math.sin(2*(ang-seamAng))); const inc=Math.min(1-s.fill,eff*d/.10); s.fill+=inc; used+=inc*.0008; effS+=eff; nS++;}
+        if(nS){GR.lastEff=effS/nS; if(GR.lastEff<.45&&(GR._ew=(GR._ew||0)-dt)<=0){GR._ew=2; toast('↗ Веди тёрку по диагонали к швам (45°) — вдоль шва затирка не заходит');}}
+        for(let x=H.p.x-FLOAT_R;x<=H.p.x+FLOAT_R;x+=CELL)for(let z=H.p.z-FLOAT_R;z<=H.p.z+FLOAT_R;z+=CELL){const k=cellIdx(x,z); if(k<0||!GR.mask[k])continue; if(Math.hypot(x-H.p.x,z-H.p.z)>FLOAT_R)continue; GR.haze[k]=Math.min(1,GR.haze[k]+d*5);}
+        GR.load=Math.max(0,GR.load-used); GR.dirtySeg=true; GR.dirtyHaze=true; }}
+function spongeStep(A,P){ const H={p:P}; const d=Math.hypot(P.x-A.x,P.z-A.z); if(!(d>.002&&d<.3))return; const f=GR.wet>0?1:.15; if(GR.wet<=0&&!GR._sw){toast('🧽 Губка сухая — намочи и отожми у канистры'); GR._sw=1;}
+      for(let x=H.p.x-SPONGE_R;x<=H.p.x+SPONGE_R;x+=CELL)for(let z=H.p.z-SPONGE_R;z<=H.p.z+SPONGE_R;z+=CELL){const k=cellIdx(x,z); if(k<0||!GR.mask[k])continue; if(Math.hypot(x-H.p.x,z-H.p.z)>SPONGE_R)continue; GR.haze[k]=Math.max(0,GR.haze[k]-d*6*f);}
+      GR.wet=Math.max(0,GR.wet-d*.5); GR.dirtyHaze=true;}
+// ---- per frame ----
+function updateGrout(dt){ if(!GR.glb||!LAY.glb||!liftTray)return; grInit(); {const n=performance.now(); dt=GR._t?Math.min(.25,(n-GR._t)/1000):0; GR._t=n;}
+  const o=layOrder(), near=mode==='workshop'&&nearLift(), hold=(keys[' ']||window.__rollHold)&&!wAnim&&mode==='workshop';
+  if(LAY.dabs.length&&!GR.t0)GR.t0=performance.now();
+  if(GR.phase==='lay'&&o.finish==='tile'&&LAY.slots.length&&LAY.slots.every(s=>s.tile))grStartDry();
+  if(GR.phase==='dry'){GR.dryT-=dt; if(GR.dryT<=0)grDryDone();}
+  if(GR.phase==='svp'&&!Object.keys(LAY.clips).length){GR.phase='grout'; grBuildSegs(); toast(`✅ СВП снята (${GR.pieces} шт). ${GR.debris.length?'Собери обломки, затем ':''}замешай затирку: вода → смесь → миксер`); updateHUDW();}
+  const active=GR.phase==='svp'||GR.phase==='grout'||GR.phase==='done';
+  GR.hit=(near&&active&&GR.phase!=='carry'&&liftTray.parent===liftStation)?trayHit():null; const H=GR.hit;
+  // pouring into the bucket
+  let pour=null; if(hold&&wAim==='groutBucket'&&mode==='workshop'){ if(holdingW==='canister')pour='w'; else if(holdingW==='groutBag'&&GR.bagKg>0)pour='p';}
+  if(pour==='w'){ if(GR.water<6){GR.water+=.16*dt; if(GR.mix>.5)GR.mix=.5;} }
+  if(pour==='p'){ const k=Math.min(GR.bagKg,.4*dt); GR.bagKg-=k; GR.powder+=k; if(GR.water<.05&&!GR.lumps&&GR.powder>.1){GR.lumps=true; toast('⚠ Сухая смесь в пустое ведро — будут комки. Правильно: сначала вода, потом смесь');} if(GR.mix>.5)GR.mix=.5;}
+  if(GR.stream){ GR.stream.visible=!!pour; if(pour){ const t=wTools[holdingW]; t.updateMatrixWorld(true); const a=t.localToWorld(pour==='w'?new THREE.Vector3(.08,.34,0):new THREE.Vector3(0,.06,.15)); const b=GB.localToWorld(new THREE.Vector3(0,.02+grLevel(),0)); const d=b.clone().sub(a); GR.stream.position.copy(a).add(b).multiplyScalar(.5); GR.stream.scale.set(pour==='p'?2.2:1,d.length(),pour==='p'?2.2:1); GR.stream.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()); GR.stream.material.color.set(pour==='w'?0x7fb7e0:0xa9aaa6);} }
+  // mixing
+  const mixing=GR.mixerIn&&hold&&!holdingW&&(wAim==='groutBucket'||wAim==='mixer'); if(mixing&&GR.powder>0){ const was=GR.mix; GR.mix+=dt/6; if(ADH.paddle)ADH.paddle.rotation.y+=dt*45; const mx=wTools.mixer; if(mx){const w=Math.sin(performance.now()/40)*.004; mx.position.copy(GB.localToWorld(new THREE.Vector3(w,MIXER_Y,w*.7)));}
+    if(was<1&&GR.mix>=1)toast(`🌀 Затирка размешана: ${grConsist()} (вода/смесь ${grRatio().toFixed(2)}, норма ${GR_RATIO}). ${grConsist().startsWith('слишком жидко')?'Добавь сухой смеси':grConsist().startsWith('слишком густо')?'Добавь воды':'Можно затирать'}`);
+    else if((GR._mt=(GR._mt||0)-dt)<=0){GR._mt=1.2; toast(`🌀 Мешаю ${Math.round(Math.min(1,GR.mix)*100)}% • ${grConsist()}`);} }
+  if(grContent){ const lv=grLevel(); grContent.visible=grKg()>.01; grContent.position.y=.006+lv; const r=.123+.02*Math.min(1,(.006+lv)/.25); grContent.scale.set(r,r,1); grContent.material.color.set(GR.powder<=0?0x7fb7e0:GR.mix<.3?0xb9bab6:grConsist().startsWith('слишком жидко')?0x7d8086:0x8f9196);}
+  // grout float: hold + drag diagonally across the joints
+  if(holdingW==='gFloat'&&hold&&H&&GR.phase!=='svp'&&GR.segs.length){ if(GR.stroke)floatStep(GR.stroke,H.p,dt); GR.stroke=H.p.clone(); } else GR.stroke=null;
+  // sponge: damp, wipe the haze
+  if(holdingW==='sponge'&&hold&&H&&GR.haze){ if(GR.wipe)spongeStep(GR.wipe,H.p); GR.wipe=H.p.clone(); } else GR.wipe=null;
+  if(GR.phase==='grout'&&GR.segs.length&&grFill()>=.95&&grHazeAvg()<=.08){ GR.phase='done'; grFloorDone(); toast(`✨ Швы затёрты (${Math.round(GR.fillQ*100)}%), налёт смыт. Затирка Q ${Math.round(GR.groutQ*100)}%. Сними пол со стола («Взять») и отнеси на поддон готовых полов`); updateHUDW();}
+  GR._ht-=dt; if(GR._ht<=0){ if(GR.dirtySeg)grDrawSegs(); if(GR.dirtyHaze)grDrawHaze(); GR._ht=.1;}
+  // carrying the finished floor (two hands): tray across in front of the body
+  if(holdingW==='floorW'&&GR.phase==='carry'){ const f=dirOf(playerYaw); liftTray.position.set(playerPos.x+f.x*1.0,.62,playerPos.y+f.y*1.0); liftTray.rotation.set(0,playerYaw+Math.PI/2,0);}
+  updGrPanel(near);}
+const MIXER_Y=.56;
+function grLevel(){ const vol=(GR.water+GR.powder*.42)/1000; return Math.min(.23,vol/(Math.PI*.127*.127));}
+function updGrPanel(near){ const el=document.getElementById('layPanel'); if(!el)return; let g=document.getElementById('grTxt'); if(!g){g=document.createElement('div'); g.id='grTxt'; g.style.cssText='margin-top:3px;border-top:1px dashed #b9c3dc;padding-top:3px'; el.appendChild(g);}
+  const show=mode==='workshop'&&near&&GR.phase!=='lay'||(mode==='workshop'&&near&&(GR_TOOLS.has(holdingW)||GR.powder>0||GR.water>0)); if(show)el.style.display='block'; g.style.display=show?'block':'none'; if(!show)return;
+  let s=''; if(GR.phase==='dry')s=`<div>⏱ Клей сохнет: <b>${fmt(GR.dryT)}</b> (ускорено)</div>`;
+  else if(GR.phase==='svp')s=`<div>🔨 Отбей СВП: осталось ${Object.keys(LAY.clips).length} • обломков на полу ${GR.debris.length}</div>`;
+  else if(GR.phase==='lay')s='<div>Затирка — после укладки и высыхания клея</div>';
+  s+=`<div>🪣 Вода ${GR.water.toFixed(2)} л • смесь ${GR.powder.toFixed(2)} кг • В/С ${grRatio().toFixed(2)} (норма ${GR_RATIO}: ${(GR_RATIO*GR_BAG).toFixed(2)} л на ${GR_BAG} кг) • ${GR.mix>=1?'✅':'🌀 '+Math.round(Math.min(1,GR.mix)*100)+'%'} ${grConsist()}</div>`;
+  if(GR.segs.length)s+=`<div>〰 Швы заполнены ${Math.round(grFill()*100)}% • налёт ${Math.round(grHazeAvg()*100)}% • тёрка ${GR.load.toFixed(2)} кг • губка ${GR.wet>0?'влажная':'сухая'}</div>`;
+  if(GR.layQ!=null)s+=`<div>Q укладки ${Math.round(GR.layQ*100)}%${GR.groutQ!=null?` • Q затирки ${Math.round(GR.groutQ*100)}%`:''} • СВП собрано ${GR.collected}/${GR.pieces}</div>`;
+  if(g._s!==s){g.innerHTML=s; g._s=s;}}
+// ---- interaction ----
+let _lastGrAct=0;
+function grTakeFloor(){ grFloorDone(); for(const id in LAY.placed){delete AIM[id];} for(const m of LAY.markers)m.removeFromParent(); LAY.markers=[]; if(LAY.ghost)LAY.ghost.visible=false; if(LAY.outline)LAY.outline.visible=false;
+  delete AIM.liftTray; liftTray.traverse(o=>{if(o.isMesh){o.userData._rc=o.raycast; o.raycast=()=>{};}}); scene.attach(liftTray); GR.floor=liftTray; GR.phase='carry'; holdingW='floorW'; toast(`🏋 Снял готовый пол ${layOrder().W}×${layOrder().D} (поддон + плитка) — неси на поддон готовых полов`); updateHUDW();}
+function grPutFloor(){ const t=GR.floor; t.position.set(FLOOR_PAL.x,.165+GR.pal*.09,FLOOR_PAL.z); t.rotation.set(0,0,0); floorPallet.attach(t); t.traverse(o=>{if(o.isMesh&&o.userData._rc){o.raycast=o.userData._rc;}}); GR.pal++; holdingW=null; GR.phase='packed'; thud(90,.15); toast('⬇ Пол лёг на поддон. Оберни его изолоном («Действие» по поддону)'); updateHUDW();}
+function grWrap(){ const t=GR.floor; const b=new THREE.Box3().setFromObject(t); const s=b.getSize(new THREE.Vector3()), c=b.getCenter(new THREE.Vector3()); floorPallet.worldToLocal(c);
+  const w=new THREE.Mesh(new THREE.BoxGeometry(s.x+.02,s.y+.02,s.z+.02),new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:.85})); w.position.copy(c); w.name='IzolonWrapFloor'; w.scale.y=.05; floorPallet.add(w);
+  const t0=performance.now(); const an=()=>{const k=Math.min(1,(performance.now()-t0)/1200); w.scale.y=.05+.95*k; w.position.y=c.y-(s.y+.02)*(1-w.scale.y)/2; if(k<1)requestAnimationFrame(an);}; an();
+  const o=layOrder(); const area=o.W*o.D/1e6, tt=GR.t0?(performance.now()-GR.t0)/1000:T_NORM_F*area; const r={n:o.n,size:`${o.W}×${o.D}`,tile:o.tile,area:+area.toFixed(3),t:tt,layQ:GR.layQ!=null?GR.layQ:0,groutQ:GR.groutQ||0,mixQ:GR.mixQ||0,fill:GR.fillQ,haze:1-GR.hazeQ,svpQ:GR.pieces?GR.collected/GR.pieces:1,pieces:GR.pieces,collected:GR.collected,wrapped:true};
+  r.pay=payFloor(r); GR.recs.push(r); thud(300,.1); toast(`🤍 Пол обёрнут. Оплата: ${r.pay.sum} ₽ (Q ${r.pay.Q.toFixed(2)}, K вр. ${r.pay.kt.toFixed(2)})`);
+  // fresh tray for the next floor order (packed floor stays on the pallet)
+  for(const d of GR.debris)d.mesh.userData.left=true; LAY.placed={}; LAY.clips={}; LAY.dabs.forEach(d=>d.mesh&&d.mesh.parent===t&&0); const keepDabs=LAY.dabs; LAY.dabs=[];
+  const nx=(liftOrderIdx+1)%LIFT_ORDERS.length; let k=nx; for(let i=0;i<LIFT_ORDERS.length;i++){const q=LIFT_ORDERS[(nx+i)%LIFT_ORDERS.length]; if(q.finish==='tile'){k=(nx+i)%LIFT_ORDERS.length; break;}}
+  grReset(); applyLiftOrder(k); updateHUDW(); setTimeout(()=>showPay(),1400); return r;}
+function grReset(){ GR.phase='lay'; GR.dryT=0; GR.layQ=null; GR.layStat=null; GR.debris=[]; GR.pieces=0; GR.collected=0; GR.kicks=0; GR.taps=0; GR.segs=[]; GR.inst=null; GR.hz=null; GR.haze=null; GR.mask=null; GR.t0=0; GR.groutQ=null; GR.mixQ=null; GR.fillQ=0; GR.hazeQ=1; GR.floor=null;
+  GR.powder=0; GR.water=0; GR.bagKg=GR_BAG; GR.mix=0; GR.lumps=false; GR.load=0; GR.wet=0;}
+{const _ap=applyLiftOrder; applyLiftOrder=function(i){ if(typeof GR!=='undefined'&&GR.phase!=='lay'&&GR.phase!=='packed'){ // switching order mid-job drops the grout work on the old tray
+    if(GR.inst)GR.inst.removeFromParent(); if(GR.hz)GR.hz.removeFromParent(); for(const d of GR.debris)d.mesh.removeFromParent(); const p=GR.powder,w=GR.water,b=GR.bagKg,m=GR.mix,l=GR.lumps; grReset(); GR.powder=p; GR.water=w; GR.bagKg=b; GR.mix=m; GR.lumps=l;}
+  return _ap(i);};}
+{const _dt=doTakeW; doTakeW=function(){ if(wAnim||mode!=='workshop'||!GR.glb)return _dt(); const a=(wAim==='mixer'&&GR.mixerIn)?'groutBucket':wAim;
+   if(holdingW==='floorW'){ if(a==='floorPallet')return grPutFloor(); toast('🎯 Наведи на поддон готовых полов'); return;}
+   if(holdingW==='mixer'&&a==='groutBucket'){ if(GR.powder<=0&&GR.water<=0){toast('🪣 Ведро пустое — налей воды и всыпь затирку'); return;} GR.mixerIn=true; ADH.mixer='inGrout'; holdingW=null; const mx=wTools.mixer; delete BODIES.mixer; toolToScene(mx); mx.position.copy(GB.localToWorld(new THREE.Vector3(0,MIXER_Y,0))); mx.rotation.set(0,Math.PI/2,0); toast('🌀 Венчик в ведре с затиркой. Зажми «Действие» — мешать'); updateHUDW(); return;}
+   if(!holdingW&&a==='groutBucket'&&GR.mixerIn){ GR.mixerIn=false; ADH.mixer='hand'; holdingW='mixer'; delete BODIES.mixer; toast(`🌀 Миксер вынут: ${GR.mix>=1?'размешано':'не домешано '+Math.round(GR.mix*100)+'%'} • ${grConsist()}`); updateHUDW(); return;}
+   if(holdingW==='gFloat'&&a==='groutBucket')return grScoop();
+   if(GR_TOOLS.has(holdingW)&&a==='groutCrate'&&holdingW!=='canister'){ const id=holdingW; holdingW=null; grHome(id); toast('⬇ Положил на ящик'); updateHUDW(); return;}
+   if(holdingW==='canister'&&(a==='groutCrate'||a==='groutBucket'&&false)){ holdingW=null; grHome('canister'); updateHUDW(); return;}
+   const busy=GR.phase!=='lay';
+   if(!holdingW&&busy&&GR.hit){ const d=grDebrisAt(GR.hit.p); if(d){ d.mesh.removeFromParent(); GR.debris.splice(GR.debris.indexOf(d),1); GR.collected++; thud(700,.03); toast(`✋ Собрал обломок СВП (${GR.collected}/${GR.pieces})`); updateHUDW(); return;} }
+   if(!holdingW&&GR.phase==='done'&&(a==='liftTray'||LAY.placed[a]))return grTakeFloor();
+   if(!holdingW&&busy&&LAY.placed[a]){ toast(GR.phase==='dry'?'⛔ Плитка на клею — сохнет':'⛔ Плитка приклеена'); return;}
+   if(isTile(holdingW)&&busy&&nearLift()&&LAY.hit){ toast('Пол уже уложен'); return;}
+   return _dt();};}
+function grScoop(){ if(GR.mixerIn){toast('🌀 Сначала вынь миксер'); return;} if(GR.mix<1){toast('🌀 Затирка не размешана — вставь миксер и мешай'); return;} if(grKg()<.05){toast('🪣 Ведро пустое'); return;} if(GR.load>=FLOAT_LOAD-.01){toast('Тёрка уже с затиркой'); return;}
+  const k=Math.min(FLOAT_LOAD-GR.load,grKg()); const f=k/grKg(); GR.powder*=(1-f); GR.water*=(1-f); GR.load+=k; GR._lw=0; toast(`🪣 Набрал ${k.toFixed(2)} кг затирки (${grConsist()}) — веди тёрку по диагонали к швам`); thud(200,.06); updateHUDW();}
+{const _da=doActionW; doActionW=function(){ if(mode!=='workshop'||!GR.glb)return _da(); const now=performance.now(); const H=GR.hit; const a=(wAim==='mixer'&&GR.mixerIn)?'groutBucket':wAim;
+   if(holdingW==='floorW'){toast('🎯 «Взять» по поддону готовых полов — положить'); return;}
+   if(!holdingW&&a==='floorPallet'&&GR.phase==='packed'){ return grWrap();}
+   if(!holdingW&&a==='groutBucket'&&GR.mixerIn)return;
+   if(holdingW==='canister'||holdingW==='groutBag'){ if(a==='groutBucket')return; if(holdingW==='canister'&&a!=='groutBucket'){toast('💧 Наведи на чистое ведро и зажми «Действие»'); return;} toast('🎯 Наведи на чистое ведро и зажми «Действие»'); return;}
+   if(holdingW==='sponge'&&a==='canister'){ GR.wet=1; GR._sw=0; thud(260,.05); toast('💧 Губку намочил и отжал — влажная, не мокрая'); return;}
+   if(holdingW==='gFloat'){ if(a==='groutBucket')return grScoop(); if(GR.phase==='svp'){toast('🔨 Сначала отбей СВП'); return;} if(GR.phase==='lay'||GR.phase==='dry'){toast('⏱ Затирать можно после высыхания клея'); return;} return;}
+   if(holdingW==='sponge'){ if(GR.phase==='lay'||GR.phase==='dry'||GR.phase==='svp'){toast('Сначала затирка швов'); return;} return;}
+   if(GR.phase==='dry'&&(holdingW==='mallet'||!holdingW)&&H===null&&nearLift()&&Object.keys(LAY.clips).length&&false)return;
+   if(GR.phase==='svp'&&(holdingW==='mallet'||!holdingW)){ if(now-_lastGrAct<250)return; _lastGrAct=now; if(!H){ if(!holdingW)return _da(); toast('🎯 Наведи на зажим СВП'); return;} const c=nearestClip(H.p); if(!c){ if(!holdingW)return _da(); toast('🎯 Наведи на зажим СВП (красный язычок в шве)'); return;} breakClip(c,holdingW==='mallet'?'mallet':'kick'); return;}
+   if(GR.phase==='dry'&&holdingW==='mallet'&&LAY.hit&&nearestClip(LAY.hit.p)){toast(`⛔ Клей ещё сохнет (${fmt(GR.dryT)}) — СВП отбивать рано`); return;}
+   return _da();};}
+{const _uh=updateHUDW; updateHUDW=function(){_uh.apply(this,arguments); if(mode!=='workshop'||wAnim||!GR.glb)return; const b=$('action'), tb=$('btnTake'); const a=(wAim==='mixer'&&GR.mixerIn)?'groutBucket':wAim;
+   if(holdingW==='canister'&&a==='groutBucket'){b.disabled=false; b.textContent=`💧 Зажми — лить воду (${GR.water.toFixed(2)} л)`;}
+   if(holdingW==='groutBag'&&a==='groutBucket'){b.disabled=false; b.textContent=`⬇ Зажми — сыпать затирку (${GR.powder.toFixed(1)}/${GR_BAG} кг)`;}
+   if(holdingW==='mixer'&&a==='groutBucket'){tb.disabled=false; tb.textContent='🌀 Вставить миксер в ведро';}
+   if(!holdingW&&a==='groutBucket'&&GR.mixerIn){b.disabled=false; b.textContent='🌀 Зажми — мешать затирку'; tb.disabled=false; tb.textContent='✋ Вынуть миксер';}
+   if(holdingW==='gFloat'){ if(a==='groutBucket'){tb.disabled=false; tb.textContent='🪣 Набрать затирку'; b.disabled=false; b.textContent='🪣 Набрать затирку';} else {b.disabled=false; b.textContent='〰 Зажми — тёркой по диагонали';}}
+   if(holdingW==='sponge'){ b.disabled=false; b.textContent=a==='canister'?'💧 Намочить и отжать губку':'🧽 Зажми — смыть налёт';}
+   if(GR_TOOLS.has(holdingW)&&a==='groutCrate'){tb.disabled=false; tb.textContent='⬇ Положить на ящик';}
+   if(GR.phase==='svp'&&holdingW==='mallet'){b.disabled=false; b.textContent='🔨 Отбить язычок СВП';}
+   if(GR.phase==='svp'&&!holdingW&&GR.hit){b.disabled=false; b.textContent='👟 Отбить СВП ногой';}
+   if(!holdingW&&GR.hit&&GR.phase!=='lay'&&grDebrisAt(GR.hit.p)){tb.disabled=false; tb.textContent='✋ Собрать обломок СВП';}
+   if(!holdingW&&GR.phase==='done'&&(a==='liftTray'||LAY.placed[a])){tb.disabled=false; tb.textContent='🏋 Снять готовый пол';}
+   if(holdingW==='floorW'){tb.disabled=a!=='floorPallet'; tb.textContent=a==='floorPallet'?'⬇ Положить пол на поддон':'🎯 Наведи на поддон готовых полов'; b.disabled=true; b.textContent='🏋 Несу пол (двумя руками)';}
+   if(!holdingW&&a==='floorPallet'&&GR.phase==='packed'){b.disabled=false; b.textContent='🤍 Обернуть пол изолоном';}
+   const ot=$('orderPill'); if(ot&&GR.recs.length&&!/полы/.test(ot.textContent))ot.textContent+=` • полы ${GR.recs.length}: ${GR.recs.reduce((s,r)=>s+r.pay.sum,0)} ₽`;};}
+{const _sp=showPay; showPay=function(){ _sp.apply(this,arguments); const el=$('payWin'); if(!el||!GR.recs.length)return; const tot=GR.recs.reduce((s,r)=>s+r.pay.sum,0); const d=document.createElement('div'); d.id='payFloors';
+  d.innerHTML=`<h3 style="margin:14px 0 4px">🧱 Полы кабин: ${GR.recs.length} • ${tot} ₽</h3><div style="margin:2px 0 8px;color:#5b6785">Формула как у щитов: <b>${PAY_BASE} ₽ × K<sub>площ</sub> × K<sub>время</sub> × Q</b>; K<sub>площ</sub> = S / ${SHIELD_A.toFixed(3)} м² (площадь щита 2100×320); K<sub>время</sub> = clamp(${T_NORM_F} с/м² × S / t, 0,7…1,3); Q = 0,45·укладка + 0,35·затирка + 0,10·СВП собраны + 0,10·упаковка; затирка = замес × (0,6·швы + 0,4·(1 − налёт))</div>
+  <table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#eefaf2">${['Заказ','Размер','S м²','Время','K площ','K вр.','Укладка','Замес','Швы','Налёт','Затирка','СВП','Упак.','Q','₽'].map(h=>`<th style="padding:4px 6px;text-align:left">${h}</th>`).join('')}</tr>
+  ${GR.recs.map(r=>`<tr style="border-top:1px solid #e3e8f4"><td>${r.n}</td><td>${r.size}</td><td>${r.area.toFixed(2)}</td><td>${fmtT(r.t)}</td><td>${r.pay.kA.toFixed(2)}</td><td>${r.pay.kt.toFixed(2)}</td><td>${r.layQ.toFixed(2)}</td><td>${r.mixQ.toFixed(2)}</td><td>${Math.round(r.fill*100)} %</td><td>${Math.round(r.haze*100)} %</td><td>${r.groutQ.toFixed(2)}</td><td>${r.collected}/${r.pieces}</td><td>${r.wrapped?'✔':'—'}</td><td>${r.pay.Q.toFixed(2)}</td><td><b>${r.pay.sum}</b></td></tr>`).join('')}</table>`;
+  const cl=$('payClose'); cl.parentNode.parentNode.insertBefore(d,cl.parentNode);};}
+// test hooks
+window.__grState=grState;
+window.__grQuickBed=()=>{ for(const s of LAY.slots)for(let x=s.x0+CELL/2;x<s.x1;x+=CELL)for(let z=s.z0+CELL/2;z<s.z1;z+=CELL){const k=cellIdx(x,z); if(k>=0){LAY.cells[k]=TGT; LAY.combed[k]=0;}} LAY.dirty=true; LAY.stats=null; if(!GR.t0)GR.t0=performance.now(); return totalCoverage();};
+window.__grQuickSVP=()=>{ let n=0; for(const j of joints())j.pts.forEach((q,k)=>{const key=j.key+'#'+k; if(LAY.clips[key])return; insertClip(new THREE.Vector3(q[0],0,q[1])); const c=LAY.clips[key]; if(c){insertWedge(new THREE.Vector3(c.x,0,c.z)); c.tight=1; if(c.wedge)posWedge(c); n++;}}); LAY.stats=null; return n;};
+window.__grDry=s=>{ if(GR.phase==='dry')GR.dryT=Math.min(GR.dryT,s); return GR.dryT;};
+window.__grClips=()=>Object.values(LAY.clips).map(c=>[+c.x.toFixed(4),+c.z.toFixed(4)]);
+window.__grDebris=()=>GR.debris.map(d=>[+d.x.toFixed(4),+d.z.toFixed(4)]);
+window.__grSegs=()=>{const J=joints(); return J.map(j=>{const A=LAY.placed[j.a],B=LAY.placed[j.b]; return j.axis==='x'?{axis:'x',x:+((A.x+A.ex/2+B.x-B.ex/2)/2).toFixed(4),a:+Math.max(A.z-A.ez/2,B.z-B.ez/2).toFixed(4),b:+Math.min(A.z+A.ez/2,B.z+B.ez/2).toFixed(4)}:{axis:'z',z:+((A.z+A.ez/2+B.z-B.ez/2)/2).toFixed(4),a:+Math.max(A.x-A.ex/2,B.x-B.ex/2).toFixed(4),b:+Math.min(A.x+A.ex/2,B.x+B.ex/2).toFixed(4)};});};
+window.__grLowFill=()=>GR.segs.filter(s=>s.fill<.9).map(s=>[+s.x.toFixed(3),+s.z.toFixed(3)]);
+window.__grHazeCells=()=>{const o=[]; if(!GR.haze)return o; for(let k=0;k<GR.haze.length;k++)if(GR.mask[k]&&GR.haze[k]>.1)o.push(cellXZ(k).map(v=>+v.toFixed(3))); return o;};
+window.__grWet=()=>{GR.wet=1; return 1;};
+window.__grSim=(tool,pts)=>{ if(tool==='gFloat'&&(GR.phase==='svp'||!GR.segs.length))return 'not ready'; for(let i=1;i<pts.length;i++){const A=new THREE.Vector3(pts[i-1][0],0,pts[i-1][1]), B=new THREE.Vector3(pts[i][0],0,pts[i][1]); if(tool==='gFloat')floatStep(A,B,.016); else spongeStep(A,B);} return {fill:+grFill().toFixed(3),haze:+grHazeAvg().toFixed(3),load:+GR.load.toFixed(2),wet:+GR.wet.toFixed(2)};};
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
   let aim=opts.aim; if(!aim&&!opts.cond&&!opts.pull){ if(target===P_GOATS)aim=['part','goats']; else if(target===P_SUPPLY)aim=['gateA','supply']; else if(target===P_SHELF)aim=['shelf']; else if(target===P_OUT)aim=['output','gateB']; else if(target===P_BENCH)aim=null; }
@@ -2152,7 +2341,7 @@ function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=
   rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
   if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
   if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
-function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAdh(dt); updateLay(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAdh(dt); updateLay(dt); updateGrout(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}
