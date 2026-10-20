@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Склад+Цех v6.4 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v6.5 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@ button:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 #e14b7a}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.4 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.5 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(52% + 18px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -46,6 +46,7 @@ import * as THREE from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -572,7 +573,8 @@ function updateWalk(dt,inp){
    const move=new THREE.Vector2().addScaledVector(f,-inp.y).addScaledVector(r,inp.x);
    if(move.length()>0){move.normalize(); playerPos.addScaledVector(move,2.3*dt*inp.length())}
  }
- playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-9.3,8.5); // v5.5 north entry side is playable
+ playerPos.x=THREE.MathUtils.clamp(playerPos.x,-10,10); playerPos.y=THREE.MathUtils.clamp(playerPos.y,-9.3,8.5);
+ if(typeof mode!=='undefined'&&mode==='workshop'&&typeof benchPos!=='undefined'){const R_=.28, hx=BENCH_W/2+R_, hz=BENCH_D/2+R_; const dx=playerPos.x-benchPos.x, dz=playerPos.y-benchPos.y; if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx), pz=hz-Math.abs(dz); if(px<pz)playerPos.x=benchPos.x+Math.sign(dx||1)*hx; else playerPos.y=benchPos.y+Math.sign(dz||1)*hz;}} // v6.5 bench collision // v5.5 north entry side is playable
  // v5.7: pallet is a LOW 0.14m step, NOT a solid trap. Old code pushed the player onto a
  // fixed 0.95m circle around pallet centre; stepping onto/into that circle from a corner
  // latched the player (push direction != entry direction, no way up or off).
@@ -806,8 +808,31 @@ for(const gx of[-.65,.65]){const t=makeTrestle(gx<0?'Trestle_Left':'Trestle_Righ
 // workbench + tools (each separate, named)
 const benchPos=new THREE.Vector2(3.5,-3.5);
 const bench=new THREE.Group(); bench.name='Workbench'; bench.position.set(benchPos.x,0,benchPos.y); WG.add(bench);
-wbox(bench,0,.88,0,2.2,.08,1.0,0x8d6b48); for(const [sx,sz] of [[-1,-.4],[1,-.4],[-1,.4],[1,.4]]) wbox(bench,sx,.44,sz,.08,.88,.08,M.dark);
-function toolHome(x,z){return new THREE.Vector3(benchPos.x+x,.98,benchPos.y+z)}
+// v6.5: user's Workbench v5 (Blender) -> workbench.glb (meshopt, 52k tris). Real size: top 2100x1800, top surface 0.80 m; front (drawers) faces +Z (toward the trestles).
+const BENCH_TOP=.80, BENCH_W=2.10, BENCH_D=1.80, BENCH_DY=BENCH_TOP-.92, TOOL_DZ=.52; // tools sit along the front edge of the top
+const WB_MOVE={"Drawer_1": {"d": [0.0, 0.0, 0.42]}, "Drawer_2": {"d": [0.0, 0.0, 0.42]}, "Drawer_3": {"d": [0.0, 0.0, 0.42]}, "Drawer_4": {"d": [0.0, 0.0, 0.42]}, "Drawer_Deep_Front": {"d": [0.0, 0.0, 0.6]}, "Drawer_Side_Left": {"d": [-0.5, 0.0, -0.0]}, "Drawer_Side_Left_Latch_Bolt": {"d": [0.0, 0.0, 0.02], "latchOf": "Drawer_Side_Left"}, "Drawer_Side_Right": {"d": [0.5, 0.0, -0.0]}, "Drawer_Side_Right_Latch_Bolt": {"d": [0.0, 0.0, 0.02], "latchOf": "Drawer_Side_Right"}, "Tray_Left_Pivot": {"d": [0.0, 0.0, -0.0], "axis": [0.0, 1.0, -0.0], "ang": 1.5708}, "Tray_Right_Pivot": {"d": [0.0, 0.0, -0.0], "axis": [0.0, 1.0, -0.0], "ang": -1.5708}}; // from Blender fcurves (drawers slide, side-drawer latch bolts, swing trays)
+const benchFallback=new THREE.Group(); bench.add(benchFallback); wbox(benchFallback,0,BENCH_TOP-.03,0,BENCH_W,.06,BENCH_D,0x8d6b48); for(const [sx,sz] of [[-1,-.85],[1,-.85],[-1,.85],[1,.85]]) wbox(benchFallback,sx,(BENCH_TOP-.06)/2,sz,.06,BENCH_TOP-.06,.06,M.dark);
+const benchHit=new THREE.Mesh(new THREE.BoxGeometry(BENCH_W,.08,BENCH_D),new THREE.MeshBasicMaterial({visible:false})); benchHit.position.y=BENCH_TOP-.04; benchHit.name='BenchTopHitbox'; bench.add(benchHit); // cheap raycast target instead of 52k tris
+const WB_PARTS={}; let WB_READY=false;
+if(/[?&]wbns/.test(location.search)||(matchMedia('(pointer:coarse)').matches&&!/[?&]wbfull/.test(location.search)))window.__noWbShadow=1; /* phones: Lambert + no bench shadow casting (~1.5x FPS) */ if(!/[?&]oldbench/.test(location.search)){const ld=new GLTFLoader(); ld.setMeshoptDecoder(MeshoptDecoder); ld.load('workbench.glb',gl=>{ const m=gl.scene; m.name='Workbench_v5'; m.position.set(-1.0,0,.85); bench.add(m); bench.remove(benchFallback);
+   m.traverse(o=>{if(o.isMesh&&o.material&&o.material.metalness>.5){o.material.metalness=.35; o.material.roughness=Math.max(.35,o.material.roughness);} /* no env map in the scene: full metal renders black */ if(o.isMesh){o.geometry.computeBoundingBox(); const _s=o.geometry.boundingBox.getSize(new THREE.Vector3()); if(window.__noWbShadow&&o.material){const om=o.material; o.material=new THREE.MeshLambertMaterial({color:om.color,map:om.map,emissive:om.emissive,emissiveIntensity:om.emissiveIntensity});} o.castShadow=!window.__noWbShadow&&Math.max(_s.x,_s.y,_s.z)>.3; o.receiveShadow=false; o.raycast=()=>{}; if(o.material&&o.material.emissive&&o.material.emissiveIntensity>0&&o.material.emissive.getHex())o.castShadow=false;}});
+   bench.updateMatrixWorld(true);
+   for(const name in WB_MOVE){let n=null; m.traverse(o=>{if(!n&&(o.name===name||o.name===name+'001'||o.name===name+'.001'))n=o;}); if(!n)continue; const e=WB_MOVE[name];
+     const bb=new THREE.Box3(); n.traverse(o=>{if(o.isMesh){o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));}});
+     WB_PARTS[name]={node:n,e,pos0:n.position.clone(),rot0:n.rotation.y,k:0,target:0};
+     if(e.latchOf||bb.isEmpty())continue;
+     const sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3()); const hb=new THREE.Mesh(new THREE.BoxGeometry(sz.x+.004,sz.y+.004,sz.z+.004),new THREE.MeshBasicMaterial({visible:false}));
+     n.add(hb); hb.position.copy(n.worldToLocal(c.clone())); hb.name='Hit_'+name; hb.userData.aimId='wb:'+name; WB_PARTS[name].hit=hb;
+     AIM['wb:'+name]={obj:hb,label:WB_LABEL(name)}; }
+   WB_READY=true; window.__wbParts=()=>Object.keys(WB_PARTS);},undefined,e=>console.warn('workbench.glb',e));}
+function WB_LABEL(n){return n.startsWith('Tray')?(n.includes('Left')?'Поворотная полка (левая)':'Поворотная полка (правая)'):n==='Drawer_Deep_Front'?'Глубокий ящик':n.startsWith('Drawer_Side')?(n.includes('Left')?'Боковой ящик (левый, с защёлкой)':'Боковой ящик (правый, с защёлкой)'):'Ящик '+n.split('_')[1];}
+function wbToggle(name){const P=WB_PARTS[name]; if(!P)return; P.target=P.target?0:1; const L=WB_PARTS[name+'_Latch_Bolt']; toast((P.target?'📂 Открываю: ':'📁 Закрываю: ')+WB_LABEL(name)+(L?' (защёлка)':''));}
+let _wbT=0; function updateWB(){ const now=performance.now()/1000; const dt=Math.min(.1,_wbT?now-_wbT:0); _wbT=now; for(const name in WB_PARTS){const P=WB_PARTS[name]; if(P.e.latchOf)continue; const L=WB_PARTS[name+'_Latch_Bolt'];
+   let can=true; if(L){ if(Math.abs(P.k-P.target)>1e-3){L.target=1; can=L.k>=.95;} else L.target=0; const sl=6*dt; L.k+=THREE.MathUtils.clamp(L.target-L.k,-sl,sl); L.node.position.set(L.pos0.x+L.e.d[0]*L.k,L.pos0.y+L.e.d[1]*L.k,L.pos0.z+L.e.d[2]*L.k);}
+   if(can){const sp=2.2*dt; P.k+=THREE.MathUtils.clamp(P.target-P.k,-sp,sp);}
+   const ease=P.k*P.k*(3-2*P.k); if(P.e.axis){P.node.rotation.y=P.rot0+P.e.ang*ease;} else {P.node.position.set(P.pos0.x+P.e.d[0]*ease,P.pos0.y+P.e.d[1]*ease,P.pos0.z+P.e.d[2]*ease);} }}
+window.__wbToggle=wbToggle; window.__wbState=()=>Object.fromEntries(Object.entries(WB_PARTS).map(([k,P])=>[k,+P.k.toFixed(2)]));
+function toolHome(x,z){return new THREE.Vector3(benchPos.x+x,.98+BENCH_DY,benchPos.y+z+TOOL_DZ)}
 const wTools={};
 function regTool(id,grp,x,z){grp.position.copy(toolHome(x,z)); grp.name=id; scene.add(grp); grp.userData.home=grp.position.clone(); wTools[id]=grp; return grp;}
 {const h=new THREE.Group(); cyl(h,0,0,-.01,.016,.32,0x8d6b48,'z',20); const hd=wbox(h,0,.012,.16,.032,.032,.12,0xd7dde2); hd.rotation.x=Math.PI/2; // v6.3 hammer: handle D32 L320, head 120x32
@@ -827,7 +852,7 @@ function regTool(id,grp,x,z){grp.position.copy(toolHome(x,z)); grp.name=id; scen
  r.userData.fitting=new THREE.Vector3(.072,.07,0);
  r.userData.shapes=[{t:'cyl',a:G0.toArray(),b:G1.toArray(),r:.018},{t:'cap',a:T0.toArray(),b:T1.toArray(),r:.0055,trigger:true,name:'trigger'},{t:'cyl',a:[0,0,0],b:[0,.124,0],r:.047,name:'base'},{t:'cyl',a:[0,.245,-.135],b:[0,.245,.105],r:.022,name:'head'},{t:'cyl',a:[0,.211,-.03],b:[0,.233,.03],r:.021,name:'yoke'}];
  r.userData.spec={axis:[0,1,0],up:[0,0,1],grasp:[0,.150,.003],kind:'pistol'};
- regTool('riveter',r,-.35,.15); r.position.y=.925; r.userData.home=r.position.clone();}
+ regTool('riveter',r,-.35,.15); r.position.y=.925+BENCH_DY; r.userData.home=r.position.clone();}
 {const p=new THREE.Group(); for(const sx of[-.0085,.0085]) cyl(p,sx,0,-.02,.0085,.13,0xff8c42,'z',16); wbox(p,0,0,.075,.02,.012,.06,0xd7dde2); wbox(p,0,0,.05,.026,.014,.02,0xb0b8c0); // v6.3 pliers 200: two handles D17 -> grip 34x17
  p.userData.shapes=[{t:'cyl',a:[-.0085,0,-.085],b:[-.0085,0,.045],r:.0085},{t:'cyl',a:[.0085,0,-.085],b:[.0085,0,.045],r:.0085}]; p.userData.spec={axis:[0,0,1],up:[1,0,0],grasp:[0,0,-.025],kind:'power'}; regTool('pliers',p,.05,-.2);}
 // v5.9 hand roller after user photo: straight steel round handle d25 L150 with a ring groove near top
@@ -845,11 +870,11 @@ function regTool(id,grp,x,z){grp.position.copy(toolHome(x,z)); grp.name=id; scen
  cyl(r,0,.155,0,.0125,.145,ST,'y',16);                               // handle d25 L~150
  r.userData.spin=spin;
  r.userData.shapes=[{t:'cyl',a:[0,.083,0],b:[0,.228,0],r:.0125},{t:'cyl',a:[0,.038,0],b:[0,.083,0],r:.011}]; r.userData.spec={axis:[0,1,0],up:[0,0,1],grasp:[0,.16,0],kind:'power'};
- regTool('roller',r,.42,.18); r.rotation.x=-Math.PI/2; r.position.y=.945; r.userData.home=r.position.clone();}
+ regTool('roller',r,.42,.18); r.rotation.x=-Math.PI/2; r.position.y=.945+BENCH_DY; r.userData.home=r.position.clone();}
 {const m=new THREE.Group(); cyl(m,0,0,0,.0095,.14,0xff3d71,'z',20); cyl(m,0,0,.085,.0095,.03,0x222222,'z',20); // v6.3 paint marker D19 L170
  m.userData.shapes=[{t:'cyl',a:[0,0,-.07],b:[0,0,.10],r:.0095}]; m.userData.spec={axis:[0,0,1],up:[0,1,0],grasp:[0,0,-.01],kind:'power'}; regTool('marker',m,.72,-.15);}
 {const g=new THREE.Group(); const bag=new THREE.Mesh(new THREE.BoxGeometry(.16,.05,.11),new THREE.MeshPhysicalMaterial({color:0xdfe9f2,transparent:true,opacity:.55,roughness:.2,clearcoat:1})); bag.position.y=.025; g.add(bag); wbox(g,0,.051,-.05,.16,.006,.012,0x2f6fd6);
- for(let i=0;i<26;i++){const r=cyl(g,(Math.random()-.5)*.13,.012+Math.random()*.025,(Math.random()-.5)*.08,.0024,.018,0xc9d0d6,'x',6); r.rotation.y=Math.random()*3;} regTool('rivetbag',g,-.62,-.12); g.position.y=.905; g.userData.home=g.position.clone();} // v6.3 bag of blind rivets 4.8x12
+ for(let i=0;i<26;i++){const r=cyl(g,(Math.random()-.5)*.13,.012+Math.random()*.025,(Math.random()-.5)*.08,.0024,.018,0xc9d0d6,'x',6); r.rotation.y=Math.random()*3;} regTool('rivetbag',g,-.62,-.12); g.position.y=.905+BENCH_DY; g.userData.home=g.position.clone();} // v6.3 bag of blind rivets 4.8x12
 {const s=new THREE.Group(); cyl(s,0,0,0,.016,.11,0xffd400,'z',20); cyl(s,0,0,.105,.003,.10,0xd7dde2,'z',8); // v6.3 screwdriver: handle D32 L110, shaft D6 L100
  s.userData.shapes=[{t:'cyl',a:[0,0,-.055],b:[0,0,.055],r:.016}]; s.userData.spec={axis:[0,0,1],up:[0,1,0],grasp:[0,0,-.005],kind:'power'}; regTool('screwdriver',s,.9,.15);}
 // rivet box, sticker, insulation pack on/near bench
@@ -1051,12 +1076,13 @@ function forksUnderSupply(){const fc=forkCenter(); const al=Math.abs(Math.sin(ja
 // ---- v5.9 CROSSHAIR AIM: raycast from camera centre, range 2.5m, highlight + label ----
 const aimRay=new THREE.Raycaster(); aimRay.far=3.0; let wAim=null, wAimRoot=null, wAimIdx=-1;
 const AIM={}; function aimable(id,obj,label){obj.userData.aimId=id; AIM[id]={obj,label}; return obj;}
-function aimRoots(){const a=Object.values(AIM).map(x=>x.obj).filter(o=>o&&o.visible&&o.parent); for(const o of [riffleSheet,monogalSheet,coverUnit,outputStack,insulPack]) if(o.visible)a.push(o); if(AIM_BATO_HB&&batoStack.visible)a.push(AIM_BATO_HB); if(curPart&&curPart.visible)a.push(curPart); return a;}
+function aimRoots(){const a=Object.values(AIM).map(x=>x.obj).filter(o=>o&&o.visible&&o.parent); for(const o of [riffleSheet,monogalSheet,coverUnit,outputStack,insulPack]) if(o.visible)a.push(o); if(AIM_BATO_HB&&batoStack.visible)a.push(AIM_BATO_HB); for(const k in WB_PARTS){if(WB_PARTS[k].hit)a.push(WB_PARTS[k].hit);} if(curPart&&curPart.visible)a.push(curPart); return a;}
 function setGlow(root,on){if(window.noGlow)return;root.traverse(m=>{if(m.isMesh){ if(on&&!m.userData.ownMat){m.material=Array.isArray(m.material)?m.material.map(x=>x.clone()):m.material.clone(); m.userData.ownMat=true;} const ms=Array.isArray(m.material)?m.material:[m.material]; for(const mt of ms){if(!mt.emissive)continue; if(on){if(mt.userData.e0===undefined)mt.userData.e0=mt.emissive.getHex(); mt.emissive.setHex(0x4a6cff); mt.emissiveIntensity=.35;} else if(mt.userData.e0!==undefined){mt.emissive.setHex(mt.userData.e0); mt.emissiveIntensity=1;}}}});}
 function updateAim(){
   if(mode!=='workshop')return; camera.updateMatrixWorld();
   aimRay.setFromCamera(new THREE.Vector2(0,0),camera);
   const hits=aimRay.intersectObjects(aimRoots(),true);
+  if(hits.length>1&&hits[0].object===benchHit&&hits[0].face&&hits[0].face.normal.y<.5){const j=hits.findIndex(h=>h.object.userData.aimId&&h.object.userData.aimId.startsWith('wb:')); if(j>0&&hits[j].distance-hits[0].distance<.25)hits.splice(0,j);} // ray enters the top slab through its edge face → the drawer/tray below wins
   let found=null; wAimIdx=-1; for(const h of hits){ if(h.object.userData.rivetIdx!==undefined&&rivetPts[h.object.userData.rivetIdx]){wAimIdx=h.object.userData.rivetIdx; found={id:'rivet',root:rivetPts[wAimIdx]}; break;} let o=h.object; while(o&&!(o.userData.aimId||o===curPart))o=o.parent; if(!o)continue; const id=o===curPart?'part':o.userData.aimId; if(holdingW&&id===holdingW)continue; if(holding==='jack'&&id==='jack')continue; found={id,root:o}; break;}
   if(wAimRoot&&(!found||found.root!==wAimRoot))setGlow(wAimRoot,false);
   const _cs=curW(); const noGl=found&&found.id==='part'&&_cs&&_cs.aim&&_cs.aim.includes('trough'); if(found&&found.root!==wAimRoot&&!noGl)setGlow(found.root,true);
@@ -1064,7 +1090,7 @@ function updateAim(){
   const el=$('aimLabel'); if(el){ if(found){el.style.display='block'; el.textContent=found.id==='rivet'?`Заклёпка ${wAimIdx+1}/${rivetPts.length} — ${({aim:'отверстие',in:'вставлена',done:'проклёпана'})[rivetPts[wAimIdx].userData.state]}`:found.id==='part'?(curPart.name.includes('Shield')?'Щит на козлах':curPart.name.includes('Floor')?'Пол кабины':curPart.name.includes('Ceiling')?'Потолок':'Плафон'):AIM[found.id].label;} else el.style.display='none'; }
 }
 const AIM_BY_TARGET=new Map(); let AIM_BATO_HB=null;
-aimable('jack',jack,'Рохля'); aimable('goats',goats,'Козлы'); aimable('bench',bench,'Верстак'); aimable('supply',supplyPallet,'Поддон с деталями');
+aimable('jack',jack,'Рохля'); aimable('goats',goats,'Козлы'); aimable('bench',benchHit,'Верстак'); aimable('supply',supplyPallet,'Поддон с деталями');
 {const hb=new THREE.Mesh(new THREE.BoxGeometry(1.05,.42,1.0),new THREE.MeshBasicMaterial({visible:false})); hb.name='BatoHitbox'; hb.position.set(2.2,.21,-1.9); scene.add(hb); hb.userData.aimId='bato'; AIM_BATO_HB=hb;}
 aimable('output',outputPallet,'Выходной поддон'); aimable('bato',batoStack,'Лист шумки — Батопласт 600×600'); aimable('shelf',shelf,'Стеллаж'); aimable('roll',wRoll,'Рулон изолона');
 aimable('gateA',gateA.g,'Ворота А (приёмка)'); aimable('doorA',gateA.door,'Калитка ворот А'); aimable('doorB',gateB.door,'Калитка ворот Б'); aimable('gateB',gateB.g,'Ворота Б (отправка)');
@@ -1158,8 +1184,11 @@ window.__aimAt=function(what,idx){ // test helper: walk next to the target and t
   else if(what==='rivet'){p=rivetPts[idx].getWorldPosition(v.clone()); const c=curPart.getWorldPosition(v.clone()); const n=new THREE.Vector2(p.x-c.x,p.z-c.z); if(Math.abs(n.y)<.05)n.set(0,p.z>=c.z?1:-1); n.set(0,Math.sign(n.y)||1); from=new THREE.Vector2(p.x,p.z).addScaledVector(n,1.05);}
   else { const o=what==='supply'?supplyPallet.children[supplyPallet.children.length-1]:what==='part'?curPart:what==='goats'?goats:what==='bato'?batoStack:what==='output'?outputPallet:what==='floorTool'?wTools[idx]:wTools[what]||AIM[what].obj;
     const bb=new THREE.Box3().setFromObject(o); p=bb.getCenter(v.clone()); if(what==='part'||what==='goats'||what==='bato'||what==='output'){p.y=bb.max.y-.01;}
-    const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:1.1);}
+    const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(wTools[what]||what==='floorTool'&&wTools[idx]&&wTools[idx].position.distanceTo(wTools[idx].userData.home)<.05||what==='bench'){ if(what==='bench'){p.set(benchPos.x,BENCH_TOP,benchPos.y+BENCH_D/2-.15);} d.set(0,1);} if(what.startsWith&&what.startsWith('wb:')){const P=WB_PARTS[what.slice(3)]; if(P&&P.hit){P.hit.getWorldPosition(p); const c=new THREE.Vector2(p.x-benchPos.x,p.z-benchPos.y); d.copy(Math.abs(c.x)/BENCH_W>Math.abs(c.y)/BENCH_D?new THREE.Vector2(Math.sign(c.x),0):new THREE.Vector2(0,Math.sign(c.y)||1)); const hb=new THREE.Box3().setFromObject(P.hit); if(what.includes('Tray')){d.set(0,1); p.z=hb.max.z; p.y=hb.min.y+.03;} else { if(d.x)p.x=d.x>0?hb.max.x:hb.min.x; else p.z=d.y>0?hb.max.z:hb.min.z; p.y=Math.min(p.y,BENCH_TOP-.12);}}} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:(what.startsWith&&what.startsWith('wb:'))?(what.includes('Tray')?0.6:0.75):1.1);}
   playerPos.copy(from); const eye=(window.demoCamY||1.62); const dx=p.x-from.x, dz=p.z-from.y; playerYaw=Math.atan2(dx,dz); playerPitch=Math.atan2(p.y-eye,Math.hypot(dx,dz)); return [p.x,p.y,p.z];};
+window.__rayDbg=()=>{camera.updateMatrixWorld(); aimRay.setFromCamera(new THREE.Vector2(0,0),camera); return aimRay.intersectObjects(aimRoots(),true).slice(0,4).map(h=>[h.object.name,+h.distance.toFixed(2)]).concat([[camera.position.toArray()]]);};
+window.__rinfo=()=>({calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries});
+window.__wbBox=k=>{const b=new THREE.Box3().setFromObject(AIM['wb:'+k].obj);return [b.min.toArray().map(v=>+v.toFixed(3)),b.max.toArray().map(v=>+v.toFixed(3))];};
 window.__look=(pt,dy)=>{playerPitch=pt; if(dy)playerYaw+=dy;};
 window.__runUntil=pre=>{demoFreeze=false; let g=0; while(curW()&&!curW().title.startsWith(pre)&&g++<400){const st=curW(); if(st.pull||st.takeOnly)advanceW(); else if(st.holds){st.run(()=>{}); advanceW();} else {st.run(()=>advanceW()); while(wAnim){const a=wAnim; a.fn(1); wAnim=null; a.done&&a.done();}}} holdingW=null; updateHUDW(); return curW().title;};
 window.__setHold=h=>{holdingW=h;};
@@ -1233,6 +1262,7 @@ function nearWInteract(){
   // v5.9: ONLY the object under the crosshair (raycast 2.5m) can be taken
   const st0=curW(); if(holding) return null; if(!wAim) return null;
   if(wAim==='jack') return {id:'jack',label:'✋ Взять рохлю'};
+  if(wAim&&wAim.startsWith('wb:')){const n=wAim.slice(3); return {id:wAim,label:(WB_PARTS[n]&&WB_PARTS[n].target?'📁 Закрыть: ':'📂 Открыть: ')+WB_LABEL(n)};}
   if(wAim==='doorA'||wAim==='doorB'){const gt=wAim==='doorA'?gateA:gateB; return {id:wAim,label:gt.g.userData.doorOpen?'🚪 Закрыть калитку':'🚪 Открыть калитку'};}
   if(wTools[wAim]) return {id:wAim,label:'✋ Взять: '+AIM[wAim].label};
   if(wAim==='roll'&&st0&&st0.pull) return {id:'edgeW',label:'✋ Взять край изолона'};
@@ -1262,6 +1292,7 @@ function doTakeW(){
   if(holdingW){ if(wAim!=='bench'&&holdingW!=='sheetW'){toast('🎯 Наведи прицел на верстак, чтобы положить инструмент');return;} const t=wTools[holdingW]; if(t){t.position.copy(t.userData.home); if(holdingW==='roller')t.rotation.set(-Math.PI/2,0,0); else t.rotation.set(0,0,0);} holdingW=null; updateHUDW(); return;}
   if(holding){holding=null; updateHUDW(); return;}
   const it=nearWInteract(); if(!it)return;
+  if(it.id.startsWith&&it.id.startsWith('wb:')){wbToggle(it.id.slice(3)); updateHUDW(); return;}
   if(it.id==='doorA'||it.id==='doorB'){toggleDoor(it.id==='doorA'?gateA:gateB); updateHUDW(); return;}
   if(it.id==='jack'){holding='jack'; started=true;}
   else if(it.id==='edgeW'){holdingW='edgeW'; started=true; toast('✊ Держишь край изолона — иди к выходному поддону');}
@@ -1329,7 +1360,7 @@ function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=
   rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
   if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
   if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
-function updateWorkshop(dt){ updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+function updateWorkshop(dt){ updateWB(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}
@@ -1382,6 +1413,7 @@ if(mode==='workshop'&&wdemo){
   if(wdemo==='w_gateB_open'){ setGate(gateB,1); wLook(4.5,-1.2,12,0,.22); }
   if(wdemo==='w_fork34'){ stacker.position.set(-6,0,2.5); stacker.rotation.y=0; stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.set(-6+1.2,.12,2.5); wLook(-1.8,6.2,-6.3,2.5,-.18); }
   if(wdemo==='w_forkgate'){ setGate(gateA,1); stacker.position.set(-11.6,0,0); stackOnSupply('shield'); supplyPallet.visible=true; supplyPallet.position.set(-10.4,.12,0); wLook(-5.2,2.6,-11,0,.02); }
+  if(wdemo==='w_bench'){ wLook(benchPos.x-1.9,benchPos.y+2.6,benchPos.x,benchPos.y+.2,-.42); window.noGlow=true; if(WQ.get('open')){const iv=setInterval(()=>{if(!WB_READY)return; clearInterval(iv); for(const n of ['Drawer_1','Drawer_Deep_Front','Drawer_Side_Left','Tray_Left_Pivot'])wbToggle(n);},200);} }
   if(wdemo==='w_hold'){ const tq=WQ.get('tool')||'riveter'; holdingW=tq; partShield(); wLook(-1.8,1.9,0,0,-.3); }
   if(wdemo==='w_haul'){ stackOnSupply('shield'); supplyPallet.visible=true; holding='jack'; jackPos.set(-4.6,-.9); jackAng=.9; supplyCarried=true; const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2; wIndex=WI('Довези'); holding=null; wLook(-2.2,-3.6,-4.4,-.6,-.32); }
   if(wdemo==='w_aim'){ wLook(3.0,-2.55,2.7,-3.7,-.62); }

@@ -12,8 +12,9 @@ with sync_playwright() as pw:
         pg.evaluate(f'__aimAt({json.dumps(w)},{json.dumps(i)})'); time.sleep(.3)
         for _ in range(20):
             st=S()
-            if st['wAim'] and (w!='rivet' or st['wAimIdx']==i): break
-            time.sleep(.15)
+            exp='part' if w=='trough' else (w if w in ('bench','part','bato','goats','output','supply') else None)
+            if st['wAim'] and (w!='rivet' or st['wAimIdx']==i) and (exp is None or st['wAim']==exp): break
+            time.sleep(.3)
         time.sleep(.2)
     def waitanim():
         for _ in range(100):
@@ -23,7 +24,7 @@ with sync_playwright() as pw:
         st=S(); key='actDis' if btn=='action' else 'takeDis'
         if st[key]: fails.append((st['title'],what,st['act'] if btn=='action' else st['take'],st['wAim'],st['holdingW'])); return False
         pg.evaluate(f"document.getElementById('{btn}').click()"); time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v64_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v65_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
