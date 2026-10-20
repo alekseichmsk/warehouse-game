@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v6.9 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.0 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -61,11 +61,12 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
  #rotBtns button{padding:7px!important;min-width:44px!important}
  #toast{top:auto;bottom:calc(12px + var(--sb));max-width:min(40vw,360px);font-size:12px}
  #help{display:none}
+ #sawPanel{top:calc(var(--st) + 60px)!important}
 }
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.9 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.0 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -1041,7 +1042,7 @@ function supportBelow(x,z,yTop,B){ // highest upward surface below yTop at (x,z)
   const inTop=Math.abs(x-benchPos.x)<BENCH_W/2&&Math.abs(z-benchPos.y)<BENCH_D/2;
   for(const c of B.conts){const I=c.inner; if(x>I.x0&&x<I.x1&&z>I.z0&&z<I.z1&&I.y<=yTop+.002&&I.y>best.y&&(c.P.k>.02||B.host===c.n)){ if(inTop&&!c.open&&B.host!==c.n)continue; best={y:I.y,cont:c};}}
   if(inTop&&BENCH_TOP<=yTop+.002&&BENCH_TOP>best.y)best={y:BENCH_TOP,cont:null};
-  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation].filter(o=>o&&o.visible&&o.parent);
+  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation,window.__sawStation,window.__tileStock].filter(o=>o&&o.visible&&o.parent);
   _dr.set(new THREE.Vector3(x,yTop+.002,z),_dn); _dr.far=yTop+.002-best.y; if(_dr.far>0){for(const h of _dr.intersectObjects(objs,true)){if(!h.face||!isShown(h.object))continue; const nY=h.face.normal.clone().transformDirection(h.object.matrixWorld).y; if(nY>.5){if(h.point.y>best.y)best={y:h.point.y,cont:null}; break;}}}
   return best;}
 function restQuat(t,yaw){return new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0)).multiply(t.userData.homeQ||new THREE.Quaternion());}
@@ -1174,25 +1175,6 @@ function ensureMandrel(){const t=wTools.riveter; if(!t)return null; let m=t.getO
   m.rotation.x=Math.PI/2; m.position.set(0,.245,.171-.002); m.userData.keep=true; t.add(m); return m;}
 setInterval(ensureMandrel,1000);
 
-// ===================== v6.9 STAGE 1: lift (elevator) cabin floor station + tape measure =====================
-// Floor size 1100x2100 (passenger lift ~1000 kg); tray: RHS 60x40x2 perimeter + 4 RHS 40x40x2 cross members, 2 mm top sheet,
-// 20x20x2 rim angle on 3 sides; door side: AMg2 checker plate «чечевица» 3+1.5 mm threshold strip 1100x150 on a 10 mm riser
-// (tiles 10 mm + adhesive ~5 mm come flush with it). Model: lift/make_lift.py (Blender) -> lift_floor_tray.glb
-const LIFT_POS=new THREE.Vector2(-4.3,-3.8), LIFT_TABLE_H=.70, LIFT_TW=2.30, LIFT_TD=1.25;
-const liftStation=new THREE.Group(); liftStation.name='LiftFloorStation'; liftStation.position.set(LIFT_POS.x,0,LIFT_POS.y); scene.add(liftStation); window.__liftStation=liftStation;
-{const S=0x3b4552, T=0x6b7480; // welded assembly table: 4 legs SHS 60, frame 80x40, slatted top 6 flat bars
- for(const sx of[-1,1])for(const sz of[-1,1]) wbox(liftStation,sx*(LIFT_TW/2-.05),LIFT_TABLE_H/2,sz*(LIFT_TD/2-.05),.06,LIFT_TABLE_H,.06,S);
- for(const sz of[-1,1]) wbox(liftStation,0,LIFT_TABLE_H-.04,sz*(LIFT_TD/2-.05),LIFT_TW,.08,.04,S);
- for(const sx of[-1,1]) wbox(liftStation,sx*(LIFT_TW/2-.05),LIFT_TABLE_H-.04,0,.04,.08,LIFT_TD,S);
- for(let i=0;i<6;i++) wbox(liftStation,-LIFT_TW/2+.2+i*(LIFT_TW-.4)/5,LIFT_TABLE_H-.01,0,.05,.02,LIFT_TD-.02,T);
- for(const sz of[-1,1]) wbox(liftStation,0,.12,sz*(LIFT_TD/2-.05),LIFT_TW-.1,.04,.04,S);
- const sign=document.createElement('canvas'); sign.width=512; sign.height=96; const c=sign.getContext('2d'); c.fillStyle='#ffd400'; c.fillRect(0,0,512,96); c.fillStyle='#1d2330'; c.font='bold 40px sans-serif'; c.fillText('ПОЛ КАБИНЫ ЛИФТА',22,46); c.font='26px sans-serif'; c.fillText('1100×2100 • плитка 300×300 / 1200×600',22,84);
- const sg=new THREE.Mesh(new THREE.PlaneGeometry(.9,.17),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(sign)})); sg.position.set(0,LIFT_TABLE_H-.04,LIFT_TD/2-.025+.001); liftStation.add(sg);
- window.__colBoxes=(window.__colBoxes||[]).concat([{x:LIFT_POS.x,z:LIFT_POS.y,hx:LIFT_TW/2,hz:LIFT_TD/2}]);
- const L=.03; window.__extraObst=[]; for(const sx of[-1,1])for(const sz of[-1,1]){const x=LIFT_POS.x+sx*(LIFT_TW/2-.05), z=LIFT_POS.y+sz*(LIFT_TD/2-.05); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(x-L,0,z-L),new THREE.Vector3(x+L,LIFT_TABLE_H,z+L)));}
- _gl.load('lift_floor_tray.glb',g=>{fixMats(g.scene); g.scene.rotation.y=Math.PI/2; g.scene.position.y=LIFT_TABLE_H; g.scene.name='LiftFloorTray_1100x2100'; liftStation.add(g.scene); window.__liftReady=true;
-   window.__liftDims=()=>{const b=new THREE.Box3().setFromObject(g.scene); return {min:b.min.toArray(),max:b.max.toArray(),sheetY:LIFT_TABLE_H+.062,x:LIFT_POS.x,z:LIFT_POS.y};};});
-}
 // --- tape measure 5 m x 25 mm (yellow ABS case with black rubber, chrome hook, lock slider) ---
 {const g=new THREE.Group(); const Y=0xffc414, K=0x1d1f24;
  const cs=wbox(g,0,0,0,.036,.072,.072,Y); wbox(g,.0185,0,0,.003,.064,.064,K); wbox(g,-.0185,0,0,.003,.064,.064,K);
@@ -1407,6 +1389,156 @@ riffleSheet.userData.aimId='shelf'; monogalSheet.userData.aimId='shelf'; coverUn
 AIM.shelf.extra=[riffleSheet,monogalSheet,coverUnit]; 
 const TOOL_LABELS={rivetbag:'Пакет резьбовых заклёпок M6',hammer:'Молоток',riveter:'Заклёпочник RX-800',pliers:'Плоскогубцы',roller:'Прикаточный валик',marker:'Маркер',screwdriver:'Отвёртка',tape:'Рулетка 5 м'};
 for(const id in wTools) aimable(id,wTools[id],TOOL_LABELS[id]||id);
+// ===================== v7.0: lift cabin floor ORDERS (size variants, finish = checker plate OR tiles) =====================
+// Tray per order (same construction as lift/make_lift.py): RHS 60x40x2 perimeter, RHS 40x40x2 cross members every ~500 mm,
+// 2 mm top sheet, 20x20x2 rim angle on 3 sides. Finish: EITHER full checker plate (рифлёнка «чечевица» sheet cut to the tray) OR tiles (2 mm seams).
+const LIFT_ORDERS=[
+ {n:1,W:1000,D:1250,kg:400, kind:'пассажирский',H:2100,finish:'tile',tile:'300×300'},
+ {n:2,W:1100,D:1400,kg:630, kind:'пассажирский',H:2100,finish:'checker'},
+ {n:3,W:1100,D:2100,kg:1000,kind:'пассажирский',H:2100,finish:'tile',tile:'1200×600'},
+ {n:4,W:1500,D:1700,kg:1000,kind:'грузовой',H:2200,finish:'checker'},
+ {n:5,W:1400,D:2400,kg:1600,kind:'грузовой',H:2200,finish:'tile',tile:'1200×600'}];
+// wall shields from the cabin size: length = cabin height H; walls = back (W) + 2 sides (D) (front = door portal, own panels);
+// each wall = standard 320 mm profiles + one filler to close the wall (a filler < 100 mm is merged: last 320 + rest split in two equal shields)
+function wallSplit(L){const n=Math.floor(L/320), r=L-n*320; if(r===0)return Array(n).fill(320); if(r<100&&n>0)return Array(n-1).fill(320).concat([(320+r)/2,(320+r)/2]); return Array(n).fill(320).concat([r]);}
+function shieldPlan(o){const back=wallSplit(o.W), side=wallSplit(o.D); const all=[...back,...side,...side]; const m={}; for(const w of all)m[w]=(m[w]||0)+1; return {H:o.H,back,side,total:all.length,list:Object.keys(m).sort((a,b)=>b-a).map(w=>`${o.H}×${w} ×${m[w]}`)};}
+window.__shieldPlan=i=>shieldPlan(LIFT_ORDERS[i]); window.__liftOrders=()=>LIFT_ORDERS.map(o=>({...o,plan:shieldPlan(o)}));
+let liftOrderIdx=Math.max(0,Math.min(LIFT_ORDERS.length-1,(+(new URLSearchParams(location.search).get('liftorder'))||3)-1));
+const LIFT_POS=new THREE.Vector2(-4.3,-3.6), LIFT_TABLE_H=.70;
+const liftStation=new THREE.Group(); liftStation.name='LiftFloorStation'; liftStation.position.set(LIFT_POS.x,0,LIFT_POS.y); scene.add(liftStation); window.__liftStation=liftStation;
+const LENS_GEO=(()=>{const g=new THREE.SphereGeometry(1,LITE?8:12,4,0,Math.PI*2,0,Math.PI/2); const a=g.attributes.position; for(let i=0;i<a.count;i++){const x=a.getX(i),y=a.getY(i),z=a.getZ(i); a.setXYZ(i,x*.0125,y*.0018,z*.00425*(1-Math.min(1,Math.abs(x)))**.45*1.25);} g.computeVertexNormals(); return g;})(); // lens 25x8.5x1.8 (same as Blender)
+function checkerSheet(W,D,t){ // AMg2 3 mm checker plate, lenses in rows ±28°
+  const g=new THREE.Group(); const al=LITE?new THREE.MeshLambertMaterial({color:0xb9bec4}):new THREE.MeshStandardMaterial({color:0xc4c9cf,metalness:.35,roughness:.35});
+  const pl=new THREE.Mesh(new THREE.BoxGeometry(W,t,D),al); pl.position.y=t/2; g.add(pl);
+  const pitch=.032,row=.018, nx=Math.floor(W/pitch), nz=Math.floor(D/row); const im=new THREE.InstancedMesh(LENS_GEO,al,nx*nz); let k=0; const m4=new THREE.Matrix4(), q=new THREE.Quaternion();
+  for(let j=0;j<nz;j++){const z=-D/2+row*(j+.5), a=(j%2?-1:1)*28*Math.PI/180, off=j%2?pitch/2:0; q.setFromAxisAngle(new THREE.Vector3(0,1,0),a);
+    for(let i=0;i<nx;i++){const x=-W/2+pitch*(i+.5)+off-pitch/4; if(Math.abs(x)>W/2-.014)continue; m4.compose(new THREE.Vector3(x,t,z),q,new THREE.Vector3(1,1,1)); im.setMatrixAt(k++,m4);}}
+  im.count=k; g.add(im); g.name='CheckerPlate_Sheet'; return g;}
+function buildTray(o){ const W=o.W/1000, D=o.D/1000; const g=new THREE.Group(); g.name=`LiftFloorTray_${o.W}x${o.D}`; const ST=0x6b737c, SH=0xa3a9ae;
+  // tray long side along x (D), width along z (W)
+  for(const s of[-1,1]){ wbox(g,0,.03,s*(W/2-.02),D,.06,.04,ST); wbox(g,s*(D/2-.02),.03,0,.04,.06,W-.08,ST);}
+  const nc=Math.max(1,Math.round(D/.5)-1); for(let i=1;i<=nc;i++) wbox(g,-D/2+i*D/(nc+1),.02,0,.04,.04,W-.08,ST);
+  wbox(g,0,.061,0,D,.002,W,SH);
+  for(const s of[-1,1]){ wbox(g,0,.072,s*(W/2-.001),D,.02,.002,ST); wbox(g,0,.063,s*(W/2-.011),D,.002,.02,ST);} wbox(g,-(D/2-.001),.072,0,.002,.02,W,ST); wbox(g,-(D/2-.011),.063,0,.02,.002,W,ST);
+  g.userData.dims={W,D,sheetY:.062}; return g;}
+let liftTray=null, liftTable=null, liftSign=null;
+function applyLiftOrder(i){ liftOrderIdx=(i+LIFT_ORDERS.length)%LIFT_ORDERS.length; const o=LIFT_ORDERS[liftOrderIdx];
+  for(const x of[liftTray,liftTable])if(x)liftStation.remove(x);
+  const TW=Math.max(2.3,o.D/1000+.2), TD=Math.max(1.25,o.W/1000+.15); liftTable=new THREE.Group(); liftTable.name='LiftAssemblyTable'; const S=0x3b4552, T=0x6b7480;
+  for(const sx of[-1,1])for(const sz of[-1,1]) wbox(liftTable,sx*(TW/2-.05),LIFT_TABLE_H/2,sz*(TD/2-.05),.06,LIFT_TABLE_H,.06,S);
+  for(const sz of[-1,1]) wbox(liftTable,0,LIFT_TABLE_H-.04,sz*(TD/2-.05),TW,.08,.04,S); for(const sx of[-1,1]) wbox(liftTable,sx*(TW/2-.05),LIFT_TABLE_H-.04,0,.04,.08,TD,S);
+  for(let k=0;k<6;k++) wbox(liftTable,-TW/2+.2+k*(TW-.4)/5,LIFT_TABLE_H-.01,0,.05,.02,TD-.02,T); for(const sz of[-1,1]) wbox(liftTable,0,.12,sz*(TD/2-.05),TW-.1,.04,.04,S);
+  const pl=shieldPlan(o); const cv=document.createElement('canvas'); cv.width=1024; cv.height=200; const c=cv.getContext('2d'); c.fillStyle='#ffd400'; c.fillRect(0,0,1024,200); c.fillStyle='#1d2330';
+  c.font='bold 44px sans-serif'; c.fillText(`ЗАКАЗ ${o.n}: ПОЛ КАБИНЫ ${o.W}×${o.D} • ${o.kg} кг`,18,52); c.font='bold 34px sans-serif'; c.fillText(o.finish==='checker'?'Отделка: РИФЛЁНКА «чечевица» 3 мм на весь пол':`Отделка: ПЛИТКА ${o.tile}, шов 2 мм`,18,104);
+  c.font='28px sans-serif'; c.fillText(`Щиты стен (H ${o.H}): ${pl.list.join(', ')} — всего ${pl.total}`,18,150); c.fillText(`(${o.kind} лифт; щелкни/действие по табличке — следующий заказ)`,18,188);
+  liftSign=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.235),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); liftSign.position.set(0,LIFT_TABLE_H-.13,TD/2+.002); liftSign.name='LiftOrderSign'; liftTable.add(liftSign);
+  aimable('liftOrder',liftSign,'Заказ: '+`${o.W}×${o.D}`);
+  liftStation.add(liftTable); liftTray=buildTray(o); liftTray.position.y=LIFT_TABLE_H; liftStation.add(liftTray);
+  window.__colBoxes=(window.__colBoxes||[]).filter(b=>b.id!=='lift').concat([{id:'lift',x:LIFT_POS.x,z:LIFT_POS.y,hx:TW/2,hz:TD/2}]);
+  const L=.03; window.__extraObst=(window.__extraObst||[]).filter(b=>!b.userData||b.userData.id!=='lift'); for(const sx of[-1,1])for(const sz of[-1,1]){const x=LIFT_POS.x+sx*(TW/2-.05), z=LIFT_POS.y+sz*(TD/2-.05); const b=new THREE.Box3(new THREE.Vector3(x-L,0,z-L),new THREE.Vector3(x+L,LIFT_TABLE_H,z+L)); b.userData={id:'lift'}; window.__extraObst.push(b);} if(typeof OBST!=='undefined')OBST=null;
+  window.__liftDims=()=>{const b=new THREE.Box3().setFromObject(liftTray); return {order:o.n,W:o.W,D:o.D,finish:o.finish,min:b.min.toArray(),max:b.max.toArray(),sheetY:LIFT_TABLE_H+.062,x:LIFT_POS.x,z:LIFT_POS.y};};
+  window.__liftReady=true; return o;}
+applyLiftOrder(liftOrderIdx); window.__liftOrder=i=>applyLiftOrder(i-1);
+// checker sheet stock for 'checker' orders: one 1500x3000 sheet on a low rack next to the station (cutting/laying = later stage)
+{const r=new THREE.Group(); r.name='CheckerSheetRack'; r.position.set(LIFT_POS.x,0,LIFT_POS.y+1.45); wbox(r,0,.05,0,3.05,.1,.25,0x3b4552); const cs=checkerSheet(3.0,.22,.003); cs.position.y=.1; r.add(cs); scene.add(r);
+ const lb=document.createElement('canvas'); lb.width=512; lb.height=64; const x=lb.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,512,64); x.fillStyle='#222'; x.font='bold 30px sans-serif'; x.fillText('Рифлёнка АМг2 1500×3000×3 «чечевица»',10,44); const m=new THREE.Mesh(new THREE.PlaneGeometry(.8,.1),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(lb)})); m.position.set(0,.05,.126); r.add(m);
+ window.__colBoxes.push({id:'rack',x:LIFT_POS.x,z:LIFT_POS.y+1.45,hx:1.52,hz:.13});}
+
+// ===================== v7.0 STAGE 2: ЗУБР ЭП-250-1200С wet tile saw + porcelain tiles =====================
+// Blender lift/make_saw.py -> tile_saw_zubr.glb. Real: table 1060x468 (h 700), disc 250 (kerf 2.2), cut 1020, depth 52, 2950 rpm, moving head on the rail.
+// Operator: put tile on the table against the fence (упор со шкалой), set the fence (mm), switch on, HOLD action to push the head along the rail -> real split.
+const SAW_POS=new THREE.Vector3(-7.3,0,-4.55), KERF=.0022, CUT_L=1.02, TABLE_Y=.70;
+const sawStation=new THREE.Group(); sawStation.name='TileSaw_ZUBR_EP-250-1200S'; sawStation.position.copy(SAW_POS); scene.add(sawStation); window.__sawStation=sawStation;
+const SAW={on:false,fence:150,tile:null,headX:-.56,cut:0,dirBack:false,pieces:[],cuts:0,glb:false,head:null,disc:null,fenceN:null,fence0:0,snd:null,water:0};
+_gl.load('tile_saw_zubr.glb',g=>{fixMats(g.scene); sawStation.add(g.scene); SAW.head=g.scene.getObjectByName('Saw_Head'); SAW.disc=g.scene.getObjectByName('Saw_Disc'); SAW.fenceN=g.scene.getObjectByName('Saw_Fence'); SAW.fence0=SAW.fenceN?SAW.fenceN.position.z:0; SAW.glb=true; setFence(SAW.fence); window.__sawReady=true;});
+{const hb=new THREE.Mesh(new THREE.BoxGeometry(1.10,.02,.50),new THREE.MeshBasicMaterial({visible:false})); hb.position.set(0,TABLE_Y-.011,-.066); hb.name='Hit_Saw'; sawStation.add(hb); aimable('saw',hb,'Плиткорез ЗУБР ЭП-250-1200С');
+ // fence scale (0..300 mm from the blade line) on the back half
+ const cv=document.createElement('canvas'); cv.width=64; cv.height=1024; const x=cv.getContext('2d'); x.fillStyle='#f4f4f0'; x.fillRect(0,0,64,1024); x.fillStyle='#111'; for(let mm=0;mm<=300;mm++){const y=mm/300*1024; const L=mm%10===0?34:mm%5===0?22:12; x.fillRect(0,y,L,mm%10===0?2:1);} x.font='bold 15px sans-serif'; for(let cm=0;cm<=30;cm+=2)x.fillText(String(cm*10),30,cm/30*1024+6);
+ const sc=new THREE.Mesh(new THREE.PlaneGeometry(.03,.30),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); sc.rotation.x=-Math.PI/2; sc.position.set(.505,TABLE_Y+.0025,-.15); sawStation.add(sc);
+ SAW.kerfMesh=new THREE.Mesh(new THREE.BoxGeometry(1,.0095,KERF),new THREE.MeshBasicMaterial({color:0x3a3f45})); SAW.kerfMesh.visible=false; sawStation.add(SAW.kerfMesh);
+ window.__colBoxes.push({id:'saw',x:SAW_POS.x,z:SAW_POS.z-.066,hx:.70,hz:.30});
+ const L=.03; for(const sx of[-1,1])for(const sz of[-1,1]){const p=new THREE.Vector3(SAW_POS.x+sx*.55,0,SAW_POS.z+sz*.23-.066); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(p.x-L,0,p.z-L),new THREE.Vector3(p.x+L,TABLE_Y-.1,p.z+L)));}}
+// water spray (pump -> guard nozzle) as simple droplets
+const WATER_N=LITE?30:70; const wGeo=new THREE.BufferGeometry(); wGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(WATER_N*3),3)); const wPts=new THREE.Points(wGeo,new THREE.PointsMaterial({color:0x9fd4ff,size:.012,transparent:true,opacity:.8})); wPts.visible=false; wPts.frustumCulled=false; sawStation.add(wPts);
+const wVel=[]; for(let i=0;i<WATER_N;i++)wVel.push(new THREE.Vector3(),0);
+function setFence(mm){SAW.fence=Math.round(THREE.MathUtils.clamp(mm,10,300)); if(SAW.fenceN)SAW.fenceN.position.z=SAW.fence0+(-SAW.fence/1000-(-.10)); if(SAW.tile&&wTools[SAW.tile])seatTile(); updSawPanel();}
+// ---- porcelain tiles ----
+const TILE_T=.009; let tileSeq=0; const tileTex=(()=>{const cv=document.createElement('canvas'); cv.width=256; cv.height=256; const x=cv.getContext('2d'); x.fillStyle='#d9d4cb'; x.fillRect(0,0,256,256); for(let i=0;i<2600;i++){x.fillStyle=`rgba(${120+Math.random()*90|0},${115+Math.random()*80|0},${105+Math.random()*70|0},${.08+Math.random()*.15})`; x.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*2,1+Math.random()*2);} const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; return t;})();
+const TILE_M=LITE?new THREE.MeshLambertMaterial({map:tileTex}):new THREE.MeshStandardMaterial({map:tileTex,roughness:.35,metalness:0}); const TILE_EDGE=new THREE.MeshLambertMaterial({color:0xb7b0a5});
+function makeTile(sx,sz,label){ const id='tile_'+(++tileSeq); const g=new THREE.Group(); g.name=id; const tx=tileTex.clone(); tx.needsUpdate=true; tx.repeat.set(sx/.3,sz/.3);
+  const mats=[TILE_EDGE,TILE_EDGE,LITE?new THREE.MeshLambertMaterial({map:tx}):new THREE.MeshStandardMaterial({map:tx,roughness:.35}),TILE_EDGE,TILE_EDGE,TILE_EDGE];
+  const m=new THREE.Mesh(new THREE.BoxGeometry(sx,TILE_T,sz),mats); m.position.y=TILE_T/2; m.castShadow=!LITE; g.add(m);
+  g.userData.tile={sx,sz}; g.userData.shapes=[{t:'cyl',a:[-.06,.0045,sz/2-.005],b:[.06,.0045,sz/2-.005],r:.006}]; g.userData.spec={axis:[1,0,0],up:[0,1,0],grasp:[0,0,0],kind:'power'}; g.userData.homeQ=new THREE.Quaternion();
+  scene.add(g); wTools[id]=g; TOOL_LABELS[id]=label||`Плитка ${Math.round(sx*1000)}×${Math.round(sz*1000)} мм`; aimable(id,g,TOOL_LABELS[id]); HOLD_POSE[id]=[0,-.36,-.62,.25,0,0]; GRIPS[id]={grip:'power'};
+  g.userData.home=TILE_STOCK.position.clone().add(new THREE.Vector3(.0,.5,.0)); return id;}
+// tile stock: pallet with a box stack of 300x300 and a crate of 1200x600
+const TILE_STOCK=new THREE.Group(); TILE_STOCK.name='TileStockPallet'; TILE_STOCK.position.set(-7.4,0,-6.55); scene.add(TILE_STOCK); window.__tileStock=TILE_STOCK;
+{const W=0xc9a46a; for(let i=0;i<3;i++)wbox(TILE_STOCK,0,.06,-.35+i*.35,1.2,.02,.1,W); for(let i=0;i<5;i++)wbox(TILE_STOCK,-.55+i*.275,.12,0,.1,.022,.8,W); for(const x of[-.55,0,.55])wbox(TILE_STOCK,x,.035,0,.1,.07,.8,W);
+ const s3=new THREE.Group(); s3.position.set(-.35,.131,0); TILE_STOCK.add(s3); for(let k=0;k<4;k++){const b=wbox(s3,0,.035+k*.07,0,.31,.07,.31,0xb98a4e); } {const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const x=cv.getContext('2d'); x.fillStyle='#b98a4e'; x.fillRect(0,0,256,128); x.fillStyle='#1d1a16'; x.font='bold 30px sans-serif'; x.fillText('КЕРАМОГРАНИТ',10,46); x.font='bold 40px sans-serif'; x.fillText('300×300×8,5',10,100); const p=new THREE.Mesh(new THREE.PlaneGeometry(.3,.15),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); p.position.set(0,.21,.156); s3.add(p);}
+ const s12=new THREE.Group(); s12.position.set(.27,.131,0); TILE_STOCK.add(s12); for(let k=0;k<8;k++){const t=new THREE.Mesh(new THREE.BoxGeometry(.6,TILE_T,1.2*0+ .6),TILE_M);} for(let k=0;k<10;k++){const t=new THREE.Mesh(new THREE.BoxGeometry(.6,TILE_T,1.2),[TILE_EDGE,TILE_EDGE,TILE_M,TILE_EDGE,TILE_EDGE,TILE_EDGE]); t.rotation.y=Math.PI/2; t.position.set(0,TILE_T*(k+.5),0); s12.add(t);} wbox(s12,0,.05,.62,1.22,.1,.02,0xc9a46a);
+ const h3=new THREE.Mesh(new THREE.BoxGeometry(.33,.3,.33),new THREE.MeshBasicMaterial({visible:false})); h3.position.set(-.35,.28,0); TILE_STOCK.add(h3); aimable('tileStock300',h3,'Керамогранит 300×300 (взять плитку)');
+ const h12=new THREE.Mesh(new THREE.BoxGeometry(1.22,.12,.62),new THREE.MeshBasicMaterial({visible:false})); h12.position.set(.27,.18,0); TILE_STOCK.add(h12); aimable('tileStock1200',h12,'Керамогранит 1200×600 (взять плитку)');
+ window.__colBoxes.push({id:'tiles',x:-7.4,z:-6.55,hx:.6,hz:.4}); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(-8,0,-6.95),new THREE.Vector3(-6.8,.45,-6.15)));}
+function isTile(id){return !!(id&&wTools[id]&&wTools[id].userData.tile);}
+function seatTile(){ const t=wTools[SAW.tile]; const d=t.userData.tile; const rot=!!t.userData.rot; const ex=rot?d.sz:d.sx, ez=rot?d.sx:d.sz; // back edge against the fence (z = -fence)
+  t.rotation.set(0,rot?Math.PI/2:0,0); t.position.copy(sawStation.localToWorld(new THREE.Vector3(0,TABLE_Y,-SAW.fence/1000+ez/2))); t.userData.ex=ex; t.userData.ez=ez; delete BODIES[SAW.tile];}
+function putOnSaw(id){ SAW.tile=id; SAW.cut=0; SAW.kerfMesh.visible=false; toolToScene(wTools[id]); holdingW=null; seatTile(); toast(`🪚 Плитка на столе, прижата к упору: ${SAW.fence} мм от диска`); updSawPanel(); updateHUDW();}
+function splitTile(){ const t=wTools[SAW.tile]; const ex=t.userData.ex, ez=t.userData.ez, w=SAW.fence/1000;
+  const a=w-KERF/2, b=ez-w-KERF/2; const cz=-w+ez/2; const P=[]; scene.remove(t); delete wTools[SAW.tile]; delete AIM[SAW.tile]; const parentId=SAW.tile; SAW.tile=null;
+  const mk=(dz,zc,lab)=>{const id=makeTile(ex,dz,lab); const g=wTools[id]; g.position.copy(sawStation.localToWorld(new THREE.Vector3(0,TABLE_Y,zc))); g.updateMatrixWorld(true); g.userData.cutFrom=parentId; P.push(id); return id;};
+  const A=mk(a,-w+a/2,`Деталь ${Math.round(ex*1000)}×${(a*1000).toFixed(1)} мм`); const B=mk(b,KERF/2+b/2,`Обрезок ${Math.round(ex*1000)}×${(b*1000).toFixed(1)} мм`);
+  for(const id of P){const g=wTools[id]; const p=g.position.clone(); physDrop(id,g,p.clone().add(new THREE.Vector3(0,.004,0)),p); BODIES[id].v.set(0,0,0); BODIES[id].qr=new THREE.Quaternion();}
+  BODIES[B].v.set(0,0,.25); // the offcut slides off toward the operator / falls if it hangs over the edge
+  SAW.pieces=P; SAW.cuts++; SAW.kerfMesh.visible=false; window.__sawLast={part:A,offcut:B,partMm:+(a*1000).toFixed(1),offcutMm:+(b*1000).toFixed(1),len:Math.round(ex*1000)}; toast(`✂ Рез готов: деталь ${(a*1000).toFixed(1)} мм + обрезок ${(b*1000).toFixed(1)} мм (пропил ${KERF*1000} мм)`); benchLayout&&benchLayout();}
+// ---- sound (WebAudio): motor hum 2950 rpm + water/cut noise ----
+function sawSound(on){ try{ if(on&&!SAW.snd){const C=new (window.AudioContext||window.webkitAudioContext)(); const o=C.createOscillator(); o.type='sawtooth'; o.frequency.value=98.3; const g=C.createGain(); g.gain.value=.025; o.connect(g).connect(C.destination); o.start();
+      const nb=C.createBuffer(1,C.sampleRate,C.sampleRate), d=nb.getChannelData(0); for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1; const n=C.createBufferSource(); n.buffer=nb; n.loop=true; const f=C.createBiquadFilter(); f.type='bandpass'; f.frequency.value=2400; const ng=C.createGain(); ng.gain.value=.0; n.connect(f).connect(ng).connect(C.destination); n.start(); SAW.snd={C,o,g,ng};}
+    if(!on&&SAW.snd){SAW.snd.C.close(); SAW.snd=null;} }catch(e){} }
+// ---- panel ----
+{const el=document.createElement('div'); el.id='sawPanel'; el.style.cssText='position:fixed;right:calc(12px + var(--sr));top:calc(var(--st) + 240px);z-index:5;display:none;gap:5px;flex-wrap:wrap;justify-content:center;width:178px;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:16px;padding:6px 8px;font-weight:800;color:#332a7a;font-size:13px;align-items:center';
+ el.innerHTML='<span id="sawFenceLbl">Упор: 150 мм</span><button data-s="pow" style="min-width:0;padding:6px 10px;font-size:13px">⏻ Пила</button><button data-s="-10" style="min-width:0;padding:6px 9px;font-size:13px">−10</button><button data-s="-1" style="min-width:0;padding:6px 9px;font-size:13px">−1</button><button data-s="+1" style="min-width:0;padding:6px 9px;font-size:13px">+1</button><button data-s="+10" style="min-width:0;padding:6px 9px;font-size:13px">+10</button><button data-s="tape" style="min-width:0;padding:6px 9px;font-size:13px">📏 = замер</button><button data-s="rot" style="min-width:0;padding:6px 9px;font-size:13px">⟲ Плитку</button>';
+ document.body.appendChild(el); el.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; sawCmd(b.dataset.s);});}
+function sawCmd(s){ if(s==='pow'){SAW.on=!SAW.on; sawSound(SAW.on); toast(SAW.on?'⏻ Пила включена: диск 2950 об/мин, вода подаётся':'⏻ Пила выключена');}
+  else if(s==='tape'){const L=window.__tapeLast; if(!L){toast('📏 Сначала сделай замер рулеткой');} else setFence(L.mm);}
+  else if(s==='rot'){ if(SAW.tile){const t=wTools[SAW.tile]; t.userData.rot=!t.userData.rot; seatTile(); toast('⟲ Плитка повернута на 90°');} }
+  else if(/^[+-]\d+$/.test(s)) setFence(SAW.fence+ +s);
+  updSawPanel();}
+window.__sawCmd=sawCmd;
+function updSawPanel(){const l=document.getElementById('sawFenceLbl'); if(l)l.textContent=`Упор: ${SAW.fence} мм${SAW.on?' • ⏻ ВКЛ':''}`; const b=document.querySelector('#sawPanel [data-s="pow"]'); if(b)b.style.background=SAW.on?'linear-gradient(135deg,#7cf28a,#25c94e)':'';}
+addEventListener('keydown',e=>{ if(mode!=='workshop')return; const k=e.key; if(k==='['||k===']'){sawCmd((k===']'?'+':'-')+(e.shiftKey?10:1));} if(k.toLowerCase()==='p'&&nearSaw())sawCmd('pow'); if(k.toLowerCase()==='r'&&nearSaw())sawCmd('rot');});
+function sawAimed(){return wAim==='saw'||(!!SAW.tile&&wAim===SAW.tile);}
+function nearSaw(){return Math.hypot(playerPos.x-SAW_POS.x,playerPos.y-SAW_POS.z)<2.4;}
+// ---- per frame ----
+function updateSaw(dt){ const near=mode==='workshop'&&nearSaw(); const pn=document.getElementById('sawPanel'); if(pn)pn.style.display=near?'flex':'none';
+  if(SAW.tile&&(holdingW===SAW.tile||!wTools[SAW.tile])){SAW.tile=null; SAW.kerfMesh.visible=false;}
+  if(SAW.disc&&SAW.on)SAW.disc.rotation.z-=dt*60;
+  const hold=(keys[' ']||window.__rollHold)&&sawAimed()&&!holdingW&&!wAnim;
+  const X0=-.56, X1=X0+CUT_L+.06; let cutting=false;
+  if(hold&&!SAW.on){ if(!SAW._warn||performance.now()-SAW._warn>2500){toast('⏻ Сначала включи пилу (кнопка ⏻ / P)'); SAW._warn=performance.now();} }
+  else if(hold&&SAW.on&&!SAW.dirBack){ const t=SAW.tile&&wTools[SAW.tile]; if(t&&t.userData.ex>CUT_L+.001){ if(!SAW._warn||performance.now()-SAW._warn>2500){toast('⚠ Длина реза плиткореза 1020 мм — поверни плитку (⟲)'); SAW._warn=performance.now();} }
+    else { SAW.headX=Math.min(X1,SAW.headX+.16*dt); if(t){const xs=-t.userData.ex/2, xe=t.userData.ex/2, w=SAW.fence/1000; if(w<t.userData.ez-.003){ const L=THREE.MathUtils.clamp(SAW.headX+.11,xs,xe)-xs; if(L>0){cutting=true; SAW.kerfMesh.visible=true; SAW.kerfMesh.scale.x=L; SAW.kerfMesh.position.set(xs+L/2,TABLE_Y+TILE_T/2+.0006,0);} if(SAW.headX-.11>=xe)splitTile(); } } }
+    if(SAW.headX>=X1-1e-4)SAW.dirBack=true; }
+  if(SAW.dirBack&&!hold){ SAW.headX=Math.max(X0,SAW.headX-.6*dt); if(SAW.headX<=X0)SAW.dirBack=false; }
+  if(SAW.head)SAW.head.position.x=SAW.headX;
+  if(SAW.snd){SAW.snd.ng.gain.value=cutting?.05:.012; SAW.snd.g.gain.value=cutting?.035:.025;}
+  // water
+  wPts.visible=SAW.on; if(SAW.on){const a=wGeo.attributes.position; for(let i=0;i<WATER_N;i++){let v=wVel[i*2]; if(typeof v!=='object'||a.getY(i)<TABLE_Y-.01||!wVel[i*2+1]){v=new THREE.Vector3((Math.random()-.5)*.6+(cutting?-.6:0),.3+Math.random()*.6,(Math.random()-.5)*.25); wVel[i*2]=v; wVel[i*2+1]=1; a.setXYZ(i,SAW.headX+.11+(Math.random()-.5)*.02,TABLE_Y+.02+Math.random()*.02,(Math.random()-.5)*.01);} v.y-=9.8*dt; a.setXYZ(i,a.getX(i)+v.x*dt,a.getY(i)+v.y*dt,a.getZ(i)+v.z*dt);} a.needsUpdate=true;}
+}
+window.__sawState=()=>({on:SAW.on,fence:SAW.fence,tile:SAW.tile,tileDims:SAW.tile&&wTools[SAW.tile]?[wTools[SAW.tile].userData.ex,wTools[SAW.tile].userData.ez]:null,headX:+SAW.headX.toFixed(3),kerf:SAW.kerfMesh.visible?+SAW.kerfMesh.scale.x.toFixed(3):0,cuts:SAW.cuts,last:window.__sawLast||null,
+  pieces:SAW.pieces.map(id=>{const g=wTools[id]; if(!g)return {id,gone:true}; const B=BODIES[id]; const d=g.userData.tile; return {id,dims:[+(d.sx*1000).toFixed(1),+(d.sz*1000).toFixed(1)],pos:g.position.toArray().map(v=>+v.toFixed(3)),asleep:B?B.asleep:null,landedOn:B?B.landedOn:null,label:TOOL_LABELS[id]};}),glb:SAW.glb,panel:document.getElementById('sawPanel').style.display});
+// ---- interaction hooks (take from stock, put on saw, HUD) ----
+{const _dt=doTakeW; doTakeW=function(){ if(wAnim)return _dt();
+   if(!holdingW&&(wAim==='tileStock300'||wAim==='tileStock1200')){const big=wAim==='tileStock1200'; const id=makeTile(big?1.2:.3,big?.6:.3,big?'Плитка 1200×600':'Плитка 300×300'); holdingW=id; toast(`✋ Взял плитку ${big?'1200×600':'300×300'}`); updateHUDW(); return;}
+   if(isTile(holdingW)&&wAim==='saw'){ if(SAW.tile){toast('🪚 На столе уже лежит плитка — сними её'); return;} putOnSaw(holdingW); return;}
+   if(isTile(holdingW)&&wAim!=='saw'){ window.__dropW&&window.__dropW(); return;}
+   if(wAim==='liftOrder'&&!holdingW){applyLiftOrder(liftOrderIdx+1); toast(`📋 Заказ ${LIFT_ORDERS[liftOrderIdx].n}: ${LIFT_ORDERS[liftOrderIdx].W}×${LIFT_ORDERS[liftOrderIdx].D}`); return;}
+   return _dt();};}
+{const _da=doActionW; doActionW=function(){ if(mode==='workshop'&&(sawAimed()&&!holdingW))return; if(mode==='workshop'&&wAim==='liftOrder'){applyLiftOrder(liftOrderIdx+1); return;} return _da();};}
+{const _uh=updateHUDW; updateHUDW=function(){_uh.apply(this,arguments); if(mode!=='workshop'||wAnim)return; const b=$('action'), tb=$('btnTake');
+   if(sawAimed()&&!holdingW){b.disabled=false; b.textContent=SAW.on?(SAW.tile?'🪚 Зажми — веди каретку с диском':'🪚 Зажми — каретка (на столе нет плитки)'):'⏻ Включи пилу (кнопка ⏻ / P)';}
+   if(!holdingW&&(wAim==='tileStock300'||wAim==='tileStock1200')){tb.disabled=false; tb.textContent='✋ Взять плитку '+(wAim==='tileStock300'?'300×300':'1200×600');}
+   if(isTile(holdingW)){tb.disabled=false; tb.textContent=wAim==='saw'?'👐 Положить на стол плиткореза (к упору)':'⬇ Положить / бросить плитку';}
+   if(wAim==='liftOrder'){b.disabled=false; b.textContent='📋 Следующий заказ (размер пола)'; if(!holdingW){tb.disabled=false; tb.textContent='📋 Следующий заказ';}}};}
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
   let aim=opts.aim; if(!aim&&!opts.cond&&!opts.pull){ if(target===P_GOATS)aim=['part','goats']; else if(target===P_SUPPLY)aim=['gateA','supply']; else if(target===P_SHELF)aim=['shelf']; else if(target===P_OUT)aim=['output','gateB']; else if(target===P_BENCH)aim=null; }
@@ -1493,7 +1625,7 @@ window.__aimAt=function(what,idx){ // test helper: walk next to the target and t
   else if(what==='rivet'){p=rivetPts[idx].getWorldPosition(v.clone()); const c=curPart.getWorldPosition(v.clone()); const n=new THREE.Vector2(p.x-c.x,p.z-c.z); if(Math.abs(n.y)<.05)n.set(0,p.z>=c.z?1:-1); n.set(0,Math.sign(n.y)||1); from=new THREE.Vector2(p.x,p.z).addScaledVector(n,1.05);}
   else { const o=what==='supply'?supplyPallet.children[supplyPallet.children.length-1]:what==='part'?curPart:what==='goats'?goats:what==='bato'?batoStack:what==='output'?outputPallet:what==='floorTool'?wTools[idx]:wTools[what]||AIM[what].obj;
     const bb=new THREE.Box3().setFromObject(o); p=bb.getCenter(v.clone()); if(what==='part'||what==='goats'||what==='bato'||what==='output'){p.y=bb.max.y-.01;}
-    const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(wTools[what]&&wTools[what].userData.home&&wTools[what].position.distanceTo(wTools[what].userData.home)<.05||what==='floorTool'&&wTools[idx]&&wTools[idx].position.distanceTo(wTools[idx].userData.home)<.05||what==='bench'){ if(what==='bench'){p.set(benchPos.x,BENCH_TOP,benchPos.y+BENCH_D/2-.15);} d.set(0,1);} if(what.startsWith&&what.startsWith('wb:')){const P=WB_PARTS[what.slice(3)]; if(P&&P.hit){P.hit.getWorldPosition(p); const c=new THREE.Vector2(p.x-benchPos.x,p.z-benchPos.y); d.copy(Math.abs(c.x)/BENCH_W>Math.abs(c.y)/BENCH_D?new THREE.Vector2(Math.sign(c.x),0):new THREE.Vector2(0,Math.sign(c.y)||1)); const hb=new THREE.Box3().setFromObject(P.hit); if(what.includes('Tray')){d.set(0,1); p.z=hb.max.z; p.y=hb.min.y+.03;} else { if(d.x)p.x=d.x>0?hb.max.x:hb.min.x; else p.z=d.y>0?hb.max.z:hb.min.z; p.y=Math.min(p.y,BENCH_TOP-.12);}}} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:(what.startsWith&&what.startsWith('wb:'))?(what.includes('Tray')?0.6:0.75):1.1);}
+    const d=new THREE.Vector2(playerPos.x-p.x,playerPos.y-p.z); if(d.length()<.01)d.set(0,1); if(what==='gateA'){d.set(1,0);p.y=2.0;} if(what==='saw'||what==='tileStock300'||what==='tileStock1200'||what==='liftOrder')d.set(0,1); if(wTools[what]&&wTools[what].userData.home&&wTools[what].position.distanceTo(wTools[what].userData.home)<.05||what==='floorTool'&&wTools[idx]&&wTools[idx].position.distanceTo(wTools[idx].userData.home)<.05||what==='bench'){ if(what==='bench'){p.set(benchPos.x,BENCH_TOP,benchPos.y+BENCH_D/2-.15);} d.set(0,1);} if(what.startsWith&&what.startsWith('wb:')){const P=WB_PARTS[what.slice(3)]; if(P&&P.hit){P.hit.getWorldPosition(p); const c=new THREE.Vector2(p.x-benchPos.x,p.z-benchPos.y); d.copy(Math.abs(c.x)/BENCH_W>Math.abs(c.y)/BENCH_D?new THREE.Vector2(Math.sign(c.x),0):new THREE.Vector2(0,Math.sign(c.y)||1)); const hb=new THREE.Box3().setFromObject(P.hit); if(what.includes('Tray')){d.set(0,1); p.z=hb.max.z; p.y=hb.min.y+.03;} else { if(d.x)p.x=d.x>0?hb.max.x:hb.min.x; else p.z=d.y>0?hb.max.z:hb.min.z; p.y=Math.min(p.y,BENCH_TOP-.12);}}} if(what==='goats'||what==='output'||what==='bato'){let top=null,ty=-9; o.traverse(m=>{if(m.isMesh){const b2=new THREE.Box3().setFromObject(m); if(b2.max.y>ty+.005){ty=b2.max.y; top=b2;}}}); if(top){p=top.getCenter(v.clone()); p.y=top.max.y-.003;} if(what==='goats')d.set(0,playerPos.y>=0?1:-1);} if(what==='gateB'){d.set(-1,0);p.y=2.0;} d.normalize(); from=new THREE.Vector2(p.x,p.z).addScaledVector(d,what==='supply'?1.3:what.startsWith('gate')?1.6:(what.startsWith&&what.startsWith('wb:'))?(what.includes('Tray')?0.6:0.75):1.1);}
   {const tl=what==='floorTool'?wTools[idx]:wTools[what]; if(tl&&p&&from){ // v6.9: off-home tool -> pick an approach direction with clear line of sight (not hidden behind a stack / trestle)
      const eyeY=(window.demoCamY||1.62), base=new THREE.Vector2(from.x-p.x,from.y-p.z), R=base.length()||1.1; const sees=f=>{const o=new THREE.Vector3(f.x,eyeY,f.y); aimRay.set(o,p.clone().sub(o).normalize()); aimRay.far=5; const h=aimRay.intersectObjects(aimRoots(),true)[0]; let q=h&&h.object; while(q){if(q===tl)return true; q=q.parent;} return false;};
      if(!sees(from)){for(const a of[.6,-.6,1.2,-1.2,1.8,-1.8,2.5,-2.5,Math.PI]){const f=new THREE.Vector2(p.x,p.z).add(base.clone().rotateAround(new THREE.Vector2(),a)); if(Math.abs(f.x-benchPos.x)<BENCH_W/2+.3&&Math.abs(f.y-benchPos.y)<BENCH_D/2+.3)continue; if(sees(f)){from=f;break;}}}}}
@@ -1672,7 +1804,7 @@ function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=
   rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
   if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
   if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
-function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}
