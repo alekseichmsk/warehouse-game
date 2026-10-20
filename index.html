@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v6.7 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v6.8 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -65,7 +65,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.7 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v6.8 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -934,6 +934,21 @@ const compressor=new THREE.Group(); compressor.position.set(5.2,0,-4.4); scene.a
 wbox(compressor,0,.45,0,.8,.9,.6,0xff6b35); cyl(compressor,0,.98,0,.18,.25,M.dark,'y',14);
 // ===== v6.6: FUBAG compressor in the corner, rigid air line to the bench, coiled PU hose to the RX-800, drop physics, containers =====
 const LITE=matchMedia('(pointer:coarse)').matches&&!/[?&]wbfull/.test(location.search);
+// ===== v6.8: THREADED RIVET NUTS (клёпка-гайка) M6, steel zinc-plated, flat flange, knurled shank — set with the RX-800 (M3–M10) =====
+// real size: shank Ø9.0, flange Ø13.0×1.5, length 15.5 mm (grip 0.5–3.0), thread M6×1.0; hole Ø9.1 mm
+const NUT={D:.009,F:.013,FT:.0015,L:.0155,HOLE:.0091,M:.006,P:.001};
+function nutGeo(set,seg){const rt=NUT.M/2, rm=rt-.00054, ro=NUT.D/2, rf=NUT.F/2, L=NUT.L-NUT.FT, yb=set?-(L-.0035):-L; const pr=[];
+  pr.push([.0031,yb],[ro*.97,yb],[ro,yb+.0004]);
+  if(set){pr.push([ro,yb+.0018],[ro*1.18,-.0072],[ro*1.40,-.0047],[ro*1.30,-.0026],[ro*1.02,-.0016]);} // upset bulge just behind the sheet
+  pr.push([ro,-.0003],[ro,0],[rf-.0004,0],[rf,.0005],[rf-.0002,NUT.FT],[rt+.0006,NUT.FT],[rt,NUT.FT-.0004]);
+  for(let y=NUT.FT-.0004;y>-.0085;y-=NUT.P){pr.push([rt,y],[rm,y-NUT.P*.5]);} // internal M6 thread (visible looking in)
+  pr.push([rt,-.0088],[.0031,-.0092],[.0031,yb]);
+  const g=new THREE.LatheGeometry(pr.map(v=>new THREE.Vector2(v[0],v[1])),seg||(LITE?16:32)); const a=g.attributes.position;
+  for(let i=0;i<a.count;i++){const x=a.getX(i),y=a.getY(i),z=a.getZ(i),r=Math.hypot(x,z); if(r>ro*.95&&r<ro*1.05&&y<-.0006&&y>yb+.0006){const th=Math.atan2(z,x), k=1+.045*Math.max(0,Math.cos(12*th)); a.setX(i,x*k); a.setZ(i,z*k);}} // 12 knurl ribs
+  g.computeVertexNormals(); return g;}
+const NUT_GEO=nutGeo(false), NUT_GEO_SET=nutGeo(true);
+const NUT_MAT=LITE?new THREE.MeshLambertMaterial({color:0xc9cdc6,side:THREE.DoubleSide}):new THREE.MeshStandardMaterial({color:0xd3d6cc,metalness:.35,roughness:.32,side:THREE.DoubleSide,emissive:0x15161a}); // zinc (slightly yellowish-blue passivation)
+const HOLE_MAT=new THREE.MeshBasicMaterial({color:0x101216}), RING_MAT=new THREE.MeshBasicMaterial({color:0xffd400,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
 // --- compressor FUBAG Free Air 240/24/2.0 S (Blender model compressor_fubag.glb, 520x250x560) in the NE corner
 compressor.position.set(10.9,0,-7.35); compressor.rotation.y=Math.PI; compressor.clear();
 const CMP_OUT=new THREE.Vector3(-.20,.40,.12); // quick coupler (model frame)
@@ -1084,11 +1099,10 @@ for(const [id,f] of [['pliers','pliers_180.glb'],['screwdriver','screwdriver_ph2
  const bagM=LITE?new THREE.MeshLambertMaterial({color:0xdde9f3,transparent:true,opacity:.55,depthWrite:false}):new THREE.MeshPhysicalMaterial({color:0xdde9f3,transparent:true,opacity:.55,roughness:.18,clearcoat:1,depthWrite:false,side:THREE.DoubleSide});
  const bag=new THREE.Mesh(geo,bagM); bag.renderOrder=2; bag.name='ZipBag'; g.add(bag);
  for(const [z,c] of [[-D/2+.012,0x2f6fd6],[-D/2+.018,0xd84a4a]]){const zp=new THREE.Mesh(new THREE.BoxGeometry(W*.98,.0022,.0035),new THREE.MeshLambertMaterial({color:c})); zp.position.set(0,.0045,z); g.add(zp);} // zip strip (blue/red tracks)
- {const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const x=cv.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,256,128); x.strokeStyle='#d33'; x.lineWidth=6; x.strokeRect(5,5,246,118); x.fillStyle='#111'; x.font='bold 30px sans-serif'; x.fillText('Заклепка',22,48); x.font='bold 36px sans-serif'; x.fillText('4,8×12',22,92); x.font='16px sans-serif'; x.fillText('ал/ст • 250 шт',22,116);
+ {const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const x=cv.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,256,128); x.strokeStyle='#d33'; x.lineWidth=6; x.strokeRect(5,5,246,118); x.fillStyle='#111'; x.font='bold 30px sans-serif'; x.font='bold 24px sans-serif'; x.fillText('Заклёпка резьбовая',14,40); x.font='bold 40px sans-serif'; x.fillText('M6',14,86); x.font='bold 18px sans-serif'; x.fillText('9×15,5 плоск.',86,80); x.font='16px sans-serif'; x.fillText('сталь/цинк • 100 шт',14,116);
   const lb=new THREE.Mesh(new THREE.PlaneGeometry(.085,.0425),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); lb.rotation.x=-Math.PI/2; lb.rotation.z=.08; lb.position.set(.03,.0285,.02); lb.renderOrder=3; g.add(lb);}
- // blind rivets 4.8x12 with mandrels: one lathe geometry, instanced
- const prof=[[0,-.007],[.0016,-.0068],[.0013,-.006],[.0013,0],[.0024,0],[.0024,.012],[.0048,.012],[.0048,.0135],[.0013,.0135],[.0013,.034],[0,.0345]].map(v=>new THREE.Vector2(v[0],v[1]));
- const rg=new THREE.LatheGeometry(prof,LITE?6:8); const rim=new THREE.InstancedMesh(rg,new THREE.MeshLambertMaterial({color:0xc9d0d6}),LITE?28:44); rim.name='BlindRivets';
+ // v6.8: threaded rivet nuts M6 (same geometry as on the shield), instanced
+ const rim=new THREE.InstancedMesh(nutGeo(false,LITE?10:16),NUT_MAT,LITE?28:44); rim.name='RivetNutsM6';
  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(); let seed=7; const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
  for(let i=0;i<rim.count;i++){const nx=(rnd()-.5)*1.5, nz=(rnd()-.5)*1.5; const h=.003+.024*(1-Math.pow(Math.min(1,Math.max(Math.abs(nx),Math.abs(nz))),3))*.55; e.set(Math.PI/2+(rnd()-.5)*.5,rnd()*6.28,0,'YXZ'); q.setFromEuler(e); m4.compose(new THREE.Vector3(nx*W/2*.85,.006+h*rnd(),nz*D/2*.85),q,new THREE.Vector3(1,1,1)); rim.setMatrixAt(i,m4);}
  g.add(rim); g.userData.shapes=[{t:'cyl',a:[-.09,.012,0],b:[.09,.012,0],r:.016}]; }
@@ -1128,11 +1142,36 @@ function clearPart(){if(curPart){scene.remove(curPart);curPart=null;} rivetPts=[
 function basePart(w,h,d,c,name){clearPart(); curPart=new THREE.Group(); curPart.name=name; curPart.position.set(0,.86,0); scene.add(curPart);
   const m=wbox(curPart,0,0,0,w,h,d,c); m.name=name+'_Body'; return curPart;}
 const PROXY_MAT=new THREE.MeshBasicMaterial({visible:false}); const PROXY_GEO=new THREE.SphereGeometry(.045,8,6);
-function rivetPoint(g,x,y,z,r,h,color,axis){const p=cyl(g,x,y,z,r,h,color,axis,12); p.userData.state='aim'; p.userData.r=r; p.userData.c0=color;
-  const px=new THREE.Mesh(PROXY_GEO,PROXY_MAT); px.position.set(x,y,z); px.userData.rivetIdx=rivetPts.length; px.name='RivetAimProxy'; g.add(px); rivetPts.push(p); return p;}
-function setRivetState(i,st){const p=rivetPts[i]; if(!p)return; p.userData.state=st;
-  if(st==='in'){p.material=mat(0xd7dde2,.3); p.scale.y=1.4; if(!p.userData.stem){const r=p.userData.r; const sm=cyl(p,0,0,0,Math.max(.0016,r*.22),.06,0xb8c0c8,'y',8); sm.name='RivetStem'; p.userData.stem=sm;}}
-  if(st==='done'){p.material=mat(0x3a4452,.35); p.scale.y=.45; if(p.userData.stem){p.remove(p.userData.stem); p.userData.stem=null;}}}
+const _rc=new THREE.Raycaster();
+function rivetSurfaces(p){ // where the sheet really is along the marker axis: front/back surface points + normals (world)
+  const g=p.parent; const n=new THREE.Vector3(0,1,0).transformDirection(p.matrixWorld).normalize(); const wp=p.getWorldPosition(new THREE.Vector3());
+  const meshes=[]; curPart.traverse(o=>{if(o.isMesh&&o.visible!==false&&!isChild(o,g))meshes.push(o);});
+  const hit=dir=>{_rc.set(wp.clone().addScaledVector(dir,.3),dir.clone().negate()); _rc.far=.6; const h=_rc.intersectObjects(meshes,false).filter(h=>h.point.distanceTo(wp)<.12)[0]; return h?h.point:null;};
+  let A=hit(n), B=hit(n.clone().negate()); if(!A)A=wp.clone(); if(!B||B.distanceTo(A)<.0004)B=A.clone().addScaledVector(n,-.0015);
+  return [{s:A,n:n.clone()},{s:B,n:n.clone().negate()}];}
+function isChild(o,g){while(o){if(o===g)return true;o=o.parent;}return false;}
+function placeOn(obj,g,S,n,off){obj.raycast=()=>{}; g.updateMatrixWorld(true); const w=S.clone().addScaledVector(n,off); obj.position.copy(g.worldToLocal(w)); const gq=g.getWorldQuaternion(new THREE.Quaternion()); obj.quaternion.copy(gq.invert().multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),n))); g.add(obj);}
+function rivetPoint(g,x,y,z,r,h,color,axis){const p=cyl(g,x,y,z,r,h,color,axis,12); p.userData.state='aim'; p.userData.r=r; p.userData.c0=color; p.material=new THREE.MeshBasicMaterial({visible:false}); p.castShadow=false;
+  const px=new THREE.Mesh(PROXY_GEO,PROXY_MAT); px.position.set(x,y,z); px.userData.rivetIdx=rivetPts.length; px.name='RivetAimProxy'; g.add(px); rivetPts.push(p);
+  // Ø9.1 through-hole on both faces of the sheet + yellow target ring around it
+  curPart.updateMatrixWorld(true); p.userData.surf=rivetSurfaces(p); p.userData.marks=[];
+  for(const {s,n} of p.userData.surf){const hole=new THREE.Mesh(new THREE.CircleGeometry(NUT.HOLE/2,LITE?12:20),HOLE_MAT); hole.name='Hole_9.1'; placeOn(hole,g,s,n,.0003); hole.rotateX(-Math.PI/2);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(NUT.F/2+.0015,NUT.F/2+.0045,LITE?16:28),RING_MAT.clone()); ring.material.color.setHex(color); ring.name='HoleTarget'; placeOn(ring,g,s,n,.0005); ring.rotateX(-Math.PI/2); p.userData.marks.push(ring,hole);}
+  return p;}
+function setRivetState(i,st){const p=rivetPts[i]; if(!p)return; p.userData.state=st; const g=p.parent;
+  if(st==='in'){ // nut pushed into the hole from the player's side: flange on the sheet, knurled shank through it
+    const {n}=rivetAxisWorld(p); const S=p.userData.surf.reduce((a,b)=>b.n.dot(n)>a.n.dot(n)?b:a);
+    if(!p.userData.nut){const m=new THREE.Mesh(NUT_GEO,NUT_MAT); m.name='RivetNut_M6'; m.castShadow=!LITE; placeOn(m,g,S.s,S.n,0); p.userData.nut=m; p.userData.nutSide=S;}
+    p.userData.marks.forEach(o=>{o.visible=false;});}
+  if(st==='done'){ if(!p.userData.nut)setRivetState(i,'in'); p.userData.state='done'; p.userData.nut.geometry=NUT_GEO_SET; p.userData.nut.userData.set=true;}
+  if(st==='aim'){ if(p.userData.nut){g.remove(p.userData.nut); p.userData.nut=null;} p.userData.marks.forEach(o=>o.visible=true);}}
+// mandrel M6×1 screwed into the RX-800 nose (the tool threads it into the nut, pulls, then unscrews)
+function ensureMandrel(){const t=wTools.riveter; if(!t)return null; let m=t.getObjectByName('Mandrel_M6'); if(m)return m;
+  const pr=[[0,0],[.0028,0]]; for(let y=.0005;y<.016;y+=.001)pr.push([.003,y],[.00246,y+.0005]); pr.push([.0026,.0165],[0,.0168]);
+  m=new THREE.Mesh(new THREE.LatheGeometry(pr.map(v=>new THREE.Vector2(v[0],v[1])),LITE?8:14),new THREE.MeshLambertMaterial({color:0x8d949b})); m.name='Mandrel_M6';
+  m.rotation.x=Math.PI/2; m.position.set(0,.245,.171-.002); m.userData.keep=true; t.add(m); return m;}
+setInterval(ensureMandrel,1000);
+window.__camNear=v=>{camera.near=v; camera.updateProjectionMatrix(); return 1;}; window.__rivState=(i,st)=>setRivetState(i,st); window.__rivSurf=i=>{const p=rivetPts[i]; return p.userData.surf.map(o=>({s:o.s.toArray(),n:o.n.toArray()}));}; window.__nutInfo=()=>({D:NUT.D,F:NUT.F,L:NUT.L,hole:NUT.HOLE,states:rivetPts.map(p=>p.userData.state),nuts:rivetPts.filter(p=>p.userData.nut).length,set:rivetPts.filter(p=>p.userData.nut&&p.userData.nut.userData.set).length});
 function addRivets(list,color=0xffd400){const g=new THREE.Group(); g.name='RivetPoints'; curPart.add(g); rivetPts=[];
   for(const [x,z] of list) rivetPoint(g,x,.045,z,.026,.022,color,'y'); return g;}
 function rivetPattern(n,perimeter){const pts=[]; if(perimeter){for(let i=0;i<5;i++){pts.push([-0.62+i*.31,-.48]);pts.push([-0.62+i*.31,.48]);} pts.push([-.62,0]);pts.push([.62,0]); for(const [x,z] of [[-.62,-.48],[.62,-.48],[-.62,.48],[.62,.48]]) pts.push([x,z]);}
@@ -1295,7 +1334,7 @@ aimable('output',outputPallet,'Выходной поддон'); aimable('bato',b
 aimable('gateA',gateA.g,'Ворота А (приёмка)'); aimable('doorA',gateA.door,'Калитка ворот А'); aimable('doorB',gateB.door,'Калитка ворот Б'); aimable('gateB',gateB.g,'Ворота Б (отправка)');
 riffleSheet.userData.aimId='shelf'; monogalSheet.userData.aimId='shelf'; coverUnit.userData.aimId='shelf'; outputStack.userData.aimId='output'; insulPack.userData.aimId='bato';
 AIM.shelf.extra=[riffleSheet,monogalSheet,coverUnit]; 
-const TOOL_LABELS={rivetbag:'Пакет заклёпок 4,8×12',hammer:'Молоток',riveter:'Заклёпочник RX-800',pliers:'Плоскогубцы',roller:'Прикаточный валик',marker:'Маркер',screwdriver:'Отвёртка'};
+const TOOL_LABELS={rivetbag:'Пакет резьбовых заклёпок M6',hammer:'Молоток',riveter:'Заклёпочник RX-800',pliers:'Плоскогубцы',roller:'Прикаточный валик',marker:'Маркер',screwdriver:'Отвёртка'};
 for(const id in wTools) aimable(id,wTools[id],TOOL_LABELS[id]||id);
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
@@ -1522,12 +1561,17 @@ function doActionW(){
     const qT=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,up,z)); const NOSE=new THREE.Vector3(0,.245,.171);
     const posFor=d=>wp.clone().addScaledVector(n,d).sub(NOSE.clone().applyQuaternion(qT));
     const p0=new THREE.Vector3(), q0=new THREE.Quaternion(), sc=new THREE.Vector3(); M0.decompose(p0,q0,sc); toolToScene(t);
-    wAnim={t:0,dur:.9,mode:'rivet',fn:k=>{ const a1=Math.min(1,k/.45), push=k<.45?0:k<.7?(k-.45)/.25:1-(k-.7)/.3*0.6;
-        const ap=posFor(.12); const pp=posFor(.004); const P=k<.45?p0.clone().lerp(ap,a1):ap.clone().lerp(pp,Math.min(1,push));
+    const S=p.userData.nutSide||rivetAxisWorld(p) && p.userData.surf[0]; const sp=S.s?S.s:wp; const posS=d=>sp.clone().addScaledVector(n,d).sub(NOSE.clone().applyQuaternion(qT)); const man=ensureMandrel(); const nut=p.userData.nut;
+    // v6.8 rivet-nut cycle: approach -> thread the mandrel in (spins) -> squeeze/pull (shank upsets behind the sheet) -> unscrew -> back off
+    wAnim={t:0,dur:1.8,mode:'rivet',fn:k=>{ const a1=Math.min(1,k/.25); const F=NUT.FT+.0005; let d;
+        if(k<.25)d=null; else if(k<.5)d=.016+F-(.016)*((k-.25)/.25); else if(k<.68)d=F-.0012*Math.sin(Math.PI*(k-.5)/.18); else if(k<.88)d=F+.016*((k-.68)/.2); else d=F+.016+.05*((k-.88)/.12);
+        const ap=posS(.016+F+.05); const P=d===null?p0.clone().lerp(ap,a1):posS(d);
         t.position.copy(P); t.quaternion.copy(q0).slerp(qT,a1); t.updateMatrixWorld(true);
         window.__handOverride=t.matrixWorld.clone().multiply(Rel.clone().invert());
-        if(k>.6&&p.userData.stem){p.userData.stem.position.y=.02+(k-.6)*.4;} },
-      done:()=>{window.__handOverride=null; setRivetState(i,'done'); toast(`💨 Пшик! Заклёпка ${i+1}/${rivetPts.length}`); fin();}};
+        if(man){ if(k>.25&&k<.5)man.rotation.y+=.9; if(k>.68&&k<.88)man.rotation.y-=.9; }
+        if(nut&&k>.6&&!nut.userData.set){nut.geometry=NUT_GEO_SET; nut.userData.set=true;}
+        window.__nutPhase=k<.25?'approach':k<.5?'thread-on':k<.68?'squeeze':k<.88?'unscrew':'back'; },
+      done:()=>{window.__handOverride=null; setRivetState(i,'done'); toast(`🔩 Гайка-заклёпка M6 ${i+1}/${rivetPts.length}: накрутил → обжал → открутил`); fin();}};
     return;}
   st.run(()=>{ if(st.need){holdingW=null;} advanceW();});
   updateHUDW();

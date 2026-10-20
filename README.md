@@ -134,6 +134,11 @@ cd warehouse_game && python3 -m http.server 8765
 - Сообщения: 13 px, компактная плашка под шапкой (центр экрана свободен), автоскрытие через 2 с.
 - Тесты: логический прогон 298/298 шагов. `play_test.py` — 2 щита реальными действиями, 0 ошибок, включая взятие шумки взглядом сверху вниз (мышью). `mobile_test.py` — 390×844 с сенсором: свайп до −85°/+80°, «руки заняты», бросок, взятие шумки при взгляде вниз −85°.
 
+## v6.8 Bubble
+- Rivets are now **threaded rivet nuts (клёпка-гайка) M6**, zinc-plated steel, flat flange: shank Ø9.0 knurled (12 ribs), flange Ø13×1.5, length 15.5 mm (grip 0.5–3.0), internal M6×1 thread. Shield holes are Ø9.1 mm (0.1 mm clearance on the shank); shield sheet 2.6 mm is within the grip range.
+- Used everywhere: zip bag (label «Заклёпка резьбовая M6 · 9×15,5 · сталь/цинк · 100 шт»), inserted in holes (flange on the sheet), after setting (shank upset/bulge behind the sheet, no mandrel stub).
+- RX-800 (M3–M10) carries an M6 mandrel: cycle = approach → thread on (mandrel spins) → squeeze/pull → unscrew → back off.
+
 ## v6.7 Bubble
 - Coiled yellow PU hose now hangs from the end of the left **blue overhead PU drop** on the bench portal (brass quick-coupler); the FUBAG air line runs along the north wall at 3.0 m and drops into the **portal top** (filter-regulator). Spring physics, pull-back, snag and walk limit are measured from the overhead attach point; hose 5.5 m (needed to reach the trestles from the portal).
 - Phone layout: `viewport-fit=cover` + safe-area insets (notch/home bar), compact HUD in landscape, action buttons no longer overlap the joystick, crosshair exactly at screen centre (= aim ray), joystick stick scales with pad size, resize on orientation/visualViewport change, fullscreen on first touch.

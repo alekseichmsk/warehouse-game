@@ -24,7 +24,7 @@ with sync_playwright() as pw:
         st=S(); key='actDis' if btn=='action' else 'takeDis'
         if st[key]: fails.append((st['title'],what,st['act'] if btn=='action' else st['take'],st['wAim'],st['holdingW'])); return False
         pg.evaluate(f"document.getElementById('{btn}').click()"); time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v67_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v68_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
@@ -61,7 +61,9 @@ with sync_playwright() as pw:
         elif t.startswith('Возьми пневмо'):
             if S()['holdingW']!='riveter':
                 free_hands('bench')
-                aim('floorTool','riveter') ; press('btnTake','take riveter')
+                for _t in range(3):
+                    aim('floorTool','riveter') ; press('btnTake','take riveter')
+                    if S()['holdingW']=='riveter': break
         elif t.startswith('Проклепай'):
             for k,v in enumerate(S()['rivets']):
                 if v=='in':
