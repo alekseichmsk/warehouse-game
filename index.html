@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.0 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.1 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -66,7 +66,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.0 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.1 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -1042,7 +1042,7 @@ function supportBelow(x,z,yTop,B){ // highest upward surface below yTop at (x,z)
   const inTop=Math.abs(x-benchPos.x)<BENCH_W/2&&Math.abs(z-benchPos.y)<BENCH_D/2;
   for(const c of B.conts){const I=c.inner; if(x>I.x0&&x<I.x1&&z>I.z0&&z<I.z1&&I.y<=yTop+.002&&I.y>best.y&&(c.P.k>.02||B.host===c.n)){ if(inTop&&!c.open&&B.host!==c.n)continue; best={y:I.y,cont:c};}}
   if(inTop&&BENCH_TOP<=yTop+.002&&BENCH_TOP>best.y)best={y:BENCH_TOP,cont:null};
-  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation,window.__sawStation,window.__tileStock].filter(o=>o&&o.visible&&o.parent);
+  const objs=[goats,supplyPallet,outputPallet,batoStack,curPart,insulPack,window.__liftStation,window.__sawStation,window.__tileStock,window.__adhStation].filter(o=>o&&o.visible&&o.parent);
   _dr.set(new THREE.Vector3(x,yTop+.002,z),_dn); _dr.far=yTop+.002-best.y; if(_dr.far>0){for(const h of _dr.intersectObjects(objs,true)){if(!h.face||!isShown(h.object))continue; const nY=h.face.normal.clone().transformDirection(h.object.matrixWorld).y; if(nY>.5){if(h.point.y>best.y)best={y:h.point.y,cont:null}; break;}}}
   return best;}
 function restQuat(t,yaw){return new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0)).multiply(t.userData.homeQ||new THREE.Quaternion());}
@@ -1507,7 +1507,7 @@ window.__sawCmd=sawCmd;
 function updSawPanel(){const l=document.getElementById('sawFenceLbl'); if(l)l.textContent=`Упор: ${SAW.fence} мм${SAW.on?' • ⏻ ВКЛ':''}`; const b=document.querySelector('#sawPanel [data-s="pow"]'); if(b)b.style.background=SAW.on?'linear-gradient(135deg,#7cf28a,#25c94e)':'';}
 addEventListener('keydown',e=>{ if(mode!=='workshop')return; const k=e.key; if(k==='['||k===']'){sawCmd((k===']'?'+':'-')+(e.shiftKey?10:1));} if(k.toLowerCase()==='p'&&nearSaw())sawCmd('pow'); if(k.toLowerCase()==='r'&&nearSaw())sawCmd('rot');});
 function sawAimed(){return wAim==='saw'||(!!SAW.tile&&wAim===SAW.tile);}
-function nearSaw(){return Math.hypot(playerPos.x-SAW_POS.x,playerPos.y-SAW_POS.z)<2.4;}
+function nearSaw(){return Math.hypot(playerPos.x-SAW_POS.x,playerPos.y-SAW_POS.z)<1.8;}
 // ---- per frame ----
 function updateSaw(dt){ const near=mode==='workshop'&&nearSaw(); const pn=document.getElementById('sawPanel'); if(pn)pn.style.display=near?'flex':'none';
   if(SAW.tile&&(holdingW===SAW.tile||!wTools[SAW.tile])){SAW.tile=null; SAW.kerfMesh.visible=false;}
@@ -1539,6 +1539,149 @@ window.__sawState=()=>({on:SAW.on,fence:SAW.fence,tile:SAW.tile,tileDims:SAW.til
    if(!holdingW&&(wAim==='tileStock300'||wAim==='tileStock1200')){tb.disabled=false; tb.textContent='✋ Взять плитку '+(wAim==='tileStock300'?'300×300':'1200×600');}
    if(isTile(holdingW)){tb.disabled=false; tb.textContent=wAim==='saw'?'👐 Положить на стол плиткореза (к упору)':'⬇ Положить / бросить плитку';}
    if(wAim==='liftOrder'){b.disabled=false; b.textContent='📋 Следующий заказ (размер пола)'; if(!holdingW){tb.disabled=false; tb.textContent='📋 Следующий заказ';}}};}
+// ===================== v7.1 STAGE 3: two-component tile adhesive (pail A paste + pail B hardener pouch), snap-off knife, drill mixer =====================
+// Blender lift/make_adhesive.py -> adhesive_kit.glb. Real dims: pail A 10 l (D286/258, H238) with 9 kg grey paste; pail B 2.5 l (D196/176, H140) with a 0.9 kg foil pouch 150x190;
+// snap-off knife 18 mm (160x30x16); corded drill mixer 1200 W with helix paddle D120 x 600. Time is accelerated x20 (mix 3:00 = 9 s, pot life 60 min = 3 min).
+const ADH_POS=new THREE.Vector3(-5.3,0,-6.55), ADH_ACC=20, MIX_T=180, POT_LIFE=3600;
+const adhStation=new THREE.Group(); adhStation.name='AdhesiveStation'; adhStation.position.copy(ADH_POS); scene.add(adhStation); window.__adhStation=adhStation;
+const ADH={glb:false,lidA:'closed',lidB:'closed',bag:'inPail',cutSeg:new Array(14).fill(false),cut:false,pour:0,pouring:false,mixer:'floor',mix:0,mixing:false,potT:0,started:false,set:false,blade:false,_bt:0,q:null,snd:null};
+const PA_LOC=new THREE.Vector3(-.35,0,0), PB_LOC=new THREE.Vector3(.02,0,.03), CRATE={x:.47,z:0,w:.50,h:.38,d:.40}, PASTE_Y=.105;
+const pailA=new THREE.Group(); pailA.position.copy(PA_LOC); adhStation.add(pailA); const pailB=new THREE.Group(); pailB.position.copy(PB_LOC); adhStation.add(pailB);
+// crate (wooden box) as the cutting surface
+{const W=0xb88a52; const c=new THREE.Group(); c.position.set(CRATE.x,0,CRATE.z); adhStation.add(c); for(let i=0;i<4;i++)wbox(c,0,.045+i*.095,CRATE.d/2-.005,CRATE.w,.085,.012,W); for(let i=0;i<4;i++)wbox(c,0,.045+i*.095,-CRATE.d/2+.005,CRATE.w,.085,.012,W); for(const s of[-1,1])wbox(c,s*(CRATE.w/2-.006),.19,0,.012,.38,CRATE.d,W); for(let i=0;i<5;i++)wbox(c,-.2+i*.1,CRATE.h-.006,0,.092,.012,CRATE.d,0xc89a62);
+ const hb=new THREE.Mesh(new THREE.BoxGeometry(CRATE.w,.02,CRATE.d),new THREE.MeshBasicMaterial({visible:false})); hb.position.set(0,CRATE.h-.012,0); c.add(hb); aimable('adhCrate',c,'Ящик (рабочая поверхность)');}
+// extension reel = power for the drill
+const REEL=new THREE.Vector3(-1.05,0,-.22); {const r=new THREE.Group(); r.position.copy(REEL); adhStation.add(r); const m=cyl(r,0,.13,0,.12,.07,0xe23a2a,'z',24); cyl(r,0,.13,0,.07,.075,0x222222,'z',18); wbox(r,0,.02,0,.2,.03,.1,0x333333); wbox(r,0,.13,.04,.06,.06,.02,0xf2f2f2);}
+// paste + hardener surfaces (game meshes inside the GLB pail)
+const pasteCv=document.createElement('canvas'); pasteCv.width=pasteCv.height=256; const pasteTex=new THREE.CanvasTexture(pasteCv); pasteTex.colorSpace=THREE.SRGBColorSpace;
+const pasteM=new THREE.MeshBasicMaterial({map:pasteTex}); const paste=new THREE.Mesh(new THREE.CircleGeometry(.1305,40),pasteM); paste.rotation.x=-Math.PI/2; paste.position.y=PASTE_Y; paste.name='AdhPaste'; pailA.add(paste);
+const hardM=new THREE.MeshBasicMaterial({color:0x7a4a1c}); const puddle=new THREE.Mesh(new THREE.CircleGeometry(1,28),hardM); puddle.rotation.x=-Math.PI/2; puddle.position.set(.02,PASTE_Y+.0015,.01); puddle.scale.setScalar(.001); puddle.visible=false; pailA.add(puddle);
+const SWIRL=[]; {let s=7; const R=()=>(s=(s*16807)%2147483647)/2147483647; for(let i=0;i<46;i++)SWIRL.push({r:20+R()*100,a:R()*6.28,l:.4+R()*1.6,w:2+R()*7,c:R()<.55?'h':'g'});}
+function drawPaste(){ const x=pasteCv.getContext('2d'), p=ADH.mix, h=Math.min(1,ADH.pour), k=h*Math.max(0,1-p/1.0)**.9; // k = streak strength (two-tone), 0 when uniform
+  const G=[143,146,148], Hc=[122,74,28], mixC=G.map((g,i)=>Math.round(g+(Hc[i]-g)*.16*h)); const set=ADH.set?.55:1;
+  const base=p>0?mixC:G; x.fillStyle=`rgb(${base.map(v=>v*set|0)})`; x.fillRect(0,0,256,256);
+  if(p>0&&k>.01){ for(const s of SWIRL){ x.strokeStyle=s.c==='h'?`rgba(${Hc},${k})`:`rgba(205,208,210,${k*.8})`; x.lineWidth=s.w*(.4+.6*k); x.beginPath(); x.arc(128,128,s.r*(.6+.4*k),s.a,s.a+s.l); x.stroke(); } }
+  if(p>1.5){ const n=Math.min(160,(p-1.5)*220|0); x.fillStyle='rgba(235,235,235,.7)'; let s=3; for(let i=0;i<n;i++){s=(s*16807)%2147483647; const a=s/2147483647*6.28; s=(s*16807)%2147483647; const r=s/2147483647*118; x.beginPath(); x.arc(128+Math.cos(a)*r,128+Math.sin(a)*r,1.2+(i%3),0,6.3); x.fill();} }
+  // trowel-like texture
+  x.fillStyle='rgba(0,0,0,.05)'; for(let i=0;i<300;i++)x.fillRect((i*73)%256,(i*151)%256,2,2); pasteTex.needsUpdate=true; ADH._drawn=p;}
+drawPaste();
+// pour stream
+const stream=new THREE.Mesh(new THREE.CylinderGeometry(.006,.009,1,8,1,true),new THREE.MeshBasicMaterial({color:0x8a5422})); stream.visible=false; scene.add(stream);
+// dashed cut line (14 dashes on the top seal, local z -.072) and the cord
+const dashes=[]; const cordM=new THREE.MeshLambertMaterial({color:0x111214}); let cordMesh=null, _cordT=0;
+let PA=null, PB=null, LIDA=null, LIDB=null;
+// tools (registered as wTools: generic take / drop / physics)
+function regAdhTool(id,g,label,spec,shapes,pose){ g.name=id; g.userData.spec=spec; g.userData.shapes=shapes; scene.add(g); wTools[id]=g; TOOL_LABELS[id]=label; aimable(id,g,label); HOLD_POSE[id]=pose; GRIPS[id]={grip:'power'}; g.userData.homeQ=g.quaternion.clone(); }
+_gl.load('adhesive_kit.glb',gl=>{ fixMats(gl.scene); const S=gl.scene; const take=n=>{const o=S.getObjectByName(n); o.removeFromParent(); o.position.set(0,0,0); o.rotation.set(0,0,0); return o;};
+  PA=take('Pail_A'); pailA.add(PA); LIDA=take('Pail_A_Lid'); LIDA.position.set(0,.238,0); pailA.add(LIDA);
+  PB=take('Pail_B'); pailB.add(PB); LIDB=take('Pail_B_Lid'); LIDB.position.set(0,.140,0); pailB.add(LIDB);
+  for(const [g,t,c] of [[pailA,'КЛЕЙ 2К • Компонент А • 9 кг','#1f4fa8'],[pailB,'Компонент B • отвердитель 0,9 кг','#e8730f']]){ const cv=document.createElement('canvas'); cv.width=512; cv.height=64; const x=cv.getContext('2d'); x.fillStyle=c; x.fillRect(0,0,512,64); x.fillStyle='#fff'; x.font='bold 30px sans-serif'; x.fillText(t,14,44); const tx=new THREE.CanvasTexture(cv); tx.colorSpace=THREE.SRGBColorSpace;
+    const big=g===pailA; const m=new THREE.Mesh(new THREE.CylinderGeometry(big?.1428:.0978,big?.1418:.0968,big?.04:.04,40,1,true,-.9,1.8),new THREE.MeshLambertMaterial({map:tx})); m.position.y=big?.17:.095; g.add(m);}
+  aimable('pailA',pailA,'Ведро А: клей (серая паста), 10 л'); aimable('pailB',pailB,'Ведро B: отвердитель в пакете');
+  // bag (foil pouch) with the seal strip
+  const bag=take('Bag'); const top=bag.getObjectByName('Bag_Top'); for(let i=0;i<14;i++){const d=new THREE.Mesh(new THREE.BoxGeometry(.006,.0006,.0016),new THREE.MeshBasicMaterial({color:0x202020})); d.position.set(-.065+i*.01,.0012,.008); top.add(d); dashes.push(d);}
+  {const cv=document.createElement('canvas'); cv.width=256; cv.height=200; const x=cv.getContext('2d'); x.fillStyle='#e8730f'; x.fillRect(0,0,256,200); x.fillStyle='#fff'; x.font='bold 28px sans-serif'; x.fillText('Компонент B',20,60); x.font='22px sans-serif'; x.fillText('отвердитель 0,9 кг',20,100); x.fillText('✂ разрезать по линии',20,150); const p=new THREE.Mesh(new THREE.PlaneGeometry(.11,.086),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)})); p.rotation.x=-Math.PI/2; p.position.set(0,.0118,.015); bag.add(p);}
+  regAdhTool('adhBag',bag,'Пакет с отвердителем',{axis:[1,0,0],up:[0,1,0],grasp:[0,0,.06],kind:'power'},[{t:'cyl',a:[-.07,0,.02],b:[.07,0,.02],r:.012}],[0,-.30,-.50,.6,0,0]);
+  const kn=take('Knife'); ADH.blade=kn.getObjectByName('Knife_Blade'); ADH.slider=kn.getObjectByName('Knife_Slider');
+  regAdhTool('uknife',kn,'Канцелярский нож 18 мм',{axis:[0,0,1],up:[0,1,0],grasp:[0,0,-.03],kind:'power'},[{t:'cyl',a:[0,0,-.08],b:[0,0,.08],r:.013}],HOLD_POSE._);
+  const mx=take('Mixer'); ADH.paddle=mx.getObjectByName('Mixer_Paddle');
+  regAdhTool('mixer',mx,'Дрель-миксер 1200 Вт + венчик Ø120',{axis:[1,0,0],up:[0,1,0],grasp:[.16,.10,0],kind:'power'},[{t:'cyl',a:[.05,.10,0],b:[.24,.10,0],r:.016},{t:'cyl',a:[0,-.6,0],b:[0,.3,0],r:.04}],[.22,-.42,-.55,0,0,0]);
+  adhHome('adhBag'); adhHome('uknife'); adhHome('mixer'); ADH.glb=true; drawPaste(); window.__adhReady=true;});
+function adhHome(id){ const g=wTools[id]; if(!g)return; delete BODIES[id]; toolToScene(g); const L=v=>adhStation.localToWorld(v);
+  if(id==='adhBag'){ if(ADH.bag==='inPail'){g.position.copy(L(PB_LOC.clone().add(new THREE.Vector3(0,.075,0)))); g.rotation.set(-Math.PI/2+.75,0,0);} else {g.position.copy(L(new THREE.Vector3(CRATE.x-.08,CRATE.h+.001,.02))); g.rotation.set(0,0,0);} }
+  if(id==='uknife'){g.position.copy(L(new THREE.Vector3(CRATE.x+.15,CRATE.h+.008,.09))); g.rotation.set(0,.35,0);}
+  if(id==='mixer'){ if(ADH.mixer==='inPail'){g.position.copy(L(PA_LOC.clone().add(new THREE.Vector3(0,.618,0)))); g.rotation.set(0,Math.PI/2,0);} else {g.position.copy(L(new THREE.Vector3(-.62,.061,.30))); g.quaternion.setFromEuler(new THREE.Euler(-Math.PI/2,0,-Math.PI/2,'XYZ'));} }
+  g.userData.home=g.position.clone(); g.updateMatrixWorld(true);}
+// colliders
+window.__colBoxes.push({id:'adh',x:ADH_POS.x+.3,z:ADH_POS.z,hx:.85,hz:.22}); window.__extraObst.push(new THREE.Box3(new THREE.Vector3(ADH_POS.x-.5,0,ADH_POS.z-.22),new THREE.Vector3(ADH_POS.x+.72,.4,ADH_POS.z+.2)));
+// ---- lids: open by hand ----
+function openLid(which){ const L=which==='A'?LIDA:LIDB, g=which==='A'?pailA:pailB; if(!L||ADH['lid'+which]!=='closed')return; ADH['lid'+which]='anim'; const big=which==='A';
+  const p0=L.position.clone(), p1=new THREE.Vector3(big?.02:.06,big?.013:.011,big?-.36:-.27), r1=new THREE.Euler(0,0,0); let t=0, t0=performance.now(); toast(big?'🪣 Поддел язычок и снял крышку — внутри серая паста':'🪣 Открыл крышку — внутри запаянный пакет');
+  const step=()=>{t=Math.min(1,(performance.now()-t0)/600); const e=t*t*(3-2*t); L.position.lerpVectors(p0,p1,e); L.position.y+=Math.sin(t*Math.PI)*.12; L.rotation.set(Math.sin(t*Math.PI)*.9,0,0); if(t<1)requestAnimationFrame(step); else {ADH['lid'+which]='open'; updateHUDW();}}; step();}
+// ---- knife ----
+function bladeOut(v){ if(!ADH.blade)return; if(performance.now()-ADH._bt<350)return; ADH._bt=performance.now(); ADH.bladeOut=v; toast(v?'🔪 Щёлк-щёлк: лезвие выдвинуто на 2 сегмента':'🔪 Лезвие убрано (безопасно)'); clickSnd();}
+function clickSnd(){try{const C=window.__aC||(window.__aC=new (window.AudioContext||window.webkitAudioContext)()); const o=C.createOscillator(), g=C.createGain(); o.type='square'; o.frequency.value=1800; g.gain.setValueAtTime(.05,C.currentTime); g.gain.exponentialRampToValueAtTime(.0001,C.currentTime+.05); o.connect(g).connect(C.destination); o.start(); o.stop(C.currentTime+.06);}catch(e){}}
+const _brc=new THREE.Raycaster();
+function bagHit(){ const b=wTools.adhBag; if(!b)return null; camera.updateMatrixWorld(); _brc.setFromCamera(new THREE.Vector2(0,0),camera); _brc.far=2.5; const h=_brc.intersectObject(b,true)[0]; if(!h)return null; return b.worldToLocal(h.point.clone());}
+function cutPct(){return ADH.cutSeg.filter(Boolean).length/14;}
+function finishCut(){ ADH.cut=true; const b=wTools.adhBag, top=b.getObjectByName('Bag_Top'); top.updateMatrixWorld(true); const wp=top.getWorldPosition(new THREE.Vector3()); scene.attach(top); top.position.copy(wp).add(new THREE.Vector3(.03,.002,-.07)); top.rotation.y+=.5; ADH.strip=top; TOOL_LABELS.adhBag='Пакет с отвердителем (вскрыт)'; AIM.adhBag.label=TOOL_LABELS.adhBag; toast('✂ Пакет вскрыт по линии — бери его и влей в ведро А'); updateHUDW();}
+// ---- sound (drill) ----
+function mixSound(on){ try{ if(on&&!ADH.snd){const C=new (window.AudioContext||window.webkitAudioContext)(); const o=C.createOscillator(); o.type='sawtooth'; o.frequency.value=145; const g=C.createGain(); g.gain.value=.02; o.connect(g).connect(C.destination); o.start(); ADH.snd={C,o};} if(!on&&ADH.snd){ADH.snd.C.close(); ADH.snd=null;} }catch(e){} }
+// ---- quality / pot life ----
+function mixQuality(p){ return Math.max(0,Math.min(1,1-Math.max(0,(.85-p)/.85)*1.25-Math.max(0,p-1.5)*.55));}
+function mixVerdict(p){ return p<=0?'не смешано':p<.85?'НЕДОМЕС — полосы отвердителя':p<=1.5?'однородно ✔':'ПЕРЕМЕС — воздух и нагрев';}
+function potLife(){ return POT_LIFE*(1-.3*Math.min(1,Math.max(0,ADH.mix-1.5)));}
+function fmt(s){s=Math.max(0,Math.round(s)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+// ---- status panel (no buttons: everything is aim + Действие / Взять) ----
+{const el=document.createElement('div'); el.id='adhPanel'; el.style.cssText='position:fixed;left:50%;top:calc(var(--st,0px) + 52px);transform:translateX(-50%);z-index:5;display:none;pointer-events:none;background:rgba(255,255,255,.86);border:2px solid #fff;border-radius:14px;padding:4px 10px;font-weight:800;color:#2b2f45;font-size:13px;max-width:min(92vw,520px);text-align:center;line-height:1.35;box-shadow:0 4px 14px rgba(0,0,0,.18)'; document.body.appendChild(el);}
+function adhStepText(){ if(ADH.lidA!=='open'||ADH.lidB!=='open')return '1) Открой крышки вёдер (прицел на ведро → «Действие»)'; if(ADH.bag==='inPail')return '2) Достань пакет из ведра B («Взять») — он ляжет на ящик'; if(!ADH.cut)return holdingW==='uknife'?(ADH.bladeOut?'3) Зажми «Действие» и веди прицел по пунктиру':'3) «Действие» — выдвинуть лезвие'):'3) Возьми канцелярский нож с ящика'; if(ADH.pour<1)return '4) Возьми пакет и, зажав «Действие» над ведром А, влей отвердитель'; if(ADH.mixer!=='inPail'&&ADH.mix<.01)return '5) Возьми дрель-миксер и вставь венчик в ведро А («Взять»)'; if(ADH.mixer==='inPail')return '6) Зажми «Действие» — мешай до однородного цвета, «Взять» — вынуть миксер'; return 'Клей готов — этап 4: шпатель и укладка';}
+function updAdhPanel(near){ const el=document.getElementById('adhPanel'); if(!el)return; const show=mode==='workshop'&&(near||ADH.started); el.style.display=show?'block':'none'; if(!show)return; {const m=document.getElementById('meta'); const c=m&&(m.closest('.card,#hud,#panel')||m.parentElement); if(c){const t=Math.round(c.getBoundingClientRect().bottom+6)+'px'; if(el.style.top!==t)el.style.top=t;}}
+  let s=`<div>🧪 ${adhStepText()}</div>`; if(ADH.pour>0)s+=`<div>Отвердитель: ${Math.round(Math.min(1,ADH.pour)*100)}% • Перемешано: ${fmt(ADH.mix*MIX_T)} из 3:00 • ${mixVerdict(ADH.mix)}${ADH.mix>0?` • качество ${Math.round(mixQuality(ADH.mix)*100)}%`:''}</div>`;
+  if(ADH.started){const left=potLife()-ADH.potT; s+=`<div style="color:${ADH.set?'#c0182b':left<600?'#d4570b':'#1d7a3a'}">⏱ Жизнеспособность: ${ADH.set?'КЛЕЙ СХВАТИЛСЯ — замешай новый':fmt(left)+' (×20)'}</div>`;} if(el._s!==s){el.innerHTML=s; el._s=s;}}
+// ---- per frame ----
+function nearAdh(){return Math.hypot(playerPos.x-ADH_POS.x-.3,playerPos.y-ADH_POS.z)<2.0;}
+function updateAdh(dt){ if(!ADH.glb)return; {const n=performance.now(); dt=ADH._t?Math.min(.25,(n-ADH._t)/1000):0; ADH._t=n;} const near=mode==='workshop'&&nearAdh(); updAdhPanel(near);
+  const hold=(keys[' ']||window.__rollHold)&&!wAnim&&mode==='workshop';
+  // knife blade slide
+  if(ADH.blade){const tz=ADH.bladeOut?.03:0; ADH.blade.position.z+=(tz-ADH.blade.position.z)*Math.min(1,dt*14); if(ADH.slider)ADH.slider.position.z=.02+ADH.blade.position.z;}
+  // cut gesture: hold action, knife out, sweep the crosshair along the dashed line
+  if(holdingW==='uknife'&&ADH.bladeOut&&hold&&!ADH.cut&&ADH.bag==='onCrate'){ const p=bagHit(); if(p&&Math.abs(p.z-(-.072))<.016&&Math.abs(p.x)<.075){ const i=Math.max(0,Math.min(13,Math.floor((p.x+.07)/.01))); if(!ADH.cutSeg[i]){ADH.cutSeg[i]=true; dashes[i].material=new THREE.MeshBasicMaterial({color:0xf2f2f2}); dashes[i].scale.set(1.6,1,.6);} ADH.cutHit=[+p.x.toFixed(3),+p.z.toFixed(3)]; if(cutPct()>=.93)finishCut();} }
+  {const on=holdingW==='uknife'&&ADH.bladeOut&&hold&&!ADH.cut&&ADH.bag==='onCrate'&&ADH.cutHit; const k=wTools.uknife; if(on){ window.__heldOverride='uknife'; toolToScene(k); const bg=wTools.adhBag; const tgt=bg.localToWorld(new THREE.Vector3(ADH.cutHit[0],.001,-.072)); k.rotation.set(1.0,bg.rotation.y+.25,0); k.updateMatrixWorld(true); const tip=new THREE.Vector3(0,0,.125).applyQuaternion(k.quaternion); k.position.copy(tgt).sub(tip); ADH.knifeOv=true;} else if(ADH.knifeOv){ADH.knifeOv=false; if(window.__heldOverride==='uknife')window.__heldOverride=null;}}
+  // pour: hold action with the open bag over pail A
+  const canPour=holdingW==='adhBag'&&ADH.cut&&ADH.pour<1&&wAim==='pailA'&&ADH.lidA==='open'&&ADH.mixer!=='inPail';
+  const b=wTools.adhBag;
+  if(canPour&&hold){ ADH.pouring=true; window.__heldOverride='adhBag'; toolToScene(b); ADH.tilt=Math.min(1,(ADH.tilt||0)+dt*2.5); const c=pailA.localToWorld(new THREE.Vector3(.04,.40,.10));
+    b.position.copy(c); b.rotation.set(-.3-1.25*ADH.tilt,0,.15); b.updateMatrixWorld(true);
+    if(ADH.tilt>.6){ ADH.pour=Math.min(1,ADH.pour+dt/3.2); if(!ADH.started){ADH.started=true; toast('⚗ Отвердитель пошёл — реакция началась, следи за жизнеспособностью');}
+      const m=b.localToWorld(new THREE.Vector3(0,0,-.066)); const s=pailA.localToWorld(new THREE.Vector3(.02,PASTE_Y,.01)); const L=m.distanceTo(s); stream.visible=true; stream.position.copy(m).add(s).multiplyScalar(.5); stream.scale.set(1,L,1); stream.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),m.clone().sub(s).normalize());
+      puddle.visible=true; puddle.scale.setScalar(.012+.085*Math.sqrt(ADH.pour)); paste.position.y=puddle.position.y-.0015; const lift=.014*ADH.pour; paste.position.y=PASTE_Y+lift; puddle.position.y=PASTE_Y+lift+.0015;
+      if(ADH.pour>=1){toast('✅ Весь отвердитель в ведре — теперь дрель-миксер'); stream.visible=false; TOOL_LABELS.adhBag='Пустой пакет'; AIM.adhBag.label='Пустой пакет'; drawPaste();} }
+  } else { if(ADH.pouring){ADH.pouring=false; ADH.tilt=0; stream.visible=false; window.__heldOverride=null;} }
+  // mixing
+  const mixing=ADH.mixer==='inPail'&&hold&&!holdingW&&wAim==='pailA'; const mx=wTools.mixer;
+  if(mixing&&!ADH.mixing){mixSound(true);} if(!mixing&&ADH.mixing)mixSound(false); ADH.mixing=mixing;
+  if(ADH.mixer==='inPail'&&mx){ if(mixing&&!ADH.set){ ADH.mix+=dt*ADH_ACC/MIX_T; ADH.paddle.rotation.y+=dt*45; paste.rotation.z+=dt*3.5; puddle.visible=ADH.mix<.25; puddle.scale.multiplyScalar(1-dt*1.5); const w=Math.sin(performance.now()/40)*.004; mx.position.copy(adhStation.localToWorld(PA_LOC.clone().add(new THREE.Vector3(w,.618,w*.7)))); }
+    if(Math.abs(ADH.mix-(ADH._drawn||0))>.015)drawPaste(); }
+  if(mixing&&ADH.set&&(!ADH._sw||performance.now()-ADH._sw>2500)){toast('⛔ Клей схватился — мешать бесполезно'); ADH._sw=performance.now();}
+  if(mixing&&ADH.pour<1&&(!ADH._pw||performance.now()-ADH._pw>2500)){toast('⚠ Отвердитель влит не полностью'); ADH._pw=performance.now();}
+  // pot life (accelerated)
+  if(ADH.started&&!ADH.set){ ADH.potT+=dt*ADH_ACC; if(ADH.potT>=potLife()){ADH.set=true; drawPaste(); toast('⛔ Время жизни клея истекло — смесь схватилась');} }
+  // cord drill -> reel (5 Hz rebuild)
+  _cordT-=dt; if(mx&&_cordT<=0){_cordT=.2; mx.updateMatrixWorld(true); const a=mx.localToWorld(new THREE.Vector3(0,.17,.25)); const e=adhStation.localToWorld(REEL.clone().add(new THREE.Vector3(.04,.13,.12))); const mid=a.clone().lerp(e,.5); mid.y=.012; const c1=a.clone().lerp(mid,.5); c1.y=Math.max(.012,Math.min(a.y,mid.y)+.05);
+    const cur=new THREE.CatmullRomCurve3([a,c1,mid,e.clone().lerp(mid,.4).setY(.012),e]); const g=new THREE.TubeGeometry(cur,24,.0045,5,false); if(cordMesh){cordMesh.geometry.dispose(); cordMesh.geometry=g;} else {cordMesh=new THREE.Mesh(g,cordM); cordMesh.name='MixerCord'; scene.add(cordMesh);} }
+}
+// ---- interaction hooks ----
+{const _dt=doTakeW; doTakeW=function(){ if(wAnim||mode!=='workshop'||!ADH.glb)return _dt(); const a=wAim==='adhBag'&&ADH.bag==='inPail'?'pailB':wAim;
+   if(!holdingW&&a==='pailB'){ if(ADH.lidB!=='open'){toast('🪣 Сначала открой крышку ведра B («Действие»)'); return;} if(ADH.bag==='inPail'){ADH.bag='onCrate'; adhHome('adhBag'); toast('✋ Достал запаянный пакет и положил на ящик — вскрой ножом по пунктиру'); updateHUDW(); return;} }
+   if(!holdingW&&a==='adhBag'&&ADH.bag==='onCrate'&&!ADH.cut){toast('🔪 Пакет запаян — сначала разрежь его ножом по пунктиру'); return;}
+   if(holdingW==='mixer'&&a==='pailA'){ if(ADH.lidA!=='open'){toast('🪣 Сначала сними крышку ведра А'); return;} if(ADH.pour<1){toast('⚠ Сначала влей весь отвердитель'); return;} ADH.mixer='inPail'; holdingW=null; adhHome('mixer'); toast('🌀 Венчик в ведре. Зажми «Действие», чтобы мешать'); updateHUDW(); return;}
+   if(!holdingW&&a==='pailA'&&ADH.mixer==='inPail'){ ADH.mixer='hand'; holdingW='mixer'; delete BODIES.mixer; const q=mixQuality(ADH.mix); ADH.q=q; window.__adhResult={mixMin:+(ADH.mix*MIX_T/60).toFixed(2),quality:+q.toFixed(2),verdict:mixVerdict(ADH.mix),potLifeMin:+(potLife()/60).toFixed(1)}; toast(`🌀 Миксер вынут: ${mixVerdict(ADH.mix)}, качество ${Math.round(q*100)}%`); updateHUDW(); return;}
+   if((holdingW==='uknife'||holdingW==='mixer'||holdingW==='adhBag')&&a==='adhCrate'){ const id=holdingW; holdingW=null; if(id==='mixer')ADH.mixer='floor'; if(id==='adhBag'){toolToScene(wTools[id]); wTools[id].position.copy(adhStation.localToWorld(new THREE.Vector3(CRATE.x-.08,CRATE.h+.004,.02))); wTools[id].rotation.set(0,0,0);} else adhHome(id); toast('⬇ Положил на ящик'); updateHUDW(); return;}
+   if(holdingW==='mixer')ADH.mixer='hand'; return _dt();};}
+{const _da=doActionW; doActionW=function(){ if(mode!=='workshop'||!ADH.glb)return _da(); const a=wAim==='adhBag'&&ADH.bag==='inPail'?'pailB':wAim;
+   if(!holdingW&&(a==='pailA'||a==='pailB')){ const w=a==='pailA'?'A':'B'; if(ADH['lid'+w]==='closed'){openLid(w); return;} if(a==='pailA'&&ADH.mixer==='inPail')return; toast(a==='pailA'?'🪣 Крышка снята':'🪣 Пакет — «Взять»'); return;}
+   if(holdingW==='uknife'){ if(!ADH.bladeOut||a!=='adhBag')bladeOut(!ADH.bladeOut||a==='adhBag'?true:false); return;}
+   if(holdingW==='adhBag'){ if(!ADH.cut){toast('🔪 Пакет ещё запаян'); return;} if(a!=='pailA'){toast('🎯 Наведи на открытое ведро А и зажми «Действие»'); return;} return;}
+   if(holdingW==='mixer'){toast('🌀 Вставь венчик в ведро А («Взять»)'); return;}
+   return _da();};}
+{const _uh=updateHUDW; updateHUDW=function(){_uh.apply(this,arguments); if(mode!=='workshop'||wAnim||!ADH.glb)return; const b=$('action'), tb=$('btnTake'); const a=wAim==='adhBag'&&ADH.bag==='inPail'?'pailB':wAim;
+   if(!holdingW&&(a==='pailA'||a==='pailB')){ const w=a==='pailA'?'A':'B'; b.disabled=false; b.textContent=ADH['lid'+w]==='closed'?'🪣 Открыть крышку':(a==='pailA'&&ADH.mixer==='inPail'?'🌀 Зажми — мешать миксером':'🪣 Крышка снята'); if(a==='pailB'&&ADH.bag==='inPail'){tb.disabled=ADH.lidB!=='open'; tb.textContent='✋ Достать пакет';} if(a==='pailA'&&ADH.mixer==='inPail'){tb.disabled=false; tb.textContent='✋ Вынуть миксер';}}
+   if(!holdingW&&a==='adhBag'&&ADH.bag==='onCrate'&&!ADH.cut){tb.disabled=true; tb.textContent='🔪 Сначала вскрой пакет';}
+   if(holdingW==='uknife'){b.disabled=false; b.textContent=!ADH.bladeOut?'🔪 Выдвинуть лезвие':(a==='adhBag'&&!ADH.cut?'✂ Зажми и веди прицел по пунктиру':'🔪 Убрать лезвие');}
+   if(holdingW==='adhBag'){b.disabled=!ADH.cut||ADH.pour>=1; b.textContent=ADH.pour>=1?'Пакет пуст':(a==='pailA'?'⚗ Зажми — лить в ведро А':'⚗ Наведи на ведро А');}
+   if(holdingW==='mixer'){tb.disabled=false; tb.textContent=a==='pailA'?'🌀 Вставить венчик в ведро':(a==='adhCrate'?'⬇ Положить на ящик':'⬇ Положить / бросить'); b.disabled=true; b.textContent='🌀 Вставь в ведро А';}
+   if((holdingW==='uknife'||holdingW==='adhBag')&&a==='adhCrate'){tb.disabled=false; tb.textContent='⬇ Положить на ящик';}};}
+// test hooks
+window.__adhState=()=>({glb:ADH.glb,lidA:ADH.lidA,lidB:ADH.lidB,bag:ADH.bag,cutPct:+cutPct().toFixed(2),cut:ADH.cut,bladeOut:!!ADH.bladeOut,bladeZ:ADH.blade?+ADH.blade.position.z.toFixed(3):null,pour:+ADH.pour.toFixed(3),stream:stream.visible,mixer:ADH.mixer,mix:+ADH.mix.toFixed(3),mixMin:+(ADH.mix*MIX_T/60).toFixed(2),quality:+mixQuality(ADH.mix).toFixed(2),verdict:mixVerdict(ADH.mix),started:ADH.started,potLeftMin:+((potLife()-ADH.potT)/60).toFixed(2),set:ADH.set,result:window.__adhResult||null,holding:holdingW,aim:wAim,act:$('action').textContent,take:$('btnTake').textContent,panel:document.getElementById('adhPanel').style.display,cutHit:ADH.cutHit||null,pasteY:+paste.position.y.toFixed(4)});
+window.__adhAim=(what,off,dist)=>{ // walk in front (+z) of the station target and look at a point
+  let p; const L=v=>adhStation.localToWorld(v); off=off||[0,0,0];
+  if(what==='pailA')p=L(PA_LOC.clone().add(new THREE.Vector3(off[0],PASTE_Y+.02+off[1],off[2])));
+  else if(what==='pailB')p=L(PB_LOC.clone().add(new THREE.Vector3(off[0],.12+off[1],off[2])));
+  else if(what==='crate')p=L(new THREE.Vector3(CRATE.x+off[0],CRATE.h+off[1],off[2]));
+  else if(what==='bag'){const b=wTools.adhBag; b.updateMatrixWorld(true); p=b.localToWorld(new THREE.Vector3(off[0],.003+off[1],off[2]));}
+  else if(what==='mixer'){const o=wTools.mixer; o.updateMatrixWorld(true); p=o.localToWorld(new THREE.Vector3(0,.2,0));} else {const o=wTools[what]; p=new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());}
+  const d=dist||.75; playerPos.set(p.x+(off[3]||0),p.z+d); const eye=(window.demoCamY||1.62); playerYaw=Math.atan2(p.x-playerPos.x,p.z-playerPos.y); playerPitch=Math.atan2(p.y-eye,Math.hypot(p.x-playerPos.x,p.z-playerPos.y)); return p.toArray();};
+window.__adhPot=s=>{ADH.potT=s;}; window.__adhDbg=()=>({px:Array.from(pasteCv.getContext('2d').getImageData(10,128,1,1).data),pv:paste.visible,py:paste.position.y,pud:[puddle.visible,puddle.scale.x],wp:paste.getWorldPosition(new THREE.Vector3()).toArray(),side:paste.material.side}); window.__adhMix=v=>{ADH.mix=v; drawPaste();};
 const WSteps=[];
 function S(title,hint,target,action,run,opts={}){
   let aim=opts.aim; if(!aim&&!opts.cond&&!opts.pull){ if(target===P_GOATS)aim=['part','goats']; else if(target===P_SUPPLY)aim=['gateA','supply']; else if(target===P_SHELF)aim=['shelf']; else if(target===P_OUT)aim=['output','gateB']; else if(target===P_BENCH)aim=null; }
@@ -1804,13 +1947,13 @@ function updateRivetMarks(t){ const st=curW(); rivRing.visible=rivGhost.visible=
   rivRing.material.color.setHex(!ok?0x9aa3ad:ins?0x22ff88:0xff8a00); const dsc=Math.max(1,camera.position.distanceTo(wp)/.9); rivRing.scale.setScalar(dsc*(1+.15*Math.sin(t*8)));
   if(ok&&ins){rivGhost.visible=true; rivGhost.position.copy(wp).addScaledVector(n,.012); rivGhost.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n); rivGhost.scale.setScalar(Math.max(1,camera.position.distanceTo(wp)/.9));}
   if(ok&&p.material&&p.material.emissive){p.material.emissive.setHex(ins?0x22ff88:0xff8a00); p.material.emissiveIntensity=.9;}}
-function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
+function updateWorkshop(dt){ updateWB(dt); updateTape(dt); updateSaw(dt); updateAdh(dt); updateAim(); updateRivetMarks(performance.now()/1000); updateCarry(); updateStripPreview(); updateRolling(dt); if(window.__rollDirty){window.__rollDirty=false; drawBubbles();} if(!demoFreeze||window.__liveHUD){checkHolds(); updateHUDW();}
   if(wAnim){wAnim.t+=dt; const k=Math.min(1,wAnim.t/wAnim.dur); wAnim.fn(k); if(k>=1){const d=wAnim.done; wAnim=null; d&&d(); updateHUDW();}}
   updateWorkshopPull();
   if(supplyCarried){const fc=forkCenter(); supplyPallet.position.set(fc.x,.06,fc.y); supplyPallet.rotation.y=jackAng+Math.PI/2;}
   // held tool/sheet follows hands (in front of player)
   const f=dirOf(playerYaw);
-  for(const id in wTools){const t=wTools[id]; if(holdingW===id&&!(wAnim&&(wAnim.mode==='roll'||wAnim.mode==='rivet'))&&!(id==='roller'&&window.__rolling&&(keys[' ']||window.__rollHold))){ if(!toolToHand(t,id,handR)){t.position.set(playerPos.x+f.x*.52,1.0,playerPos.y+f.y*.52);} } else toolToScene(t);}
+  for(const id in wTools){const t=wTools[id]; if(holdingW===id&&window.__heldOverride!==id&&!(wAnim&&(wAnim.mode==='roll'||wAnim.mode==='rivet'))&&!(id==='roller'&&window.__rolling&&(keys[' ']||window.__rollHold))){ if(!toolToHand(t,id,handR)){t.position.set(playerPos.x+f.x*.52,1.0,playerPos.y+f.y*.52);} } else toolToScene(t);}
   if(holdingW==='sheetW'){monogalSheet.position.set(playerPos.x+f.x*.5,1.0,playerPos.y+f.y*.5); monogalSheet.rotation.y=playerYaw;}
   updateHose();
   stacker.position.z=stacker.position.y||0;

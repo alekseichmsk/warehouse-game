@@ -21,13 +21,13 @@ with sync_playwright() as pw:
     pg.evaluate("__setHold('riveter')"); pg.evaluate("__aimAt('bato')"); time.sleep(1.2)
     st=S(); res['busy_take_btn']=st['take']; res['busy_action_btn']=st['act']
     pg.tap('#btnTake') if not st['takeDis'] else pg.evaluate("document.getElementById('btnTake').disabled=false;document.getElementById('btnTake').click()")
-    time.sleep(.3); pg.screenshot(path=OUT+'game_v70_mobile_toast.png'); res['toast']=pg.evaluate("[document.getElementById('toast').textContent,getComputedStyle(document.getElementById('toast')).fontSize,document.getElementById('toast').getBoundingClientRect().toJSON()]")
+    time.sleep(.3); pg.screenshot(path=OUT+'game_v71_mobile_toast.png'); res['toast']=pg.evaluate("[document.getElementById('toast').textContent,getComputedStyle(document.getElementById('toast')).fontSize,document.getElementById('toast').getBoundingClientRect().toJSON()]")
     pg.tap('#btnDrop'); time.sleep(.5)
     pg.evaluate("__aimAt('bato')"); pg.evaluate('__walk(0.8)'); time.sleep(.3)
     for _ in range(4): swipe(300,250,750)
     time.sleep(1.0); st=S(); res['look_down']=[round(st['pos'][3]*57.2958,1),st['wAim'],st['take']]
-    pg.screenshot(path=OUT+'game_v70_mobile_look_down.png')
+    pg.screenshot(path=OUT+'game_v71_mobile_look_down.png')
     if not st['takeDis']: pg.tap('#btnTake')
-    time.sleep(.6); res['holding_after']=S()['holdingW']; pg.screenshot(path=OUT+'game_v70_mobile_bato_hands.png')
+    time.sleep(.6); res['holding_after']=S()['holdingW']; pg.screenshot(path=OUT+'game_v71_mobile_bato_hands.png')
     time.sleep(2.3); res['toast_hidden_after_2s']=pg.evaluate("getComputedStyle(document.getElementById('toast')).display")
     res['errs']=errs; print(json.dumps(res,ensure_ascii=False,indent=1)); b.close()
