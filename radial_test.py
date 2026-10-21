@@ -14,13 +14,17 @@ def run(b,vw,vh,tag,shot=None):
   for _ in range(6):
     E("__aimAt('tape')"); time.sleep(.9)
     if S().get('wAim')=='tape': break
-  tp('touchStart',bx,by); time.sleep(.08); tp('touchEnd'); time.sleep(.5); r['tap_main']=[E('__radial.state().last'),S()['holdingW']]
+  r['tries']=[]
+  for _ in range(4):
+    tp('touchStart',bx,by); time.sleep(.08); tp('touchEnd'); time.sleep(.5); r['tap_main']=[E('__radial.state().last'),S()['holdingW']]; r['tries'].append([S()['wAim']]+r['tap_main'])
+    if r['tap_main'][1]=='tape': break
+    E("__aimAt('tape')"); time.sleep(1.2)
   # hold -> ring
   tp('touchStart',bx,by); time.sleep(.65); st=E('__radial.state()'); r['ring']=st; cx,cy=st['c']; Rr=st['R']
-  ring_ok=cx-Rr-36>=0 and cy-Rr-36>=0 and cx+Rr+36<=vw and cy+Rr+36<=vh; r['ring_on_screen']=ring_ok
+  ring_ok=cx-Rr-26>=0 and cy-Rr-26>=0 and cx+Rr+26<=vw and cy+Rr+26<=vh; r['item_px']=E("document.querySelector('#radRing .it').getBoundingClientRect().width"); r['gap_px']=round(2*math.pi*Rr/len(st['items']),1); r['ring_on_screen']=ring_ok
   i=st['items'].index('drop'); n=len(st['items']); a=-math.pi/2+i*2*math.pi/n
   for k in range(1,9): tp('touchMove',bx+(cx+Rr*math.cos(a)-bx)*k/8,by+(cy+Rr*math.sin(a)-by)*k/8); time.sleep(.03)
-  time.sleep(.2); r['sel']=E('__radial.state().sel')==i; r['label']=E("document.querySelector('#radRing .lb').textContent")
+  time.sleep(.2); r['sel']=E('__radial.state().sel')==i; r['label']=E("document.querySelector('#radRing .lb').textContent"); r['labels_visible']=E("[...document.querySelectorAll('#radRing .lb')].filter(e=>getComputedStyle(e).display!=='none').length")
   if shot: pg.screenshot(path=shot)
   tp('touchEnd'); time.sleep(.8); r['after_drop']=[E('__radial.state().last'),S()['holdingW']]
   # cancel: hold, release in center
@@ -30,5 +34,5 @@ def run(b,vw,vh,tag,shot=None):
   R[tag]=r
 with sync_playwright() as p:
   b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader'])
-  run(b,844,390,'landscape','/workspace/warehouse_game/game_v78_radial.png'); run(b,390,844,'portrait')
+  run(b,844,390,'landscape','/workspace/warehouse_game/game_v79_radial.png'); run(b,390,844,'portrait')
 print(json.dumps(R,ensure_ascii=False,indent=1))
