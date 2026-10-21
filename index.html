@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.8 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.9 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -67,7 +67,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.8 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.9 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -80,6 +80,7 @@ import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js'
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -253,7 +254,7 @@ function attachHandModel(g){
   if(g.userData.demoTool){const id=g.userData.demoTool; const src=id==='knife'?knife:wTools[id]; const c=src.clone(true); c.visible=true; c.traverse(o=>o.visible=true); toolToHand(c,id,g); setForeTilt(g,'side');}
   setCurl(g,g.userData.curl??.2);
 }
-new GLTFLoader().load('hand.glb',gl=>{HAND_GLTF=gl; handWaiters.splice(0).forEach(attachHandModel);},undefined,e=>console.warn('hand.glb',e));
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load('hand.glb',gl=>{HAND_GLTF=gl; handWaiters.splice(0).forEach(attachHandModel);},undefined,e=>console.warn('hand.glb',e));
 // forearm tilt about the wrist: rotate the whole skinned model + sleeve, counter-rotate the hand bone so palm/fingers keep the hand frame.
 // 'down' = forearm drops toward the palm side (normal poses); 'side' = toward +X (little-finger side) for thumb-up tool grip, so the arm comes from below.
 const TILT_AX={down:new THREE.Vector3(1,0,0), side:new THREE.Vector3(0,1,0)};
@@ -2696,6 +2697,23 @@ function radPlace(){ if(IS_PC)return; const a=$('action'), b=$('radBtn'); if(!a|
 setInterval(radPlace,300); addEventListener('resize',radPlace);
 window.__radial={items:()=>radItems().map(i=>({id:i.id,tx:i.tx})),state:()=>({open:RAD.open,sel:RAD.sel,c:[RAD.cx,RAD.cy],R:RAD.R,items:RAD.items.map(i=>i.id),last:window.__radLast||null}),btn:()=>$('radBtn').getBoundingClientRect().toJSON()};
 
+// ---------- v7.9: performance (merge static anonymous meshes, phone render profile) ----------
+const PHONE79=matchMedia('(pointer:coarse)').matches||/[?&]mobile/.test(location.search);
+function matSig79(mt){ return [mt.type,mt.color&&mt.color.getHexString(),mt.roughness,mt.metalness,mt.map&&mt.map.uuid,mt.emissive&&mt.emissive.getHexString(),mt.emissiveIntensity,mt.side,mt.vertexColors,mt.flatShading,mt.opacity,mt.wireframe,mt.normalMap&&mt.normalMap.uuid,mt.depthTest,mt.depthWrite,mt.polygonOffset].join(':');}
+function mergeAnon(group){ if(!group)return 0; const buckets={}; let saved=0;
+  for(const m of group.children.slice()){ if(!m.isMesh||m.isSkinnedMesh||m.isInstancedMesh||m.name||Object.keys(m.userData).filter(k=>!['col','box','phys','solid'].includes(k)).length||!m.visible||Array.isArray(m.material)||m.material.transparent||m.children.length||m.morphTargetInfluences)continue;
+    const g=m.geometry; if(!g||!g.attributes.position)continue; const sig=Object.keys(g.attributes).sort().join(',')+'|'+(g.index?'i':'n')+'|'+m.castShadow+m.receiveShadow+'|'+matSig79(m.material)+'|'+m.renderOrder;
+    (buckets[sig]=buckets[sig]||[]).push(m);}
+  for(const k in buckets){ const L=buckets[k]; if(L.length<2)continue; const gs=L.map(m=>{m.updateMatrix(); const g=m.geometry.clone(); g.applyMatrix4(m.matrix); for(const a in g.morphAttributes)delete g.morphAttributes[a]; return g;});
+    let mg=null; try{mg=mergeGeometries(gs,false);}catch(e){mg=null;} gs.forEach(g=>g.dispose()); if(!mg)continue;
+    const M=new THREE.Mesh(mg,L[0].material); M.castShadow=L[0].castShadow; M.receiveShadow=L[0].receiveShadow; M.renderOrder=L[0].renderOrder; M.name=''; M.userData.merged79=L.length; group.add(M); L.forEach(m=>group.remove(m)); saved+=L.length-1;}
+  return saved;}
+{let n=0; const roots=[stacker,gateA.g,gateB.g,...gateA.secs,...gateB.secs,gateA.door,gateB.door]; for(const r of roots)n+=mergeAnon(r);
+ for(const nm of['Workshop','LiftAssemblyTable','AirLine']){const o=scene.getObjectByName(nm); if(o)n+=mergeAnon(o);}
+ window.__merged79=n;}
+if(PHONE79){ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.shadowMap.type=THREE.PCFShadowMap; sun.shadow.mapSize.set(1024,1024); sun.shadow.radius=1; if(sun.shadow.map){sun.shadow.map.dispose(); sun.shadow.map=null;}
+  renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=true; let _sf=0; setInterval(()=>{},1000); window.__shadowTick=()=>{ if((++_sf)%3===0)renderer.shadowMap.needsUpdate=true; };}
+window.__perf=()=>({calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geoms:renderer.info.memory.geometries,tex:renderer.info.memory.textures,pr:renderer.getPixelRatio(),shadow:renderer.shadowMap.enabled?sun.shadow.mapSize.x:0,merged:window.__merged79||0});
 // ---------- Main loop ----------
 const clock=new THREE.Clock();
 function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),.05);
@@ -2733,6 +2751,7 @@ function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),
  $('timer').textContent='⏱ '+elapsed.toFixed(1)+' c';
  // refresh take/action availability lightly
  if(!anim){ if(mode==='workshop')updateHUDW(); else updateHUD(); }
+ window.__shadowTick&&window.__shadowTick();
  if(handScene)renderer.render(handScene,handCam); else renderer.render(scene,camera);
 }
 updateHUD(); loop();
