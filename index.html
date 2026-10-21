@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<title>Склад+Цех v7.7 Bubble: от первого лица — рохля, тележка, стреппер</title>
+<title>Склад+Цех v7.8 Bubble: от первого лица — рохля, тележка, стреппер</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -67,7 +67,7 @@ html,body{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hud"><button id="btnHideHud" title="Скрыть панель" aria-label="Скрыть панель">✕</button><div id="stageTitle"></div><div id="stageHint"></div>
-<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.7 Bubble</span></div><div id="dots"></div></div>
+<div id="meta"><span class="pill" id="timer">⏱ 0.0 c</span><span class="pill" id="score">⭐ 0</span><span class="pill" id="holdPill">✋ Руки свободны</span><span class="pill" id="orderPill" style="display:none"></span><span class="pill" id="leverPill">Рычаг: НЕЙТРАЛЬ</span><span class="pill">🫧 Вид от 1-го лица • v7.8 Bubble</span></div><div id="dots"></div></div>
 <button id="btnShowHud" title="Показать панель">☰ Панель</button>
 <div id="cross">+</div><div id="aimLabel" style="position:fixed;left:50%;top:calc(50% + 20px);transform:translateX(-50%);z-index:3;pointer-events:none;font-weight:800;font-size:13px;color:#332a7a;background:rgba(255,255,255,.82);border:2px solid #fff;border-radius:999px;padding:2px 10px;display:none"></div>
 <div id="joy"><div id="stick"></div></div>
@@ -2654,6 +2654,48 @@ setInterval(()=>{ if(TM.on)tmHud();},250);
 
 {const _da7=doActionW; doActionW=function(){ if(!IS_PC&&mode==='workshop'&&holdingW==='tape'){ if(!keys[' '])tapeTap(); return;} return _da7.apply(this,arguments);};}
 addEventListener('click',e=>{ if(IS_PC||mode!=='workshop'||holdingW!=='tape'||!e.target.closest||!e.target.closest('#action'))return; e.stopImmediatePropagation(); e.preventDefault(); tapeTap();},true);
+// ---------- v7.8: phone radial menu (one round button; hold -> ring of context actions; tap -> main action) ----------
+const RAD={open:false,items:[],sel:-1,cx:0,cy:0,t0:0,x0:0,y0:0,timer:null,R:92};
+function radVis(id){const e=$(id); return !!e&&e.style.display!=='none';}
+function radItems(){ const it=[]; const W=mode==='workshop';
+  const t=$('btnTake'); if(t&&!t.disabled&&t.textContent.trim())it.push({id:'take',ic:'✋',tx:t.textContent.replace(/^[^\wА-Яа-яЁё]+/u,'').trim(),fn:()=>t.click()});
+  const d=$('btnDrop'); if(d&&radVis('btnDrop'))it.push({id:'drop',ic:'⬇',tx:'Бросить',fn:()=>d.click()});
+  const l=$('btnLever'); if(l&&radVis('btnLever'))it.push({id:'lever',ic:'🎚',tx:l.textContent.trim(),fn:()=>l.click()});
+  if(W&&(holdingW||(typeof layPanelOn==='function'&&layPanelOn()))&&window.__rotStrip){it.push({id:'rotL',ic:'⟲',tx:'Повернуть ⟲',fn:()=>window.__rotStrip(-1)}); it.push({id:'rotR',ic:'⟳',tx:'Повернуть ⟳',fn:()=>window.__rotStrip(1)});}
+  if(W&&typeof TM!=='undefined'){ if(TM.on)it.push({id:'tmExit',ic:'✖',tx:'Выйти из режима',fn:()=>tmExit()}); else if(tmModeOf())it.push({id:'tmEnter',ic:'🎯',tx:'Режим инструмента',fn:()=>tmEnter()});}
+  if(W)it.push({id:'pay',ic:'💰',tx:'Оплата',fn:()=>showPay()});
+  return it;}
+function radMain(){const it=radItems(); const m=it.find(i=>i.id==='take')||it.find(i=>i.id==='drop')||it.find(i=>i.id==='lever'); if(m){m.fn(); return m.id;} toast('🎯 Наведи прицел на предмет'); return null;}
+{const st=document.createElement('style'); st.textContent=`body:not(.pc) #btnTake,body:not(.pc) #btnDrop,body:not(.pc) #btnLever,body:not(.pc) #rotBtns{display:none!important}
+#radBtn{position:fixed;right:14px;bottom:120px;z-index:9;width:66px;height:66px;min-width:0;padding:0;border-radius:50%;border:3px solid #fff;font:700 26px system-ui;background:linear-gradient(135deg,#7dd3fc,#3b82f6);color:#fff;box-shadow:0 7px 0 #1d4ed8,0 10px 22px rgba(40,60,140,.3);touch-action:none;user-select:none;-webkit-user-select:none}
+body.pc #radBtn,body.pc #radRing{display:none!important}
+#radRing{position:fixed;left:0;top:0;width:0;height:0;z-index:40;display:none;pointer-events:none}
+#radRing .bg{position:absolute;border-radius:50%;background:rgba(38,50,74,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#radRing .c{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,255,255,.9);font:700 16px system-ui;color:#26324a;display:flex;align-items:center;justify-content:center}
+#radRing .it{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:#fff;color:#26324a;display:flex;align-items:center;justify-content:center;font:700 24px system-ui;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .08s}
+#radRing .it.on{background:#ffd400;transform:scale(1.18)}
+#radRing .lb{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;background:#26324a;color:#fff;border-radius:10px;padding:5px 10px;font:700 14px system-ui}`; document.head.appendChild(st);
+ const b=document.createElement('button'); b.id='radBtn'; b.textContent='☰'; document.body.appendChild(b); const r=document.createElement('div'); r.id='radRing'; document.body.appendChild(r);
+ const stop=e=>{e.stopPropagation();};
+ b.addEventListener('pointerdown',e=>{ stop(e); e.preventDefault(); try{b.setPointerCapture(e.pointerId);}catch(_){} RAD.moved=false; RAD.t0=performance.now(); RAD.x0=e.clientX; RAD.y0=e.clientY; RAD.sel=-1; clearTimeout(RAD.timer); RAD.timer=setTimeout(()=>radOpen(RAD.x0,RAD.y0),320);});
+ b.addEventListener('pointermove',e=>{ stop(e); if(Math.hypot(e.clientX-RAD.x0,e.clientY-RAD.y0)>20)RAD.moved=true; if(RAD.open)radMove(e.clientX,e.clientY);});
+ b.addEventListener('pointerup',e=>{ stop(e); clearTimeout(RAD.timer); const dur=performance.now()-RAD.t0; if(RAD.open&&(RAD.moved||dur>=500)){radClose(true);} else { if(RAD.open)radClose(false); window.__radLast=radMain();}});
+ b.addEventListener('pointercancel',e=>{clearTimeout(RAD.timer); radClose(false);});
+ for(const ev of['touchstart','touchmove','touchend'])b.addEventListener(ev,stop,{passive:true}); b.addEventListener('click',e=>{e.stopPropagation(); e.preventDefault();});}
+function radOpen(x,y){ RAD.items=radItems(); if(!RAD.items.length){toast('Нет доступных действий'); return;} RAD.open=true; const n=RAD.items.length; const R=RAD.R=n>6?104:92; const m=R+40;
+  RAD.cx=THREE.MathUtils.clamp(x,m,innerWidth-m); RAD.cy=THREE.MathUtils.clamp(y,m,innerHeight-m); const r=$('radRing');
+  let h=`<div class="bg" style="left:${RAD.cx-R-36}px;top:${RAD.cy-R-36}px;width:${2*R+72}px;height:${2*R+72}px"></div><div class="c" style="left:${RAD.cx}px;top:${RAD.cy}px">✖</div>`;
+  RAD.items.forEach((it,i)=>{const a=-Math.PI/2+i*2*Math.PI/n; it.a=a; h+=`<div class="it" data-i="${i}" style="left:${RAD.cx+R*Math.cos(a)}px;top:${RAD.cy+R*Math.sin(a)}px">${it.ic}</div>`;});
+  h+=`<div class="lb" style="left:${RAD.cx}px;top:${RAD.cy-R-62<8?RAD.cy+R+50:RAD.cy-R-50}px">Веди палец к действию · отпусти в центре — отмена</div>`;
+  r.innerHTML=h; r.style.display='block'; radMove(x,y);}
+function radMove(x,y){ const dx=x-RAD.cx, dy=y-RAD.cy; const n=RAD.items.length; let s=-1; if(Math.hypot(dx,dy)>34&&Math.hypot(x-RAD.x0,y-RAD.y0)>20){ let a=Math.atan2(dy,dx)+Math.PI/2; a=(a%(2*Math.PI)+2*Math.PI)%(2*Math.PI); s=Math.round(a/(2*Math.PI/n))%n;}
+  RAD.sel=s; const r=$('radRing'); r.querySelectorAll('.it').forEach(e=>e.classList.toggle('on',+e.dataset.i===s)); const lb=r.querySelector('.lb'); if(lb)lb.textContent=s>=0?`${RAD.items[s].ic} ${RAD.items[s].tx}`:'Веди палец к действию · отпусти в центре — отмена';}
+function radClose(run){ const r=$('radRing'); r.style.display='none'; const it=run&&RAD.sel>=0?RAD.items[RAD.sel]:null; RAD.open=false; window.__radLast=it?it.id:'cancel'; if(it){it.fn(); if(mode==='workshop')updateHUDW();}}
+function radPlace(){ if(IS_PC)return; const a=$('action'), b=$('radBtn'); if(!a||!b)return; const ar=a.getBoundingClientRect(); if(!ar.height)return; const land=innerWidth>innerHeight;
+  const bot=innerHeight-ar.top+12; const right=Math.max(10,innerWidth-ar.right); b.style.bottom=bot+'px'; b.style.right=right+'px';}
+setInterval(radPlace,300); addEventListener('resize',radPlace);
+window.__radial={items:()=>radItems().map(i=>({id:i.id,tx:i.tx})),state:()=>({open:RAD.open,sel:RAD.sel,c:[RAD.cx,RAD.cy],R:RAD.R,items:RAD.items.map(i=>i.id),last:window.__radLast||null}),btn:()=>$('radBtn').getBoundingClientRect().toJSON()};
+
 // ---------- Main loop ----------
 const clock=new THREE.Clock();
 function loop(){requestAnimationFrame(loop); const dt=Math.min(clock.getDelta(),.05);

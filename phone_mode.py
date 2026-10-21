@@ -10,7 +10,7 @@ with sync_playwright() as p:
   for _ in range(6):
     E("__aimAt('tape')"); time.sleep(.9)
     if S().get('wAim')=='tape': break
-  pg.click('#btnTake'); time.sleep(.5); R['holding']=S()['holdingW']; R['enterBtn']=vis('tmEnterBtn')
+  pg.tap('#radBtn'); time.sleep(.5); R['holding']=S()['holdingW']; R['enterBtn']=vis('tmEnterBtn')
   D=E('__liftDims()'); y=D['sheetY']; z=D['z']; x0,x1=D['min'][0],D['max'][0]
   # aim at a point 8 mm inside the rim edge -> snap to edge; A then walk, B near other point
   def look(c,t): E(f"__camAt({c[0]},{c[1]},{c[2]},{t[0]},{t[1]},{t[2]})"); time.sleep(1)
@@ -33,7 +33,7 @@ with sync_playwright() as p:
   pg.tap('#action'); time.sleep(.3); R['tap2']=E('[__tapeTT(),__tapeState().mm,window.__tapeLast&&window.__tapeLast.mm]')
   look((-3.6,1.62,z+1.0),[-3.4,y,z-.2]); R['fixed_mm_after_look']=E('__tapeState().mm'); R['btn']=E("document.getElementById('action').textContent")
   look((-4.3,1.95,z+1.5),[-4.3,y,z-.35]); time.sleep(.5); R['blade']=E('__tapeState().blade')
-  pg.screenshot(path='/workspace/warehouse_game/game_v77_phone_tape.png')
+  pg.screenshot(path='/workspace/warehouse_game/game_v78_phone_tape.png')
   pg.tap('#action'); time.sleep(.8); R['tap3']=E('[__tapeTT(),__tapeState().on]')
   # Alt-free exact: expected snapped length equals 800 mm between rim-inside points? report raw
   # other mode: auto on action only; small ✖
