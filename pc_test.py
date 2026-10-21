@@ -2,7 +2,7 @@
 # LMB hold tape measurement with edge snapping on a 300x300 tile (exact within 1 mm), Alt disables snap. Shield cycle: pc_test_cycle.py.
 from playwright.sync_api import sync_playwright
 import time,json,math,atexit
-O='/workspace/warehouse_game/'; R={}; P='game_v75_'
+O='/workspace/warehouse_game/'; R={}; P='game_v76_'
 atexit.register(lambda: print(json.dumps(R,ensure_ascii=False,indent=1)))
 with sync_playwright() as p:
   b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader'])
@@ -65,6 +65,15 @@ with sync_playwright() as p:
     if alt: pg.keyboard.up('AltLeft')
     return {'mm':st['mm'],'A':st['A'],'B':st['B'],'snapB':sn,'last':last,'on':st['on']}
   R['tape_snap']=measure(False); R['tape_alt']=measure(True); time.sleep(2.5)
+  # v7.6 tool mode: F enters, WASD/E move camera (player stays), RMB exits with smooth return
+  TS=lambda:E('__tm.state()')
+  if TS()['on']: pg.mouse.down(button='right'); pg.mouse.up(button='right'); time.sleep(.7)
+  R['tm_off_before']=TS()['on']; pg.keyboard.press('KeyF'); time.sleep(.3); t0=TS(); pp0=S()['pos']
+  pg.keyboard.down('KeyW'); time.sleep(.6); pg.keyboard.up('KeyW'); pg.keyboard.down('KeyE'); time.sleep(.6); pg.keyboard.up('KeyE'); time.sleep(.2); t1=TS(); pp1=S()['pos']
+  R['tm']={'on':t0['on'],'name':t0['name'],'cam_moved':round(math.dist(t0['pos'],t1['pos']),3),'cam_dy':round(t1['pos'][1]-t0['pos'][1],3),'player_moved':round(math.dist(pp0[:2],pp1[:2]),4),'holding_after_Ehold':S()['holdingW']}
+  R['tm']['hud']=E("document.getElementById('tmHud').innerText"); shot('tape_mode_pc')
+  pg.mouse.down(button='right'); pg.mouse.up(button='right'); time.sleep(.1); R['tm']['ret_mid']=TS()['ret']; time.sleep(.7); R['tm']['off_after_rmb']=not TS()['on']; R['tm']['cam_back']=E("[camera.position.x,camera.position.y,camera.position.z].map(v=>+v.toFixed(3))") if False else None
+  pg.keyboard.press('KeyF'); time.sleep(.2); pg.keyboard.press('Escape'); time.sleep(.3); R['tm']['esc_exit']=(not TS()['on']) and not PS()['menu']
   # reset bindings
   pg.keyboard.press('Escape'); time.sleep(.3); pg.click('#pcReset'); time.sleep(.3); R['reset_take']=E("__pc.settings().binds.take"); pg.keyboard.press('Escape'); time.sleep(.3)
   # mobile override keeps buttons

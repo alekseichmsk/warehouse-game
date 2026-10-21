@@ -27,7 +27,7 @@ with sync_playwright() as pw:
         if btn=='action': pg.mouse.down(); time.sleep(.06); pg.mouse.up()
         else: pg.keyboard.press('KeyE')
         time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v75_pc_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v76_pc_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
@@ -78,6 +78,7 @@ with sync_playwright() as pw:
                     if k==4 and 'horiz' not in shots:
                         pg.mouse.down(); time.sleep(.06); pg.mouse.up(); time.sleep(.5); log.append('nose '+json.dumps(pg.evaluate('__noseDiag()'))); shot('riveter_horizontal'); shots.add('horiz'); waitanim(); continue
                     press('action',f'rivet {k}')
+                    if k==5 and 'rmode' not in shots: time.sleep(.3); log.append('tm '+json.dumps(pg.evaluate('__tm.state()'))); shot('rivet_mode'); shots.add('rmode')
         elif t.startswith('Переверни'): aim('part'); press('action','flip')
         elif t.startswith('Возьми лист Батопласта'):
             if S()['holdingW'] and seen==1:
