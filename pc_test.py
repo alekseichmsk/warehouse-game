@@ -2,7 +2,7 @@
 # LMB hold tape measurement with edge snapping on a 300x300 tile (exact within 1 mm), Alt disables snap. Shield cycle: pc_test_cycle.py.
 from playwright.sync_api import sync_playwright
 import time,json,math,atexit
-O='/workspace/warehouse_game/'; R={}; P='game_v76_'
+O='/workspace/warehouse_game/'; R={}; P='game_v79_'
 atexit.register(lambda: print(json.dumps(R,ensure_ascii=False,indent=1)))
 with sync_playwright() as p:
   b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader'])

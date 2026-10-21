@@ -27,7 +27,7 @@ with sync_playwright() as pw:
         if btn=='action': pg.mouse.down(); time.sleep(.06); pg.mouse.up()
         else: pg.keyboard.press('KeyE')
         time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v76_pc_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v79_pc_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
