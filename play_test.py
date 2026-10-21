@@ -6,7 +6,7 @@ with sync_playwright() as pw:
     b=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader'])
     pg=b.new_page(viewport={'width':1280,'height':720}); errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto(f'http://localhost:8765/index.html?mode=workshop&cb={time.time()}'); pg.wait_for_function('window.__wstate',timeout=60000); time.sleep(2)
+    pg.goto(f'http://localhost:8765/index.html?mobile&mode=workshop&cb={time.time()}'); pg.wait_for_function('window.__wstate',timeout=60000); time.sleep(2)
     S=lambda:pg.evaluate('__wstate()')
     def aim(w,i=None):
         pg.evaluate(f'__aimAt({json.dumps(w)},{json.dumps(i)})'); time.sleep(.3)
@@ -24,7 +24,7 @@ with sync_playwright() as pw:
         st=S(); key='actDis' if btn=='action' else 'takeDis'
         if st[key]: fails.append((st['title'],what,st['act'] if btn=='action' else st['take'],st['wAim'],st['holdingW'])); return False
         pg.evaluate(f"document.getElementById('{btn}').click()"); time.sleep(.25); waitanim(); return True
-    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v69_{n}.png'); log.append('shot '+n)
+    def shot(n): pg.evaluate("document.getElementById('toast').style.display='none'"); time.sleep(.15); pg.screenshot(path=OUT+f'game_v78_{n}.png'); log.append('shot '+n)
     aim('gateA'); press('action','gate'); time.sleep(.3); waitanim()
     log.append(pg.evaluate('__teleportHaul()'))
     shots=set(); seen=0; it=0
@@ -39,7 +39,10 @@ with sync_playwright() as pw:
     def take(tool):
         if S()['holdingW']==tool: return
         free_hands('bench' if tool!='riveter' else 'drop')
-        aim(tool); press('btnTake','take '+tool)
+        for _r in range(4):
+            aim(tool); time.sleep(.3)
+            if S().get('wAim')==tool: break
+        press('btnTake','take '+tool)
     while it<160:
         it+=1; st=S(); t=st['title'] or ''; i0=st['wIndex']
         if t.startswith('Возьми щит с поддона'):
@@ -108,7 +111,11 @@ with sync_playwright() as pw:
                 if not S()['takeDis']: break
             if not S()['takeDis']: press('btnTake','finish roll')
         elif t.startswith('Подпиши щит'):
-            take('marker'); aim('trough',[0.6,0]); press('action','open sign')
+            take('marker')
+            for _r in range(4):
+                aim('trough',[0.6,0]); time.sleep(.5); press('action','open sign'); time.sleep(.8)
+                if pg.locator('#signCv').count(): break
+                log.append('sign retry '+json.dumps(S(),ensure_ascii=False)[:300]); take('marker')
             cv=pg.locator('#signCv').bounding_box()
             if cv:
                 X,Y,W,H=cv['x'],cv['y'],cv['width'],cv['height']
